@@ -88,6 +88,14 @@
     </a>`;
   }
 
+  async function cityHref(place){
+    if(!place.city) return "places.html";
+    try{
+      const { data } = await sb.from("cities").select("slug").eq("name", place.city).maybeSingle();
+      return data && data.slug ? `city.html?slug=${encodeURIComponent(data.slug)}` : "places.html";
+    }catch(e){ return "places.html"; }
+  }
+
   function render(place, posts){
     document.title = `TripVibz · ${place.name}`;
     const counts = {
@@ -143,6 +151,11 @@
       .eq("place_id", PID);
 
     render(place, posts || []);
+
+    const back = document.querySelector(".back");
+    const href = await cityHref(place);
+    back.href = href;
+    back.textContent = href === "places.html" ? "← Places" : `← ${place.city}`;
   })();
 })();
 </script>

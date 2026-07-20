@@ -93,8 +93,7 @@
 
   function card(c){
     const live = c.take_count>0 || c.place_count>0;
-    // The map is gone, so live cities point at the feed for now. The ?city=
-    // param is the hook for per-city filtering when that lands.
+    // Live cities lead to their own page, which lists that city's places.
     const inner = `
       <div class="city-top" style="background:${band(c.name)}">
         <img class="city-img" src="${IMG_BASE}/${encodeURIComponent(c.slug)}.webp" alt="${escapeHtml(c.name)}" loading="lazy" onerror="this.remove()">
@@ -107,7 +106,7 @@
         <div class="city-foot ${live?'':'soon'}">${countLine(c)}</div>
       </div>`;
     return live
-      ? `<a class="city-card" href="index.html?city=${encodeURIComponent(c.slug)}">${inner}</a>`
+      ? `<a class="city-card" href="city.html?slug=${encodeURIComponent(c.slug)}">${inner}</a>`
       : `<div class="city-card is-soon">${inner}</div>`;
   }
 
