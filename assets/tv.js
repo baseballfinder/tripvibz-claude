@@ -247,6 +247,66 @@
     return MODERATION_COPY[m[1]] || "That submission was rejected by our content policy.";
   }
 
+  /* ---------- submitting a take ----------
+     Routes through the /api/take Pages Function so Cloudflare can stamp a
+     coarse locality signal the browser can't forge. The Function inserts as
+     the signed-in user, so RLS and the moderation trigger apply unchanged.
+
+     Falls back to a direct insert when the Function isn't there (local dev,
+     or a static preview). The take still posts — it just carries no locality
+     signal, which is fine because the signal never gates anything. */
+
+  async function submitTake(fields) {
+    var payload = {
+      title: fields.title,
+      body: fields.body || null,
+      type: fields.type,
+      city_id: fields.city_id,
+      city_name: fields.city_name || null,
+      place_id: fields.place_id || null
+    };
+
+    var token = null;
+    try {
+      var sess = await sb.auth.getSession();
+      token = sess.data.session && sess.data.session.access_token;
+    } catch (e) { /* fall through to direct insert */ }
+
+    if (token) {
+      var res = null;
+      try {
+        res = await fetch("/api/take", {
+          method: "POST",
+          headers: { authorization: "Bearer " + token, "content-type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+      } catch (e) { res = null; }   // offline or no Function — fall back
+
+      if (res && res.ok) {
+        var out = await res.json();
+        return { row: out.row, locality: out.locality || null };
+      }
+      // A real database rejection (moderation, RLS) must surface, not fall
+      // back into a second attempt that would fail the same way.
+      if (res && res.status !== 404) {
+        var err = await res.json().catch(function () { return null; });
+        if (err && err.detail) throw new Error(err.detail);
+      }
+    }
+
+    var ins = await sb.from("posts").insert({
+      title: payload.title,
+      body: payload.body,
+      type: payload.type,
+      city_id: payload.city_id,
+      place_id: payload.place_id,
+      author_id: auth.me && auth.me.id
+    }).select("id,title,body,type,ups,downs,comment_count,created_at,author_id,place_id,city_match").single();
+
+    if (ins.error) throw ins.error;
+    return { row: ins.data, locality: null };
+  }
+
   /* ---------- identity ----------
      Anonymous sessions can read and vote, but contributing an article needs a
      real identity, so pages gate their composer on this. */
@@ -258,6 +318,7 @@
   window.TV = {
     sb: sb,
     persistVote: persistVote,
+    submitTake: submitTake,
     moderationMessage: moderationMessage,
     isSignedIn: isSignedIn,
     $: $,

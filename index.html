@@ -121,7 +121,7 @@
 <script>
 (function(){
   "use strict";
-  const { sb, $, escapeHtml, timeAgo, toast, auth, openLogin, isSignedIn, moderationMessage } = window.TV;
+  const { sb, $, escapeHtml, timeAgo, toast, auth, openLogin, isSignedIn, moderationMessage, submitTake } = window.TV;
 
   const DRAFT_KEY = "tv_pending_home";
 
@@ -287,10 +287,7 @@
     const body  = text.length <= 140 ? null : text;
 
     try{
-      const { error } = await sb.from("posts").insert({
-        title, body, type:k, city_id:c.id, place_id:null, author_id:auth.me.id
-      });
-      if(error) throw error;
+      await submitTake({ title, body, type:k, city_id:c.id, city_name:c.name, place_id:null });
 
       try{ sessionStorage.removeItem(DRAFT_KEY); }catch(e){}
       COUNTS[c.id] = (COUNTS[c.id]||0) + 1;

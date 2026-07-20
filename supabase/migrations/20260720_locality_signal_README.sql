@@ -1,0 +1,29 @@
+-- Locality as a signal, never a gate.
+--
+-- A single geo reading proves "currently near", not "lives here". A tourist on
+-- Duval Street passes it; a local whose mobile carrier egresses through another
+-- metro fails it. 86% of traffic is mobile, where carrier NAT makes city-level
+-- IP geo unreliable, so nothing here blocks a submission. With 13 cities still
+-- empty, rejecting a willing contributor costs far more than letting a few
+-- tourists through.
+--
+-- Residency is repeated presence over TIME. contributor_locality accumulates
+-- that; contributor_local_status marks verified_local only at 3+ matching
+-- submissions spread over 14+ days, so one burst from an airport lounge
+-- doesn't qualify.
+--
+-- The stamp is applied by functions/api/take.js from Cloudflare's request.cf,
+-- which the browser cannot forge. That Function inserts as the signed-in user
+-- by forwarding their access token, so RLS and the moderation trigger apply
+-- unchanged - it adds a field, it does not grant privilege. author_id now
+-- defaults to auth.uid() so identity comes from the verified JWT rather than
+-- the request body.
+--
+-- Privacy: coarse city/region/country only. No IP addresses, no lat/long.
+-- This is personal data tied to an account and needs disclosing in the privacy
+-- policy before it ships.
+--
+-- Verified end to end: insert without author_id defaults correctly, matching
+-- submissions tally, non-matching submissions are still accepted and do not
+-- tally, moderation still fires on this path, and verified_local stays false
+-- until the time condition is met.

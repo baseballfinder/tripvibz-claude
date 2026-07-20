@@ -137,7 +137,7 @@
 <script>
 (function(){
   "use strict";
-  const { sb, $, escapeHtml, timeAgo, toast, auth, openLogin, isSignedIn, moderationMessage, persistVote, CHEVRON } = window.TV;
+  const { sb, $, escapeHtml, timeAgo, toast, auth, openLogin, isSignedIn, moderationMessage, persistVote, submitTake, CHEVRON } = window.TV;
 
   const qs = new URLSearchParams(location.search);
   const SLUG  = qs.get("city");
@@ -212,6 +212,13 @@
     ? MONTHS_LONG[ev.start_month-1]
     : `${MONTHS[ev.start_month-1]} – ${MONTHS[ev.end_month-1]}`;
   const PROFILES = {}, myVotes = {};
+  const VERIFIED = {};   // author_id -> true when verified local for THIS city
+
+  function localBadge(p){
+    if(VERIFIED[p.author_id]) return ' <span class="loc loc-verified">Verified local</span>';
+    if(p.city_match === true)  return ' <span class="loc loc-local">Local</span>';
+    return "";
+  }
 
   function fail(msg){
     $("#root").innerHTML = `<div class="state"><b>Can't load that</b>${escapeHtml(msg)}<br><br><a href="places.html">← Pick a city</a></div>`;
@@ -283,7 +290,7 @@
         <button class="endorse ${my===1?"on":""}" data-vote="1" data-id="${p.id}" aria-pressed="${my===1}">
           ${CHEVRON}<span>${my===1?"Cosigned":"Cosign"}</span><b>${p.ups}</b>
         </button>
-        <span class="who">by <b>${escapeHtml(authorName(p.author_id))}</b> · ${timeAgo(p.created_at)} ago</span>
+        <span class="who">by <b>${escapeHtml(authorName(p.author_id))}</b>${localBadge(p)} · ${timeAgo(p.created_at)} ago</span>
         ${area ? `<a class="area" href="place.html?id=${area.id}">${escapeHtml(area.name)}</a>` : ""}
         <a class="cmt-link" href="thread.html?id=${p.id}" style="color:inherit;text-decoration:none">💬 ${p.comment_count}</a>
       </div>
@@ -513,16 +520,15 @@
     const body  = text.length <= 140 ? null : text;
 
     try{
-      const { data, error } = await sb.from("posts").insert({
+      const { row } = await submitTake({
         title, body, type: THEME,
         city_id: CITY.id,
-        place_id: AREA === "all" ? null : AREA,
-        author_id: auth.me.id
-      }).select("id,title,body,type,ups,downs,comment_count,created_at,author_id,place_id").single();
-      if(error) throw error;
+        city_name: CITY.name,
+        place_id: AREA === "all" ? null : AREA
+      });
 
       PROFILES[auth.me.id] = PROFILES[auth.me.id] || { id: auth.me.id, display_name: "You" };
-      ENTRIES.push(data);
+      ENTRIES.push(row);
       sortEntries();
       try{ sessionStorage.removeItem(DRAFT_KEY); }catch(e){}
       render();
@@ -563,7 +569,7 @@
 
     const [{ data: rows }, { data: places }] = await Promise.all([
       sb.from("posts")
-        .select("id,title,body,type,ups,downs,comment_count,created_at,author_id,place_id")
+        .select("id,title,body,type,ups,downs,comment_count,created_at,author_id,place_id,city_match")
         .eq("city_id", city.id).eq("type", THEME),
       sb.from("places").select("id,name").eq("city_id", city.id).order("name")
     ]);
@@ -576,8 +582,13 @@
 
     const ids = [...new Set(ENTRIES.map(e=>e.author_id).filter(Boolean))];
     if(ids.length){
-      const { data: profs } = await sb.from("profiles").select("id,username,display_name").in("id", ids);
+      const [{ data: profs }, { data: loc }] = await Promise.all([
+        sb.from("profiles").select("id,username,display_name").in("id", ids),
+        sb.from("contributor_local_status")
+          .select("author_id,verified_local").eq("city_id", city.id).in("author_id", ids)
+      ]);
       (profs||[]).forEach(p=>PROFILES[p.id]=p);
+      (loc||[]).forEach(r=>{ if(r.verified_local) VERIFIED[r.author_id] = true; });
     }
 
     await auth.ensure();
