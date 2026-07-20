@@ -61,13 +61,26 @@
 
   .section-label{font-family:"Archivo";font-weight:800;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:34px 2px 12px}
 
-  .needs{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px}
-  .need{display:block;background:#fff;border:1px solid var(--line);border-radius:11px;padding:13px 14px;text-decoration:none;transition:transform .1s ease,box-shadow .12s ease}
-  .need:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(22,20,15,.09)}
-  .need b{font-family:"Archivo";font-weight:800;font-size:14.5px;display:block}
-  .need .s{font-size:12px;color:var(--muted);margin-top:3px;display:block}
-  .need .n{font-family:"Archivo";font-weight:700;font-size:12px;color:var(--coral);margin-top:8px;display:block}
-  .need .n.has{color:var(--ocean)}
+  .needs{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:12px}
+  /* Photo cards. The ink background is the fallback when an image is missing
+     or still loading, so the white text is always on a dark surface — never
+     white-on-white, never white-on-a-bright-sky. */
+  .need{position:relative;display:block;height:132px;border-radius:12px;overflow:hidden;
+        background:var(--ink);text-decoration:none;transition:transform .1s ease,box-shadow .12s ease}
+  .need:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(22,20,15,.22)}
+  .need img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+  /* Scrim does the contrast work: near-opaque at the bottom where the text
+     sits, clearing toward the top so the photo still reads. */
+  .need .scrim{position:absolute;inset:0;z-index:1;
+    background:linear-gradient(to top,rgba(10,9,7,.92) 0%,rgba(10,9,7,.72) 34%,rgba(10,9,7,.28) 68%,rgba(10,9,7,.10) 100%)}
+  .need .txt{position:absolute;left:13px;right:13px;bottom:11px;z-index:2}
+  .need b{font-family:"Archivo";font-weight:800;font-size:15.5px;color:#fff;display:block;line-height:1.2;
+          text-shadow:0 1px 3px rgba(0,0,0,.5)}
+  .need .s{font-size:11.5px;color:#e2ded4;margin-top:2px;display:block;font-weight:600;
+           text-shadow:0 1px 3px rgba(0,0,0,.5)}
+  .need .n{font-family:"Archivo";font-weight:700;font-size:11.5px;margin-top:7px;display:inline-block;
+           padding:3px 9px;border-radius:999px;background:rgba(255,255,255,.94);color:#16140f}
+  .need .n.thin{background:var(--coral);color:#fff}
 
   .recent{display:flex;flex-direction:column;gap:9px}
   .rec{background:#fff;border:1px solid var(--line);border-radius:11px;padding:12px 15px}
@@ -93,7 +106,7 @@
   <div class="wrap">
     <section class="hero">
       <div class="eyebrow">Written by locals, not visitors</div>
-      <h1>You know a city. Tell us what visitors get wrong.</h1>
+      <h1>You know your city.</h1>
       <p class="lede">One sentence is enough. Enough of them and a city gets a guide
         no guidebook can copy — because it came from people who live there.</p>
     </section>
@@ -102,7 +115,7 @@
 
     <div class="stats" id="stats"></div>
 
-    <div class="section-label" id="needs-label">Cities waiting on a local</div>
+    <div class="section-label" id="needs-label">Pick your city</div>
     <div class="needs" id="needs"></div>
 
     <div id="recent-wrap" hidden>
@@ -228,15 +241,21 @@
       <div class="stat"><b>${TOTALS.cities}</b><span>cities open</span></div>`;
   }
 
+  const PHOTO = "https://nkxorlktzbgwqnfwmuus.supabase.co/storage/v1/object/public/city-photos";
+
   function renderNeeds(){
-    // Emptiest first — the ask is the point, so lead with the gaps.
+    // Every city, emptiest first — the gap is the invitation.
     const ordered = CITIES.slice().sort((a,b)=>(COUNTS[a.id]||0)-(COUNTS[b.id]||0) || a.name.localeCompare(b.name));
-    $("#needs").innerHTML = ordered.slice(0,12).map(c=>{
+    $("#needs").innerHTML = ordered.map(c=>{
       const n = COUNTS[c.id] || 0;
       return `<a class="need" href="article.html?city=${encodeURIComponent(c.slug)}&theme=what_not_to_do&add=1">
-        <b>${escapeHtml(c.name)}</b>
-        <span class="s">${escapeHtml(c.state||"")}</span>
-        <span class="n ${n?"has":""}">${n ? `${n} take${n===1?"":"s"} →` : "No takes yet →"}</span>
+        <img src="${PHOTO}/${encodeURIComponent(c.slug)}.webp" alt="" loading="lazy" onerror="this.remove()">
+        <span class="scrim"></span>
+        <span class="txt">
+          <b>${escapeHtml(c.name)}</b>
+          <span class="s">${escapeHtml(c.state||"")}</span>
+          <span class="n ${n?"":"thin"}">${n ? `${n} take${n===1?"":"s"}` : "Be the first"}</span>
+        </span>
       </a>`;
     }).join("");
   }
