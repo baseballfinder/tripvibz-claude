@@ -228,6 +228,25 @@
     }
   }
 
+  /* ---------- moderation ----------
+     The DB rejects slurs, sexual content and threats via trigger. The term
+     list deliberately never reaches the browser, so we only translate the
+     error code the database hands back. */
+
+  var MODERATION_COPY = {
+    SEXUAL: "That reads as sexually explicit, so it wasn't posted. Criticism of a place is fine \u2014 keep it about the place.",
+    SLUR:   "That contains language we don't publish, so it wasn't posted. Say what went wrong instead.",
+    THREAT: "That reads as a threat, so it wasn't posted. Be blunt about the place, not about people."
+  };
+
+  // Returns friendly copy for a moderation rejection, or null for other errors.
+  function moderationMessage(err) {
+    var msg = (err && (err.message || err.error_description || "")) || "";
+    var m = /MODERATION_BLOCKED_([A-Z]+)/.exec(msg);
+    if (!m) return null;
+    return MODERATION_COPY[m[1]] || "That submission was rejected by our content policy.";
+  }
+
   /* ---------- identity ----------
      Anonymous sessions can read and vote, but contributing an article needs a
      real identity, so pages gate their composer on this. */
@@ -239,6 +258,7 @@
   window.TV = {
     sb: sb,
     persistVote: persistVote,
+    moderationMessage: moderationMessage,
     isSignedIn: isSignedIn,
     $: $,
     TYPE_LABEL: TYPE_LABEL,

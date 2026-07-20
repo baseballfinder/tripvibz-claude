@@ -47,6 +47,7 @@
   .charcount.over{color:var(--coral);font-weight:700}
   .gate{text-align:center;padding:8px 0 2px}
   .gate p{font-size:14px;color:var(--muted);margin:0 0 14px}
+  .reject{background:#ffe7e0;border:1px solid #f5c4b6;color:#a52d15;font-size:13.5px;font-weight:600;border-radius:9px;padding:11px 13px;margin:0 0 13px;line-height:1.45}
 </style>
 </head>
 <body>
@@ -94,7 +95,7 @@
 <script>
 (function(){
   "use strict";
-  const { sb, $, TYPE_LABEL, CHEVRON, escapeHtml, timeAgo, toast, auth, openLogin, persistVote, isSignedIn } = window.TV;
+  const { sb, $, TYPE_LABEL, CHEVRON, escapeHtml, timeAgo, toast, auth, openLogin, persistVote, isSignedIn, moderationMessage } = window.TV;
 
   // Only these two kinds get a dedicated page. Anything else is rejected so a
   // hand-edited URL can't render a page the copy doesn't fit.
@@ -264,10 +265,25 @@
       toast("Posted — thanks for the take");
     }catch(e){
       console.error(e);
-      toast("Couldn't post that — try again");
+      const blocked = moderationMessage(e);
+      if(blocked){ showRejection(blocked); }
+      else { toast("Couldn't post that — try again"); }
     }finally{
       btn.disabled = false; btn.textContent = "Post contribution";
     }
+  }
+
+  function showRejection(msg){
+    let el = $("#c-reject");
+    if(!el){
+      el = document.createElement("div");
+      el.id = "c-reject";
+      el.className = "reject";
+      el.setAttribute("role","alert");
+      $("#c-send").closest(".row").insertAdjacentElement("beforebegin", el);
+    }
+    el.textContent = msg;
+    el.hidden = false;
   }
 
   /* ---------- load ---------- */

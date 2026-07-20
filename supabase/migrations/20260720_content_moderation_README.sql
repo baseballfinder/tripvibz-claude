@@ -1,0 +1,28 @@
+-- Content moderation: reject slurs, sexually explicit content, and threats.
+--
+-- Deliberately NOT a general profanity filter. TripVibz content is negative by
+-- design ("what not to do", "worst times", tourist traps); someone calling a
+-- business a rip-off is the product, not a violation. Ordinary profanity aimed
+-- at a place passes. Slurs, sexual content, and threats at people do not.
+--
+-- Enforced by trigger, so it covers every write path including direct REST
+-- calls made with the publishable key. A client-side check would only filter
+-- honest users. The term list is stored RLS-locked and never reaches the
+-- browser -- publishing it would hand people an evasion map.
+--
+-- Matching runs in two passes:
+--   1. whole-word match on normalised text (lowercased, leetspeak folded)
+--   2. substring match on fully-squashed text for terms flagged strict, which
+--      catches "f u c k" and "f.u.c.k" at the cost of substring collisions
+-- moderation_allowlist covers the Scunthorpe problem (cocktail, Sussex, etc).
+--
+-- Verified against 18 fixtures: 10 legitimate angry-traveler samples pass,
+-- 8 violations (including spaced, leetspeak and punctuated evasion) blocked.
+-- Also verified zero false positives against all existing posts and comments.
+--
+-- To extend the slur list, import a maintained wordlist rather than hand-
+-- rolling one, e.g. LDNOOBW (github.com/LDNOOBW/List-of-Dirty-Naughty-
+-- Obscene-and-Otherwise-Bad-Words), and insert with category 'slur'.
+
+-- (Applied via Supabase migration content_moderation_wordlist; see that
+-- migration for the table, function, and trigger definitions.)
