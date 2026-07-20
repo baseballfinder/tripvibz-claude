@@ -154,15 +154,15 @@
         }).join("")}
       </div>
 
-      <div class="section-label">Places in ${escapeHtml(CITY.name)}</div>
-      <div class="filters" id="filters">
+      ${PLACES.length ? `<div class="section-label">Places in ${escapeHtml(CITY.name)}</div>` : ""}
+      <div class="filters" id="filters" ${PLACES.length ? "" : "hidden"}>
         <button aria-pressed="true" data-f="all">All places</button>
         <button aria-pressed="false" data-f="has_takes">Has takes</button>
         <button aria-pressed="false" data-f="what_not_to_do">${TYPE_LABEL.what_not_to_do}</button>
         <button aria-pressed="false" data-f="worst_times">${TYPE_LABEL.worst_times}</button>
       </div>
       <div class="count-line" id="count-line"></div>
-      <div class="place-grid" id="place-grid"></div>
+      <div class="place-grid" id="place-grid" ${PLACES.length ? "" : "hidden"}></div>
 
       <div class="cta">
         <div>
