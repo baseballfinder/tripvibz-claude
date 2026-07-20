@@ -1,0 +1,13 @@
+-- City as a real relationship, not a free-text name.
+--
+-- 1. places.city was text matched against cities.name. A typo silently
+--    orphaned a place from its city page, with no error anywhere.
+-- 2. posts could only attach to a place, so a take about the city as a whole
+--    ("dinner starts at 9 here") had nowhere to live. City-level takes are the
+--    primary unit for the contribution flow, which asks about local norms
+--    rather than specific venues.
+--
+-- Both columns nullable and additive; existing queries unaffected.
+-- Backfill linked 24/24 places and 25/26 posts (the one miss is a post with
+-- no place_id at all). trg_posts_sync_city keeps place-attached posts in sync
+-- with their place's city.

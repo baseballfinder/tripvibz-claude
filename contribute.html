@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TripVibz · Add a local take</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Public+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/analytics.js"></script>
+<style>
+  /* Single-column, thumb-friendly. 86% of traffic is mobile. */
+  :root{--maxw:600px}
+  main{padding:18px 0 70px}
+
+  .ask{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:22px 20px}
+  .ask .kicker{font-family:"Archivo";font-weight:700;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--coral);margin-bottom:10px}
+  .ask h1{font-size:clamp(21px,4.6vw,27px);font-weight:900;line-height:1.18;margin-bottom:12px}
+  .ask .eg{font-size:13.5px;color:var(--muted);font-style:italic;border-left:3px solid var(--sand);padding-left:11px;margin:0 0 16px;line-height:1.5}
+
+  textarea#take{width:100%;border:1.5px solid var(--line);border-radius:11px;padding:13px 14px;font:inherit;font-size:16px;resize:vertical;min-height:112px;background:var(--paper);line-height:1.5}
+  textarea#take:focus{outline:2px solid var(--coral);outline-offset:1px;background:#fff}
+
+  .meta-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 1px 14px}
+  .counter{font-size:12px;color:var(--muted)}
+  .counter.over{color:var(--coral);font-weight:700}
+  .skip{border:none;background:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;font-family:"Public Sans";text-decoration:underline;padding:0}
+  .skip:hover{color:var(--ink)}
+
+  .send{width:100%;font-size:16px;padding:14px 18px}
+  .send[disabled]{opacity:.55;cursor:not-allowed;transform:none}
+
+  .nudge{background:#fff8e6;border:1px solid #f0dca8;color:#7a5b00;font-size:13px;font-weight:600;border-radius:9px;padding:11px 13px;margin:0 0 13px;line-height:1.45}
+  .nudge b{display:block;margin-bottom:3px}
+  .reject{background:#ffe7e0;border:1px solid #f5c4b6;color:#a52d15;font-size:13.5px;font-weight:600;border-radius:9px;padding:11px 13px;margin:0 0 13px;line-height:1.45}
+  .saved{background:#dff3ec;border:1px solid #a8ddcd;color:#0c6b5e;font-size:13.5px;font-weight:600;border-radius:9px;padding:11px 13px;margin:0 0 13px}
+
+  .progress{margin:16px 2px 0;font-size:13px;color:var(--muted);font-weight:600}
+  .progress b{font-family:"Archivo";color:var(--ink)}
+  .bar{height:6px;background:var(--sand);border-radius:999px;overflow:hidden;margin-top:8px}
+  .bar span{display:block;height:100%;background:var(--coral);border-radius:999px;transition:width .4s ease}
+
+  .yours{margin-top:26px}
+  .yours h2{font-family:"Archivo";font-weight:800;font-size:15px;margin-bottom:10px}
+  .mine{background:#fff;border:1px solid var(--line);border-radius:11px;padding:12px 14px;margin-bottom:9px;font-size:14.5px;color:#3d3931}
+  .mine .tag{font-family:"Archivo";font-weight:700;font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px}
+
+  .done{text-align:center;padding:10px 0}
+  .done h2{font-size:22px;font-weight:900;margin-bottom:8px}
+  .done p{color:var(--muted);font-size:14.5px;margin:0 0 18px}
+  .rules{font-size:12.5px;color:var(--muted);line-height:1.5;margin-top:22px;padding-top:16px;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="index.html"><span class="dot"></span>TripVibz</a>
+    <div class="nav-right"><div id="auth-slot"></div></div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div id="root">
+      <div class="state"><b>Loading…</b>One second.</div>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/tv.js"></script>
+<script>
+(function(){
+  "use strict";
+  const { sb, $, escapeHtml, toast, auth, openLogin, isSignedIn, moderationMessage } = window.TV;
+
+  const SLUG = new URLSearchParams(location.search).get("city");
+  const DRAFT_KEY = "tv_pending_take";   // survives the OAuth round trip
+
+  // ---------------------------------------------------------------------
+  // Prompts. Deliberately about behaviour, timing and local norms — the
+  // stuff that isn't on TripAdvisor, Google or Yelp. None of them invite a
+  // review of a named business.
+  // ---------------------------------------------------------------------
+  const PROMPTS = [
+    { type:"what_not_to_do", q:"What do visitors do here that annoys locals?",
+      eg:"Standing in the bike lane to take photos. It's a road, not a viewing platform." },
+    { type:"what_not_to_do", q:"What's an unwritten rule visitors don't know?",
+      eg:"Nobody orders a cortadito after 4pm. You'll get one, but you'll get a look too." },
+    { type:"what_not_to_do", q:"What do tourists overpay for that locals never pay for?",
+      eg:"Beach chair rentals. Walk two blocks north and the same stretch of sand is free." },
+    { type:"what_not_to_do", q:"Where do visitors go that locals avoid — and where do locals go instead?",
+      eg:"Everyone piles onto the main strip. Locals are one street back where the parking is free." },
+    { type:"what_not_to_do", q:"What's the transport mistake visitors make here?",
+      eg:"Renting a car. You'll pay $45 a night to park it and never use it." },
+    { type:"what_not_to_do", q:"What do visitors wear or do that instantly marks them as a tourist?",
+      eg:"Beachwear inland. Locals cover up the second they leave the sand." },
+    { type:"what_not_to_do", q:"What does everyone get wrong about the geography here?",
+      eg:"People think it's all walkable. The two halves are 40 minutes apart in traffic." },
+    { type:"what_not_to_do", q:"What's a scam or hustle visitors should watch for?",
+      eg:"Anyone offering a 'free' harbour tour is selling a timeshare pitch." },
+    { type:"worst_times",    q:"What's the worst week or month to be here, and why?",
+      eg:"Mid-March. Every hotel triples and you can't get a table anywhere." },
+    { type:"worst_times",    q:"What time of day should visitors avoid, and what should they do instead?",
+      eg:"Don't hit the waterfront at sunset with everyone else — go an hour early, stay after." },
+    { type:"worst_times",    q:"What local event turns the city unbearable for visitors?",
+      eg:"Race weekend. The whole downtown grid shuts and nothing moves." },
+    { type:"what_not_to_do", q:"What does this city actually run on that visitors miss?",
+      eg:"Dinner starts at 9. Show up at 6 and you'll eat alone in an empty room." }
+  ];
+
+  let CITY = null;
+  let order = [];      // shuffled prompt indexes
+  let step = 0;
+  let added = [];      // takes added this session
+  const GOAL = 5;      // per-session target, keeps the ask finite
+
+  function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+  const prompt = () => PROMPTS[order[step % order.length]];
+
+  function fail(msg){
+    $("#root").innerHTML = `<div class="state"><b>Can't load that</b>${escapeHtml(msg)}<br><br><a href="places.html">← Pick a city</a></div>`;
+  }
+
+  // ---------------------------------------------------------------------
+  // Business-callout nudge. Client-side and advisory only: this is about
+  // steering tone, not enforcement. The DB trigger handles the hard rules.
+  // ---------------------------------------------------------------------
+  const BIZ_WORDS = /\b(restaurant|cafe|café|bar|hotel|motel|resort|shop|store|salon|spa|club|grill|diner|bistro|tavern|pub|inn|lounge)\b/i;
+  const NAMED = /\b[A-Z][a-z]{2,}(?:'s|s')\b/;          // "Joe's", "Ricks'"
+  const STAFF = /\b(owner|manager|waiter|waitress|bartender|server|staff|employee)\b/i;
+
+  function businessNudge(text){
+    const named = NAMED.test(text);
+    const biz = BIZ_WORDS.test(text);
+    const staff = STAFF.test(text);
+    if((named && biz) || (named && staff) || (biz && staff)){
+      return "This reads like a review of one business. TripVibz is for how the city works — the pattern, not the place. Could you rewrite it as the thing visitors should know generally?";
+    }
+    return null;
+  }
+
+  // ---------------------------------------------------------------------
+  // render
+  // ---------------------------------------------------------------------
+
+  function renderAsk(){
+    const p = prompt();
+    const pct = Math.min(100, Math.round(added.length / GOAL * 100));
+
+    $("#root").innerHTML = `
+      <div class="ask">
+        <div class="kicker">${escapeHtml(CITY.name)}${CITY.state ? ", "+escapeHtml(CITY.state) : ""} · locals only</div>
+        <h1>${escapeHtml(p.q)}</h1>
+        <p class="eg">${escapeHtml(p.eg)}</p>
+        <div id="slot"></div>
+        <textarea id="take" maxlength="600" placeholder="One or two sentences is plenty…"></textarea>
+        <div class="meta-row">
+          <span class="counter" id="counter">0 / 600</span>
+          <button class="skip" id="skip">Different question →</button>
+        </div>
+        <button class="btn coral send" id="send">Add it</button>
+      </div>
+
+      <div class="progress">
+        <b>${added.length}</b> of ${GOAL} this session${added.length >= GOAL ? " — you're a legend" : ""}
+        <div class="bar"><span style="width:${pct}%"></span></div>
+      </div>
+
+      ${added.length ? `<div class="yours">
+        <h2>Added this session</h2>
+        ${added.map(t=>`<div class="mine"><span class="tag">${escapeHtml(t.q)}</span>${escapeHtml(t.text)}</div>`).join("")}
+      </div>` : ""}
+
+      <div class="rules">
+        We publish how a city works — timing, norms, geography, the things locals
+        just know. We don't publish complaints about a specific business or the
+        people who work there; Yelp already exists for that.
+      </div>`;
+
+    const ta = $("#take"), counter = $("#counter");
+    ta.addEventListener("input", ()=>{
+      counter.textContent = `${ta.value.length} / 600`;
+      counter.classList.toggle("over", ta.value.length >= 600);
+    });
+    $("#skip").addEventListener("click", ()=>{ step++; renderAsk(); });
+    $("#send").addEventListener("click", submit);
+    ta.focus();
+  }
+
+  function slot(html){ $("#slot").innerHTML = html; }
+
+  async function submit(){
+    const ta = $("#take");
+    const text = (ta.value || "").trim();
+    const p = prompt();
+
+    if(text.length < 15){ toast("A few more words — one sentence is fine"); ta.focus(); return; }
+
+    const nudge = businessNudge(text);
+    if(nudge && !ta.dataset.nudged){
+      ta.dataset.nudged = "1";                       // warn once, don't block
+      slot(`<div class="nudge"><b>Keep it about the city</b>${escapeHtml(nudge)}</div>`);
+      return;
+    }
+
+    // Write-before-login: stash the draft, authenticate, come back and post it.
+    if(!isSignedIn()){
+      try{
+        sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ slug:SLUG, text, type:p.type, q:p.q }));
+      }catch(e){ /* private mode — we'll just lose the draft */ }
+      slot(`<div class="saved">Your take is saved. Sign in and we'll post it straight away.</div>`);
+      openLogin();
+      return;
+    }
+
+    await publish(text, p.type, p.q, $("#send"));
+  }
+
+  async function publish(text, type, q, btn){
+    if(btn){ btn.disabled = true; btn.textContent = "Posting…"; }
+    // Short takes live entirely in the title; longer ones get a body too.
+    const title = text.length <= 140 ? text : text.slice(0, 137).replace(/\s+\S*$/, "") + "…";
+    const body  = text.length <= 140 ? null : text;
+
+    try{
+      const { error } = await sb.from("posts").insert({
+        title, body, type,
+        city_id: CITY.id,
+        place_id: null,
+        author_id: auth.me.id
+      });
+      if(error) throw error;
+
+      added.push({ text, q });
+      step++;
+      try{ sessionStorage.removeItem(DRAFT_KEY); }catch(e){}
+      renderAsk();
+      toast(added.length >= GOAL ? "That's five — genuinely helpful" : "Added. One more?");
+    }catch(e){
+      console.error(e);
+      const blocked = moderationMessage(e);
+      if(btn){ btn.disabled = false; btn.textContent = "Add it"; }
+      if(blocked){ slot(`<div class="reject">${escapeHtml(blocked)}</div>`); }
+      else { toast("Couldn't post that — try again"); }
+    }
+  }
+
+  // after OAuth returns, finish what they started
+  async function resumeDraft(){
+    let d = null;
+    try{ d = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || "null"); }catch(e){}
+    if(!d || d.slug !== SLUG || !isSignedIn()) return false;
+    await publish(d.text, d.type, d.q, null);
+    return true;
+  }
+
+  auth.onRender = function(){
+    // signing in mid-flow should immediately clear the "saved" notice
+    if(isSignedIn() && $("#slot") && $("#slot").innerHTML.includes("saved")) slot("");
+  };
+
+  (async function init(){
+    if(!SLUG){ fail("No city specified."); return; }
+
+    const { data: city, error } = await sb.from("cities")
+      .select("id,name,state,slug").eq("slug", SLUG).maybeSingle();
+    if(error || !city){ fail("We're not covering that city yet."); return; }
+    CITY = city;
+
+    order = shuffle(PROMPTS.map((_,i)=>i));
+    await auth.ensure();
+    renderAsk();
+    await resumeDraft();
+  })();
+})();
+</script>
+</body>
+</html>
