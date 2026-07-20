@@ -1,0 +1,14 @@
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# Dependencies (none today, but keeps future tooling out of the repo)
+node_modules/
+
+# Local env / secrets — never commit service-role keys
+.env
+.env.*
+!.env.example

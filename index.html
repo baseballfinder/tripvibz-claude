@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TripVibz — Miami, by the people who actually go</title>
+<meta name="description" content="Local takes, worst times, and hidden gems for Miami and the Keys — cosigned by people who actually went." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Public+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/site.css">
+<style>
+  /* index-only layout */
+  .hero{border-bottom:1px solid var(--line);background:linear-gradient(180deg,var(--sand),var(--paper))}
+  .hero-inner{padding:44px 0 40px;display:grid;grid-template-columns:1.5fr 1fr;gap:40px;align-items:end}
+  .eyebrow{font-family:"Archivo";font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--coral);display:flex;align-items:center;gap:8px}
+  .hero h1{font-size:clamp(34px,5.2vw,60px);font-weight:900;margin:14px 0 16px}
+  .hero p.lede{font-size:18px;color:#39352d;max-width:52ch;margin:0 0 22px}
+  .hero-meta{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--muted);font-weight:500}
+  .hero-meta .pill{background:#fff;border:1px solid var(--line);border-radius:999px;padding:5px 12px}
+  .hero-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+  .hero-card .tag{font-family:"Archivo";font-weight:700;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ocean)}
+  .hero-card h3{font-size:21px;margin:8px 0 10px;font-weight:800}
+  .hero-card h3 a{color:inherit;text-decoration:none}
+  .hero-card h3 a:hover{color:var(--coral)}
+  .hero-card .excerpt{font-size:14px;color:#4a463d;margin-bottom:14px}
+  .hero-card .row{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--muted)}
+  .hero-card .score{font-family:"Archivo";font-weight:800;color:var(--coral);display:inline-flex;align-items:center;gap:5px}
+
+  .main{display:grid;grid-template-columns:1fr 320px;gap:36px;padding:36px 0 60px}
+  @media(max-width:900px){.hero-inner{grid-template-columns:1fr;gap:24px}.main{grid-template-columns:1fr}}
+
+  .controls{position:sticky;top:64px;background:var(--paper);padding:8px 0 14px;z-index:10}
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:14px}
+  .tab{font-family:"Archivo";font-weight:700;font-size:14px;background:none;border:none;color:var(--muted);padding:10px 14px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--coral)}
+  .tab:hover{color:var(--ink)}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{font-size:13px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:999px;padding:6px 13px;cursor:pointer;transition:all .12s ease}
+  .chip[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .chip:hover{border-color:#bdb4a3}
+
+  .feed{display:flex;flex-direction:column;gap:14px;margin-top:18px}
+
+  aside{display:flex;flex-direction:column;gap:22px}
+  .panel{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+  .panel h4{font-family:"Archivo";font-weight:800;font-size:15px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+  .day-tabs{display:flex;gap:6px;margin-bottom:12px}
+  .day-tabs button{flex:1;font-family:"Archivo";font-weight:700;font-size:13px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 0;cursor:pointer;color:var(--muted)}
+  .day-tabs button[aria-selected="true"]{background:var(--ocean);color:#fff;border-color:var(--ocean)}
+  .plan-item{display:flex;gap:10px;padding:9px 0;border-top:1px solid var(--line);font-size:14px}
+  .plan-item:first-of-type{border-top:none}
+  .plan-item .t{font-family:"Archivo";font-weight:700;color:var(--coral);font-size:13px;min-width:54px}
+  .hotel{display:flex;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+  .hotel:first-of-type{border-top:none}
+  .hotel .ph{width:46px;height:46px;border-radius:9px;background:linear-gradient(135deg,var(--sand),#dcd2c0);flex:none}
+  .hotel .h-name{font-weight:600;font-size:14px}
+  .hotel .h-meta{font-size:12.5px;color:var(--muted)}
+  .hotel a{margin-left:auto;font-family:"Archivo";font-weight:700;font-size:12.5px;color:var(--ocean);text-decoration:none;white-space:nowrap}
+  .news input{width:100%;border:1px solid var(--line);border-radius:9px;padding:11px 12px;font:inherit;font-size:14px;margin-bottom:9px}
+  .news .btn{width:100%}
+  .news small{display:block;color:var(--muted);font-size:12px;margin-top:9px}
+
+  .hood{background:var(--ink);color:#e9e4d8;margin-top:20px}
+  .hood-inner{padding:34px 0}
+  .hood h4{font-family:"Archivo";font-weight:800;color:#fff;font-size:15px;margin:0 0 4px}
+  .hood .sub{color:#a59f90;font-size:13px;margin-bottom:18px}
+  .hood-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+  @media(max-width:760px){.hood-grid{grid-template-columns:1fr 1fr}}
+  .hood-cell{border:1px solid #322e25;border-radius:10px;padding:13px}
+  .hood-cell .k{font-family:"Archivo";font-weight:700;font-size:12px;color:var(--coral);margin-bottom:5px}
+  .hood-cell .v{font-size:12.5px;color:#cfc9bb;line-height:1.4}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="index.html"><span class="dot"></span>TripVibz</a>
+    <nav class="nav-links">
+      <a href="index.html" class="active">Feed</a>
+      <a href="places.html">Places</a>
+      <a href="#plan">Plan</a>
+    </nav>
+    <div class="nav-right">
+      <span class="cred">cred <b id="cred">0</b></span>
+      <div id="auth-slot"></div>
+    </div>
+  </div>
+</header>
+<div class="authbar" id="authbar" hidden>Voting is read-only right now — turn on <b>Anonymous sign-ins</b> in Supabase (Authentication → Providers) to save cosigns.</div>
+
+<section class="hero">
+  <div class="wrap hero-inner">
+    <div>
+      <div class="eyebrow"><span class="dot" style="width:7px;height:7px;background:var(--coral);border-radius:50%"></span> Miami &amp; the Keys · community-ranked</div>
+      <h1>The takes the top-10 lists won't give you.</h1>
+      <p class="lede">Worst times, tourist traps, and the spots locals actually use — written by people who went, ranked by who cosigned.</p>
+      <div class="hero-meta">
+        <span class="pill">Sorted by what's <b>hot</b> right now</span>
+        <span class="pill" id="hero-count">— takes live</span>
+      </div>
+    </div>
+    <div class="hero-card" id="hero-card" aria-live="polite">
+      <div class="tag">Loading…</div><h3>Pulling the top take…</h3>
+    </div>
+  </div>
+</section>
+
+<div class="wrap main">
+  <section id="feed">
+    <div class="controls">
+      <div class="tabs" role="tablist" aria-label="Sort feed">
+        <button class="tab" role="tab" aria-selected="true" data-sort="hot">Hot</button>
+        <button class="tab" role="tab" aria-selected="false" data-sort="top">Top</button>
+        <button class="tab" role="tab" aria-selected="false" data-sort="controversial">Debated</button>
+        <button class="tab" role="tab" aria-selected="false" data-sort="new">New</button>
+      </div>
+      <div class="chips" id="chips" aria-label="Filter by type">
+        <button class="chip" aria-pressed="true" data-type="all">All</button>
+        <button class="chip" aria-pressed="false" data-type="what_not_to_do">What not to do</button>
+        <button class="chip" aria-pressed="false" data-type="worst_times">Worst times</button>
+        <button class="chip" aria-pressed="false" data-type="hidden_gem">Hidden gems</button>
+        <button class="chip" aria-pressed="false" data-type="question">Questions</button>
+        <button class="chip" aria-pressed="false" data-type="review">Reviews</button>
+      </div>
+    </div>
+    <div class="feed" id="feed-list">
+      <div class="state"><b>Loading the feed…</b>Reading live from your Supabase database.</div>
+    </div>
+  </section>
+
+  <aside>
+    <div class="panel" id="plan">
+      <h4>🗺️ Plan a Miami day</h4>
+      <div class="day-tabs">
+        <button aria-selected="true">Day 1</button><button aria-selected="false">Day 2</button><button aria-selected="false">Day 3</button>
+      </div>
+      <div class="plan-item"><span class="t">9:00a</span><span>Cafecito + pastelito in Little Havana before the heat</span></div>
+      <div class="plan-item"><span class="t">11:30a</span><span>Walk NW 2nd Ave murals — the free Wynwood</span></div>
+      <div class="plan-item"><span class="t">2:00p</span><span>Crandon Beach (mind the causeway toll)</span></div>
+      <div class="plan-item"><span class="t">7:00p</span><span>Dinner two blocks off Ocean Drive</span></div>
+    </div>
+    <div class="panel">
+      <h4>🏨 Where to stay</h4>
+      <div class="hotel"><div class="ph"></div><div><div class="h-name">Old Town, Key West</div><div class="h-meta">Walk to Duval &amp; Mallory</div></div><a href="#" data-stub>Find →</a></div>
+      <div class="hotel"><div class="ph"></div><div><div class="h-name">South Beach</div><div class="h-meta">Steps from the sand</div></div><a href="#" data-stub>Find →</a></div>
+      <div class="hotel"><div class="ph"></div><div><div class="h-name">Brickell</div><div class="h-meta">Walkable, less spring-break</div></div><a href="#" data-stub>Find →</a></div>
+    </div>
+    <div class="panel news">
+      <h4>✉️ The local list</h4>
+      <input type="email" id="email" placeholder="you@email.com" aria-label="Email address" />
+      <button class="btn" id="subscribe">Get the takes</button>
+      <small>One email when a take blows up. No tourist nonsense.</small>
+    </div>
+  </aside>
+</div>
+
+<section class="hood">
+  <div class="wrap hood-inner">
+    <h4>Under the hood</h4>
+    <div class="sub">Not a mockup — every interaction maps to a real piece of the stack.</div>
+    <div class="hood-grid">
+      <div class="hood-cell"><div class="k">Live feed</div><div class="v">Posts read from the <b>ranked_posts</b> view in Postgres via supabase-js.</div></div>
+      <div class="hood-cell"><div class="k">Cosign / Doubt</div><div class="v">Writes a row to the <b>votes</b> table as an anonymous auth user; triggers update the score server-side.</div></div>
+      <div class="hood-cell"><div class="k">Sort tabs</div><div class="v">Hot / Top / Debated / New mirror the ranking math in the SQL view.</div></div>
+      <div class="hood-cell"><div class="k">Filter chips</div><div class="v">Facet the feed by <b>content_type</b> — your cautionary framings are first-class.</div></div>
+      <div class="hood-cell"><div class="k">Stay + plan</div><div class="v">Hotel rail is where Stay22 Allez deeplinks drop in to monetize the TripAdvisor half.</div></div>
+    </div>
+  </div>
+</section>
+
+<footer><div class="wrap"><span class="tagline">Take Miami, don't let Miami take you.</span> &nbsp;·&nbsp; TripVibz prototype · feed + votes served live from Supabase</div></footer>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/tv.js"></script>
+<script>
+(function(){
+  "use strict";
+  const { sb, $, TYPE_LABEL, CHEVRON, escapeHtml, timeAgo, toast, auth } = window.TV;
+
+  let POSTS = [];
+  const myVotes = {};
+  let sort = "hot", typeFilter = "all";
+
+  const feedEl = $("#feed-list");
+
+  const EPOCH0 = 1134028003;
+  const netOf = p => p.ups - p.downs;
+  function hot(p){const s=netOf(p),sign=s>0?1:(s<0?-1:0),secs=new Date(p.created_at).getTime()/1000;return Math.log10(Math.max(Math.abs(s),1))+sign*(secs-EPOCH0)/45000;}
+  function controversy(p){if(p.downs===0||p.ups===0)return 0;return Math.pow(p.ups+p.downs,Math.min(p.ups,p.downs)/Math.max(p.ups,p.downs));}
+  const SORTERS={hot:(a,b)=>hot(b)-hot(a),top:(a,b)=>netOf(b)-netOf(a),controversial:(a,b)=>controversy(b)-controversy(a),new:(a,b)=>new Date(b.created_at)-new Date(a.created_at)};
+
+  function refreshCred(){$("#cred").textContent=Object.values(myVotes).reduce((n,v)=>n+(v||0),0);}
+
+  function vote(id, dir){
+    const p = POSTS.find(x=>x.id===id); if(!p) return;
+    const cur = myVotes[id]||0;
+    const next = (cur===dir)?0:dir;
+    if(cur===1)p.ups--; else if(cur===-1)p.downs--;
+    if(next===1)p.ups++; else if(next===-1)p.downs++;
+    myVotes[id]=next; refreshCred(); render();
+    if(next===1) toast(auth.canPersist?"Cosigned":"Cosigned (not saved — enable sign-ins)");
+    else if(next===-1) toast("Doubted");
+    persist(id, next);
+  }
+
+  async function persist(postId, value){
+    if(!auth.canPersist || !auth.me) return;
+    try{
+      if(value===0){ await sb.from("votes").delete().eq("user_id",auth.me.id).eq("post_id",postId); }
+      else{ await sb.from("votes").upsert({user_id:auth.me.id,post_id:postId,value},{onConflict:"user_id,post_id"}); }
+    }catch(e){console.error(e);toast("That vote didn't save");}
+  }
+
+  function postCard(p){
+    const my = myVotes[p.id]||0;
+    const place = p.places ? `<a class="place" href="place.html?id=${p.places.id}">${escapeHtml(p.places.name)}</a>` : "";
+    return `<article class="card">
+      <span class="badge b-${p.type}">${TYPE_LABEL[p.type]||p.type}</span>
+      <h3><a class="tlink" href="thread.html?id=${p.id}">${escapeHtml(p.title)}</a></h3>
+      <p>${escapeHtml(p.body||"")}</p>
+      <div class="actions">
+        <button class="endorse ${my===1?'on':''}" data-vote="1" data-id="${p.id}" aria-pressed="${my===1}">
+          ${CHEVRON}<span>${my===1?'Cosigned':'Cosign'}</span><b>${p.ups}</b>
+        </button>
+        <button class="doubt ${my===-1?'on':''}" data-vote="-1" data-id="${p.id}" aria-pressed="${my===-1}">Doubt it <b>${p.downs}</b></button>
+        <span class="meta-cluster"><a class="cmt-link" href="thread.html?id=${p.id}">💬 ${p.comment_count}</a><span>${timeAgo(p.created_at)}</span>${place}</span>
+      </div>
+    </article>`;
+  }
+
+  function render(){
+    let list = POSTS.slice();
+    if(typeFilter!=="all") list = list.filter(p=>p.type===typeFilter);
+    list.sort(SORTERS[sort]);
+    const hero = POSTS.slice().sort(SORTERS.hot)[0];
+    if(hero){
+      $("#hero-card").innerHTML = `<div class="tag">${TYPE_LABEL[hero.type]||hero.type} · trending</div>
+        <h3><a href="thread.html?id=${hero.id}">${escapeHtml(hero.title)}</a></h3>
+        <div class="excerpt">${escapeHtml((hero.body||"").slice(0,120))}…</div>
+        <div class="row"><span>💬 ${hero.comment_count} takes</span><span class="score">${CHEVRON} ${hero.ups} cosigns</span></div>`;
+    }
+    if(!list.length){feedEl.innerHTML=`<div class="state"><b>Nothing here yet</b>No takes match this filter. Try another.</div>`;return;}
+    feedEl.innerHTML = list.map(postCard).join("");
+  }
+
+  document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{
+    document.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected","false"));
+    t.setAttribute("aria-selected","true");sort=t.dataset.sort;render();
+  }));
+  $("#chips").addEventListener("click",e=>{const c=e.target.closest(".chip");if(!c)return;
+    document.querySelectorAll(".chip").forEach(x=>x.setAttribute("aria-pressed","false"));
+    c.setAttribute("aria-pressed","true");typeFilter=c.dataset.type;render();});
+  feedEl.addEventListener("click",e=>{const b=e.target.closest("[data-vote]");if(!b)return;vote(b.dataset.id,parseInt(b.dataset.vote,10));});
+  document.querySelectorAll(".day-tabs button").forEach(b=>b.addEventListener("click",function(){
+    this.parentElement.querySelectorAll("button").forEach(x=>x.setAttribute("aria-selected","false"));this.setAttribute("aria-selected","true");}));
+  $("#subscribe").addEventListener("click",()=>{const v=$("#email").value.trim();toast(v&&v.includes("@")?"You're on the list (stub)":"Enter a valid email");});
+  document.querySelectorAll("[data-stub]").forEach(el=>el.addEventListener("click",e=>{e.preventDefault();toast("Prototype stub — wires up next");}));
+
+  async function loadMyVotes(){
+    if(!auth.me) return;
+    try{
+      const { data } = await sb.from("votes").select("post_id,value").eq("user_id",auth.me.id);
+      (data||[]).forEach(v=>{myVotes[v.post_id]=v.value;});
+      refreshCred();
+    }catch(e){ console.error(e); }
+  }
+
+  async function load(){
+    try{
+      const { data, error } = await sb.from("posts")
+        .select("id,title,body,type,ups,downs,comment_count,created_at,places(id,name,neighborhood)");
+      if(error) throw error;
+      POSTS = data || [];
+      $("#hero-count").innerHTML = `<b>${POSTS.length}</b> takes live`;
+      if(!POSTS.length){
+        feedEl.innerHTML=`<div class="state"><b>The feed is empty</b>Database is connected but has no posts yet.</div>`;
+        $("#hero-card").innerHTML=`<div class="tag">Connected</div><h3>Database is live — add your first take.</h3>`;
+        return false;
+      }
+      return true;
+    }catch(err){
+      console.error(err);
+      feedEl.innerHTML=`<div class="state"><b>Couldn't reach the database</b>The page loaded but the live feed call failed. Check the Supabase URL/key and refresh.</div>`;
+      $("#hero-card").innerHTML=`<div class="tag">Offline</div><h3>Feed unavailable right now.</h3>`;
+      return false;
+    }
+  }
+
+  // after sign-out, drop the local vote cache and re-pull as the new anon user
+  auth.onSignOut = async function(){
+    for(const k in myVotes) delete myVotes[k];
+    refreshCred();
+    await loadMyVotes();
+    render();
+  };
+
+  (async function init(){
+    const ok = await load();
+    await auth.ensure();
+    if(ok){ await loadMyVotes(); render(); }
+  })();
+
+  // Keep the summary fresh: re-pull posts (incl. comment_count) when the user
+  // returns via the Back button (bfcache restore) or refocuses the tab.
+  async function refreshFeed(){ const ok = await load(); if(ok){ await loadMyVotes(); render(); } }
+  window.addEventListener("pageshow", e=>{ if(e.persisted) refreshFeed(); });
+  document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible") refreshFeed(); });
+})();
+</script>
+</body>
+</html>

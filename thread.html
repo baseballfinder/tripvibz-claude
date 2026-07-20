@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TripVibz · Take</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Public+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/site.css">
+<style>
+  /* thread is a narrow reading column */
+  :root{--maxw:760px}
+  h1,h2,h3,.display{line-height:1.08}
+
+  main{padding:24px 0 60px}
+  .back{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;color:var(--muted);text-decoration:none;margin-bottom:16px}
+  .back:hover{color:var(--ink)}
+
+  /* roomier than the feed card */
+  .card{padding:22px 24px}
+  .badge{margin-bottom:12px}
+  .card h1{font-size:27px;font-weight:900;margin-bottom:10px}
+  .byline{font-size:13px;color:var(--muted);margin-bottom:16px}
+  .byline b{color:var(--ink);font-weight:700}
+  .card .post-body{font-size:16px;color:#332f28;white-space:pre-wrap;margin:0 0 20px}
+  .actions{border-top:1px solid var(--line);padding-top:16px}
+  .endorse{padding:8px 16px;font-size:14px}
+  .doubt{font-size:13.5px;padding:8px 4px}
+  .state{padding:34px 20px}
+
+  .cmt-head-row{display:flex;align-items:baseline;justify-content:space-between;margin:30px 0 14px}
+  .cmt-head-row h2{font-family:"Archivo";font-weight:800;font-size:18px}
+  .cmt-head-row .count{font-size:13px;color:var(--muted);font-weight:600}
+
+  .composer{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin-bottom:8px}
+  .composer textarea{width:100%;border:1px solid var(--line);border-radius:9px;padding:11px 12px;font:inherit;font-size:14.5px;resize:vertical;min-height:74px;background:var(--paper)}
+  .composer textarea:focus{outline:2px solid var(--coral);outline-offset:1px;background:#fff}
+  .composer-row{display:flex;align-items:center;gap:12px;margin-top:10px}
+  .composer .guesthint{font-size:12px;color:var(--muted)}
+  .composer .guesthint a{color:var(--ocean);font-weight:600;text-decoration:none}
+  .composer.mini{padding:11px 12px;margin:8px 0 4px;background:var(--paper)}
+  .composer.mini textarea{min-height:58px}
+
+  #comments{margin-top:14px}
+  .cmt{padding:12px 0 10px;border-top:1px solid var(--line)}
+  .cmt-l{border-left:2px solid var(--sand);padding-left:14px}
+  .cmt-head{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+  .cmt-name{font-family:"Archivo";font-weight:700;font-size:13.5px}
+  .cmt-name.you{color:var(--ocean)}
+  .cmt-time{font-size:12px;color:var(--muted)}
+  .cmt-body{font-size:14.5px;color:#332f28;white-space:pre-wrap}
+  .cmt-reply{border:none;background:none;color:var(--muted);font-weight:700;font-size:12.5px;cursor:pointer;font-family:"Archivo";padding:6px 0 0;letter-spacing:.02em}
+  .cmt-reply:hover{color:var(--coral)}
+  .reply-slot:empty{display:none}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="index.html"><span class="dot"></span>TripVibz</a>
+    <div class="nav-right">
+      <div id="auth-slot"></div>
+    </div>
+  </div>
+</header>
+<div class="authbar" id="authbar" hidden>Voting is read-only right now — turn on <b>Anonymous sign-ins</b> in Supabase (Authentication → Providers) to save cosigns and takes.</div>
+
+<main>
+  <div class="wrap">
+    <a class="back" href="index.html">← All takes</a>
+    <div id="post"><div class="state"><b>Loading…</b>Pulling this take from the database.</div></div>
+
+    <div id="discussion" hidden>
+      <div class="cmt-head-row">
+        <h2>Discussion</h2>
+        <span class="count" id="cmt-count">0 takes</span>
+      </div>
+
+      <div class="composer" id="top-composer">
+        <textarea id="top-text" placeholder="Add your take… seen it, been there, disagree?"></textarea>
+        <div class="composer-row">
+          <button class="btn sm" id="top-send">Post take</button>
+          <span class="guesthint" id="guesthint"></span>
+        </div>
+      </div>
+
+      <div id="comments"></div>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/tv.js"></script>
+<script>
+(function(){
+  "use strict";
+  const { sb, $, TYPE_LABEL, CHEVRON, escapeHtml, timeAgo, toast, auth, openLogin } = window.TV;
+
+  const PID = new URLSearchParams(location.search).get("id");
+
+  let POST=null, myVote=0;
+  let COMMENTS=[];
+  const PROFILES={};
+
+  function netOf(p){return (p.ups||0)-(p.downs||0);}
+  function authorName(id){if(id&&auth.me&&id===auth.me.id)return "You";const p=id?PROFILES[id]:null;return p?(p.display_name||p.username||"Guest"):"A local";}
+
+  // the guest hint under the composer follows the auth chip
+  auth.onRender = function(){
+    const h=$("#guesthint"); if(!h) return;
+    h.innerHTML = (auth.me && !auth.me.is_anonymous) ? "" : `Posting as a guest. <a href="#" id="hintlogin">Log in</a> to claim your takes.`;
+    const hl=$("#hintlogin");
+    if(hl) hl.addEventListener("click",e=>{e.preventDefault();openLogin();});
+  };
+
+  auth.onSignOut = async function(){
+    myVote=0;
+    await loadMyVote(); renderPost(); renderComments();
+  };
+
+  // ---------- the take ----------
+  async function loadPost(){
+    if(!PID){ notFound("No take specified."); return false; }
+    const { data, error } = await sb.from("posts")
+      .select("id,title,body,type,ups,downs,comment_count,created_at,author_id,places(id,name,neighborhood)")
+      .eq("id",PID).maybeSingle();
+    if(error||!data){ notFound("This take doesn't exist or was removed."); return false; }
+    POST=data; return true;
+  }
+  function notFound(msg){
+    $("#post").innerHTML=`<div class="state"><b>Take not found</b>${escapeHtml(msg)}<br><br><a href="index.html">← Back to the feed</a></div>`;
+  }
+  async function loadMyVote(){
+    myVote=0; if(!auth.me) return;
+    try{ const { data } = await sb.from("votes").select("value").eq("user_id",auth.me.id).eq("post_id",PID).maybeSingle(); if(data) myVote=data.value; }
+    catch(e){ console.error(e); }
+  }
+  function renderPost(){
+    if(!POST) return;
+    const place = POST.places ? `<a class="place" href="place.html?id=${POST.places.id}">${escapeHtml(POST.places.name)}</a>` : "";
+    const author = authorName(POST.author_id);
+    $("#post").innerHTML=`<article class="card">
+      <span class="badge b-${POST.type}">${TYPE_LABEL[POST.type]||POST.type}</span>
+      <h1>${escapeHtml(POST.title)}</h1>
+      <div class="byline">Posted by <b>${escapeHtml(author)}</b> · ${timeAgo(POST.created_at)} ago</div>
+      <div class="post-body">${escapeHtml(POST.body||"")}</div>
+      <div class="actions">
+        <button class="endorse ${myVote===1?'on':''}" data-vote="1" aria-pressed="${myVote===1}">
+          ${CHEVRON}<span>${myVote===1?'Cosigned':'Cosign'}</span><b id="upcount">${POST.ups}</b>
+        </button>
+        <button class="doubt ${myVote===-1?'on':''}" data-vote="-1" aria-pressed="${myVote===-1}">Doubt it <b id="downcount">${POST.downs}</b></button>
+        <span class="meta-cluster"><span id="meta-count">💬 ${POST.comment_count}</span><span>${timeAgo(POST.created_at)}</span>${place}</span>
+      </div>
+    </article>`;
+    $("#post").querySelectorAll("[data-vote]").forEach(b=>b.addEventListener("click",()=>vote(parseInt(b.dataset.vote,10))));
+    $("#discussion").hidden=false;
+  }
+  function vote(dir){
+    if(!POST) return;
+    const cur=myVote, next=(cur===dir)?0:dir;
+    if(cur===1)POST.ups--; else if(cur===-1)POST.downs--;
+    if(next===1)POST.ups++; else if(next===-1)POST.downs++;
+    myVote=next; renderPost();
+    if(next===1) toast(auth.canPersist?"Cosigned":"Cosigned (not saved — enable sign-ins)");
+    else if(next===-1) toast("Doubted");
+    persistVote(next);
+  }
+  async function persistVote(value){
+    if(!auth.canPersist||!auth.me) return;
+    try{
+      if(value===0){ await sb.from("votes").delete().eq("user_id",auth.me.id).eq("post_id",POST.id); }
+      else{ await sb.from("votes").upsert({user_id:auth.me.id,post_id:POST.id,value},{onConflict:"user_id,post_id"}); }
+    }catch(e){ console.error(e); toast("That vote didn't save"); }
+  }
+
+  // ---------- comments (ltree threads) ----------
+  async function loadComments(){
+    const { data } = await sb.from("comments")
+      .select("id,post_id,author_id,body,path,created_at")
+      .eq("post_id",PID).order("created_at",{ascending:true});
+    COMMENTS=data||[];
+    const ids=[...new Set([POST.author_id, ...COMMENTS.map(c=>c.author_id)].filter(Boolean))];
+    if(ids.length){
+      try{ const { data:profs } = await sb.from("profiles").select("id,username,display_name,avatar_url").in("id",ids);
+        (profs||[]).forEach(p=>PROFILES[p.id]=p); }catch(e){ console.error(e); }
+    }
+    // the loaded list is the source of truth for the on-page count
+    POST.comment_count = COMMENTS.length;
+  }
+  const parentOf = path => { const i=path.lastIndexOf("."); return i===-1?"":path.slice(0,i); };
+  function renderComments(){
+    updateCount();
+    const host=$("#comments");
+    if(!COMMENTS.length){ host.innerHTML=`<div class="state"><b>No takes yet</b>Be the first to weigh in.</div>`; return; }
+    COMMENTS.sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+    const byParent={};
+    COMMENTS.forEach(c=>{ const pp=parentOf(c.path); (byParent[pp]=byParent[pp]||[]).push(c); });
+    const out=[];
+    (function walk(path,depth){ (byParent[path]||[]).forEach(c=>{ out.push(node(c,depth)); walk(c.path,depth+1); }); })("",0);
+    host.innerHTML=out.join("");
+  }
+  function node(c,depth){
+    const indent=Math.min(depth,6)*18;
+    const mine=auth.me&&c.author_id===auth.me.id;
+    return `<div class="cmt ${depth>0?'cmt-l':''}" style="margin-left:${indent}px">
+      <div class="cmt-head"><span class="cmt-name ${mine?'you':''}">${escapeHtml(authorName(c.author_id))}</span><span class="cmt-time">${timeAgo(c.created_at)}</span></div>
+      <div class="cmt-body">${escapeHtml(c.body)}</div>
+      <button class="cmt-reply" data-reply="${c.path}">Reply</button>
+      <div class="reply-slot" data-slot="${c.path.replace(/"/g,'')}"></div>
+    </div>`;
+  }
+  function updateCount(){
+    const n=POST?POST.comment_count:0;
+    const c=$("#cmt-count"); if(c) c.textContent=`${n} take${n===1?'':'s'}`;
+    const m=$("#meta-count"); if(m) m.textContent=`💬 ${n}`;
+  }
+  async function postComment(parentPath, body, done){
+    body=(body||"").trim();
+    if(!body){ toast("Write something first"); return; }
+    if(body.length>2000){ toast("Keep it under 2000 characters"); return; }
+    if(!auth.me){ toast("Hang on — still signing you in"); return; }
+    if(!auth.canPersist){ toast("Enable Anonymous sign-ins in Supabase to post"); return; }
+    const id=(crypto.randomUUID&&crypto.randomUUID())||(Date.now()+""+Math.random()).replace(/\D/g,"");
+    const label=id.replace(/-/g,"");
+    const path=parentPath?parentPath+"."+label:label;
+    try{
+      const { error } = await sb.from("comments").insert({id,post_id:POST.id,author_id:auth.me.id,body,path});
+      if(error) throw error;
+      COMMENTS.push({id,post_id:POST.id,author_id:auth.me.id,body,path,created_at:new Date().toISOString()});
+      if(!PROFILES[auth.me.id]){ const m=auth.me.user_metadata||{}; PROFILES[auth.me.id]={id:auth.me.id,display_name:m.full_name||m.name||null,username:m.user_name||null}; }
+      POST.comment_count=(POST.comment_count||0)+1;
+      renderComments();
+      toast(auth.me.is_anonymous?"Posted as guest":"Take posted");
+      if(done) done();
+    }catch(e){ console.error(e); toast("Couldn't post — try logging in"); }
+  }
+
+  // top-level composer
+  $("#top-send").addEventListener("click",()=>{
+    const ta=$("#top-text");
+    postComment("", ta.value, ()=>{ ta.value=""; });
+  });
+
+  // delegated reply / send / cancel inside the thread
+  $("#comments").addEventListener("click",e=>{
+    const r=e.target.closest("[data-reply]");
+    if(r){
+      const path=r.dataset.reply;
+      const slot=$(`.reply-slot[data-slot="${path.replace(/"/g,'')}"]`);
+      if(!slot) return;
+      if(slot.firstChild){ slot.innerHTML=""; return; }   // toggle off
+      slot.innerHTML=`<div class="composer mini">
+        <textarea placeholder="Reply to this take…"></textarea>
+        <div class="composer-row"><button class="btn sm" data-send="${path}">Reply</button><button class="link-btn" data-cancel>Cancel</button></div>
+      </div>`;
+      const t=slot.querySelector("textarea"); if(t) t.focus();
+      return;
+    }
+    const s=e.target.closest("[data-send]");
+    if(s){
+      const slot=s.closest(".reply-slot");
+      const ta=slot.querySelector("textarea");
+      postComment(s.dataset.send, ta.value, ()=>{ slot.innerHTML=""; });
+      return;
+    }
+    const c=e.target.closest("[data-cancel]");
+    if(c){ c.closest(".reply-slot").innerHTML=""; return; }
+  });
+
+  (async function init(){
+    auth.renderUI();
+    await auth.ensure();
+    const ok=await loadPost();
+    if(!ok) return;
+    await Promise.all([loadComments(), loadMyVote()]);
+    renderPost();
+    renderComments();
+  })();
+
+  // Re-pull this take + its comments when restored from the Back button cache.
+  window.addEventListener("pageshow", async e=>{
+    if(!e.persisted || !POST) return;
+    const ok=await loadPost();
+    if(!ok) return;
+    await Promise.all([loadComments(), loadMyVote()]);
+    renderPost(); renderComments();
+  });
+})();
+</script>
+</body>
+</html>
