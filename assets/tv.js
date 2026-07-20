@@ -204,8 +204,42 @@
     }
   };
 
+  /* ---------- votes ----------
+     The DB half of voting, shared by any page that renders vote buttons.
+     Optimistic UI stays with the page; this just persists (or clears) the row.
+     Returns true when the write landed, false when it was skipped or failed. */
+
+  async function persistVote(postId, value) {
+    if (!auth.canPersist || !auth.me) return false;
+    try {
+      if (value === 0) {
+        await sb.from("votes").delete().eq("user_id", auth.me.id).eq("post_id", postId);
+      } else {
+        await sb.from("votes").upsert(
+          { user_id: auth.me.id, post_id: postId, value: value },
+          { onConflict: "user_id,post_id" }
+        );
+      }
+      return true;
+    } catch (e) {
+      console.error(e);
+      toast("That vote didn't save");
+      return false;
+    }
+  }
+
+  /* ---------- identity ----------
+     Anonymous sessions can read and vote, but contributing an article needs a
+     real identity, so pages gate their composer on this. */
+
+  function isSignedIn() {
+    return !!(auth.me && !auth.me.is_anonymous);
+  }
+
   window.TV = {
     sb: sb,
+    persistVote: persistVote,
+    isSignedIn: isSignedIn,
     $: $,
     TYPE_LABEL: TYPE_LABEL,
     CHEVRON: CHEVRON,

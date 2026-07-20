@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TripVibz · Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Public+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/analytics.js"></script>
+<style>
+  :root{--maxw:820px}
+  main{padding:22px 0 60px}
+  .back{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;color:var(--muted);text-decoration:none;margin-bottom:14px}
+  .back:hover{color:var(--ink)}
+
+  .guide-head{margin-bottom:6px}
+  .guide-head h1{font-size:clamp(26px,4.4vw,38px);font-weight:900;margin:10px 0 8px}
+  .guide-head .where{font-size:14.5px;color:var(--muted)}
+  .guide-head .where a{color:var(--ocean);font-weight:600;text-decoration:none}
+  .guide-head .where a:hover{text-decoration:underline}
+
+  .switch{display:flex;gap:8px;margin:18px 0 4px;flex-wrap:wrap}
+  .switch a{font-family:"Archivo";font-weight:700;font-size:13px;border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:7px 14px;text-decoration:none;color:var(--muted)}
+  .switch a:hover{border-color:#bdb4a3;color:var(--ink)}
+  .switch a.on{background:var(--sand);border-color:var(--ink);color:var(--ink)}
+
+  .count-line{font-size:13px;color:var(--muted);font-weight:600;margin:16px 2px 12px}
+  .entries{display:flex;flex-direction:column;gap:14px}
+  .entry h3{font-size:18.5px;font-weight:800;margin-bottom:6px}
+  .entry h3 a{color:inherit;text-decoration:none}
+  .entry h3 a:hover{color:var(--coral)}
+  .entry .who{font-size:12.5px;color:var(--muted);margin-bottom:10px}
+  .entry .body{font-size:15px;color:#3d3931;white-space:pre-wrap;margin:0 0 14px}
+
+  .contribute{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-top:26px}
+  .contribute h2{font-family:"Archivo";font-weight:800;font-size:17px;margin-bottom:4px}
+  .contribute .sub{font-size:13.5px;color:var(--muted);margin-bottom:14px}
+  .contribute label{display:block;font-family:"Archivo";font-weight:700;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:0 0 5px}
+  .contribute input[type=text],.contribute textarea{width:100%;border:1px solid var(--line);border-radius:9px;padding:11px 12px;font:inherit;font-size:14.5px;background:var(--paper);margin-bottom:13px}
+  .contribute textarea{resize:vertical;min-height:110px}
+  .contribute input:focus,.contribute textarea:focus{outline:2px solid var(--coral);outline-offset:1px;background:#fff}
+  .contribute .row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .contribute .hint{font-size:12px;color:var(--muted)}
+  .charcount{font-size:12px;color:var(--muted);margin:-8px 0 13px;text-align:right}
+  .charcount.over{color:var(--coral);font-weight:700}
+  .gate{text-align:center;padding:8px 0 2px}
+  .gate p{font-size:14px;color:var(--muted);margin:0 0 14px}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="index.html"><span class="dot"></span>TripVibz</a>
+    <nav class="nav-links">
+      <a href="index.html">Feed</a>
+      <a href="places.html">Places</a>
+    </nav>
+    <div class="nav-right"><div id="auth-slot"></div></div>
+  </div>
+</header>
+<div class="authbar" id="authbar" hidden>Voting is read-only right now — turn on <b>Anonymous sign-ins</b> in Supabase (Authentication → Providers) to save cosigns and contributions.</div>
+
+<main>
+  <div class="wrap">
+    <a class="back" id="back" href="places.html">← Places</a>
+
+    <div class="guide-head" id="guide-head">
+      <h1 id="guide-title">Loading…</h1>
+      <div class="where" id="guide-where"></div>
+    </div>
+
+    <div class="switch" id="switch" hidden></div>
+
+    <div class="count-line" id="count-line"></div>
+    <div class="entries" id="entries">
+      <div class="state"><b>Loading…</b>Pulling contributions from the database.</div>
+    </div>
+
+    <section class="contribute" id="contribute" hidden>
+      <h2 id="contribute-title">Add yours</h2>
+      <div class="sub" id="contribute-sub"></div>
+      <div id="contribute-body"></div>
+    </section>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/tv.js"></script>
+<script>
+(function(){
+  "use strict";
+  const { sb, $, TYPE_LABEL, CHEVRON, escapeHtml, timeAgo, toast, auth, openLogin, persistVote, isSignedIn } = window.TV;
+
+  // Only these two kinds get a dedicated page. Anything else is rejected so a
+  // hand-edited URL can't render a page the copy doesn't fit.
+  const KINDS = {
+    what_not_to_do: {
+      heading: p => `What not to do at ${p}`,
+      sub: "The mistakes that cost people time, money, or a good night.",
+      prompt: "What should someone avoid here?",
+      placeholder: "Skip the 8pm Duval bar crawl — you'll pay double and see half.",
+      empty: "Nobody's called out a mistake here yet."
+    },
+    worst_times: {
+      heading: p => `Worst times to visit ${p}`,
+      sub: "When it's packed, overpriced, closed, or just not worth it.",
+      prompt: "When should someone stay away, and why?",
+      placeholder: "Sunset ±1hr in high season — the square is shoulder to shoulder.",
+      empty: "Nobody's flagged a bad time to come here yet."
+    }
+  };
+
+  const params = new URLSearchParams(location.search);
+  const PLACE_ID = params.get("place");
+  const KIND = params.get("kind");
+  const CFG = KINDS[KIND];
+
+  const OTHER = KIND === "what_not_to_do" ? "worst_times" : "what_not_to_do";
+
+  let PLACE = null;
+  let ENTRIES = [];
+  const myVotes = {};
+  const PROFILES = {};
+
+  const entriesEl = $("#entries");
+
+  function fail(msg){
+    $("#guide-title").textContent = "Page not found";
+    entriesEl.innerHTML = `<div class="state"><b>Can't show this guide</b>${escapeHtml(msg)}<br><br><a href="places.html">← Browse places</a></div>`;
+    $("#count-line").textContent = "";
+  }
+
+  function authorName(id){
+    if(id && auth.me && id === auth.me.id) return "You";
+    const p = id ? PROFILES[id] : null;
+    return p ? (p.display_name || p.username || "Guest") : "A local";
+  }
+
+  /* ---------- render ---------- */
+
+  function entryCard(p){
+    const my = myVotes[p.id] || 0;
+    return `<article class="card entry">
+      <h3><a href="thread.html?id=${p.id}">${escapeHtml(p.title)}</a></h3>
+      <div class="who">${escapeHtml(authorName(p.author_id))} · ${timeAgo(p.created_at)} ago</div>
+      <div class="body">${escapeHtml(p.body||"")}</div>
+      <div class="actions">
+        <button class="endorse ${my===1?'on':''}" data-vote="1" data-id="${p.id}" aria-pressed="${my===1}">
+          ${CHEVRON}<span>${my===1?'Cosigned':'Cosign'}</span><b>${p.ups}</b>
+        </button>
+        <button class="doubt ${my===-1?'on':''}" data-vote="-1" data-id="${p.id}" aria-pressed="${my===-1}">Doubt it <b>${p.downs}</b></button>
+        <span class="meta-cluster"><a class="cmt-link" href="thread.html?id=${p.id}">💬 ${p.comment_count}</a></span>
+      </div>
+    </article>`;
+  }
+
+  function renderEntries(){
+    const n = ENTRIES.length;
+    $("#count-line").textContent = n ? `${n} contribution${n===1?'':'s'}, most cosigned first` : "";
+    if(!n){
+      entriesEl.innerHTML = `<div class="state"><b>${escapeHtml(CFG.empty)}</b>Be the first — the form below is open.</div>`;
+      return;
+    }
+    ENTRIES.sort((a,b)=>(b.ups-b.downs)-(a.ups-a.downs) || new Date(b.created_at)-new Date(a.created_at));
+    entriesEl.innerHTML = ENTRIES.map(entryCard).join("");
+  }
+
+  entriesEl.addEventListener("click", e=>{
+    const b = e.target.closest("[data-vote]");
+    if(!b) return;
+    vote(b.dataset.id, parseInt(b.dataset.vote,10));
+  });
+
+  function vote(id, dir){
+    const p = ENTRIES.find(x=>x.id===id); if(!p) return;
+    const cur = myVotes[id]||0;
+    const next = (cur===dir)?0:dir;
+    if(cur===1)p.ups--; else if(cur===-1)p.downs--;
+    if(next===1)p.ups++; else if(next===-1)p.downs++;
+    myVotes[id]=next;
+    renderEntries();
+    if(next===1) toast(auth.canPersist?"Cosigned":"Cosigned (not saved — enable sign-ins)");
+    else if(next===-1) toast("Doubted");
+    persistVote(id, next);
+  }
+
+  /* ---------- contribute ---------- */
+
+  function renderComposer(){
+    const host = $("#contribute-body");
+    $("#contribute").hidden = false;
+    $("#contribute-title").textContent = CFG.prompt;
+    $("#contribute-sub").textContent = CFG.sub;
+
+    if(!isSignedIn()){
+      host.innerHTML = `<div class="gate">
+        <p>Contributions are attributed, so you'll need an account. Browsing and cosigning stay open.</p>
+        <button class="btn coral" id="gate-login">Log in to contribute</button>
+      </div>`;
+      $("#gate-login").addEventListener("click", openLogin);
+      return;
+    }
+
+    host.innerHTML = `
+      <label for="c-title">Headline</label>
+      <input type="text" id="c-title" maxlength="140" placeholder="${escapeHtml(CFG.placeholder)}">
+      <div class="charcount" id="c-title-count">0 / 140</div>
+      <label for="c-body">The detail</label>
+      <textarea id="c-body" maxlength="2000" placeholder="Why? What happened? What should they do instead?"></textarea>
+      <div class="charcount" id="c-body-count">0 / 2000</div>
+      <div class="row">
+        <button class="btn coral" id="c-send">Post contribution</button>
+        <span class="hint">Posted as <b>${escapeHtml(displayName())}</b> · shows up immediately</span>
+      </div>`;
+
+    wireCount("#c-title","#c-title-count",140);
+    wireCount("#c-body","#c-body-count",2000);
+    $("#c-send").addEventListener("click", submit);
+  }
+
+  function displayName(){
+    const m = (auth.me && auth.me.user_metadata) || {};
+    return m.full_name || m.name || (auth.me && auth.me.email ? auth.me.email.split("@")[0] : "You");
+  }
+
+  function wireCount(sel, countSel, max){
+    const el = $(sel), out = $(countSel);
+    const upd = ()=>{
+      out.textContent = `${el.value.length} / ${max}`;
+      out.classList.toggle("over", el.value.length >= max);
+    };
+    el.addEventListener("input", upd); upd();
+  }
+
+  async function submit(){
+    const titleEl = $("#c-title"), bodyEl = $("#c-body"), btn = $("#c-send");
+    const title = titleEl.value.trim(), body = bodyEl.value.trim();
+
+    if(title.length < 8){ toast("Give it a headline (8+ characters)"); titleEl.focus(); return; }
+    if(body.length < 20){ toast("Add a bit more detail (20+ characters)"); bodyEl.focus(); return; }
+    if(!isSignedIn()){ toast("Log in to contribute"); return; }
+
+    btn.disabled = true; btn.textContent = "Posting…";
+    try{
+      const { data, error } = await sb.from("posts").insert({
+        title, body,
+        type: KIND,
+        place_id: PLACE_ID,
+        author_id: auth.me.id
+      }).select("id,title,body,type,ups,downs,comment_count,created_at,author_id").single();
+      if(error) throw error;
+
+      PROFILES[auth.me.id] = PROFILES[auth.me.id] || { id: auth.me.id, display_name: displayName() };
+      ENTRIES.push(data);
+      renderEntries();
+      titleEl.value = ""; bodyEl.value = "";
+      wireCount("#c-title","#c-title-count",140);
+      wireCount("#c-body","#c-body-count",2000);
+      toast("Posted — thanks for the take");
+    }catch(e){
+      console.error(e);
+      toast("Couldn't post that — try again");
+    }finally{
+      btn.disabled = false; btn.textContent = "Post contribution";
+    }
+  }
+
+  /* ---------- load ---------- */
+
+  async function loadPlace(){
+    const { data, error } = await sb.from("places")
+      .select("id,name,city,neighborhood,category")
+      .eq("id", PLACE_ID).maybeSingle();
+    if(error || !data) return false;
+    PLACE = data;
+    return true;
+  }
+
+  async function loadEntries(){
+    const { data, error } = await sb.from("posts")
+      .select("id,title,body,type,ups,downs,comment_count,created_at,author_id")
+      .eq("place_id", PLACE_ID).eq("type", KIND);
+    if(error) throw error;
+    ENTRIES = data || [];
+
+    const ids = [...new Set(ENTRIES.map(e=>e.author_id).filter(Boolean))];
+    if(ids.length){
+      try{
+        const { data: profs } = await sb.from("profiles").select("id,username,display_name").in("id", ids);
+        (profs||[]).forEach(p=>PROFILES[p.id]=p);
+      }catch(e){ console.error(e); }
+    }
+  }
+
+  async function loadMyVotes(){
+    if(!auth.me || !ENTRIES.length) return;
+    try{
+      const { data } = await sb.from("votes").select("post_id,value")
+        .eq("user_id", auth.me.id).in("post_id", ENTRIES.map(e=>e.id));
+      (data||[]).forEach(v=>{ myVotes[v.post_id]=v.value; });
+    }catch(e){ console.error(e); }
+  }
+
+  function renderHead(){
+    document.title = `TripVibz · ${CFG.heading(PLACE.name)}`;
+    $("#guide-title").textContent = CFG.heading(PLACE.name);
+    const bits = [PLACE.neighborhood, PLACE.city].filter(Boolean).join(", ");
+    $("#guide-where").innerHTML =
+      `<a href="place.html?id=${PLACE.id}">${escapeHtml(PLACE.name)}</a>${bits?" · "+escapeHtml(bits):""}`;
+    $("#back").href = `place.html?id=${PLACE.id}`;
+    $("#back").textContent = `← ${PLACE.name}`;
+
+    $("#switch").hidden = false;
+    $("#switch").innerHTML =
+      `<a class="on" href="guide.html?place=${PLACE.id}&kind=${KIND}">${TYPE_LABEL[KIND]}</a>` +
+      `<a href="guide.html?place=${PLACE.id}&kind=${OTHER}">${TYPE_LABEL[OTHER]}</a>`;
+  }
+
+  // the composer follows the auth chip: signing in swaps the gate for the form
+  auth.onRender = function(){ if(PLACE) renderComposer(); };
+  auth.onSignOut = async function(){
+    for(const k in myVotes) delete myVotes[k];
+    renderEntries(); renderComposer();
+  };
+
+  (async function init(){
+    if(!CFG){ fail("That guide type doesn't exist."); return; }
+    if(!PLACE_ID){ fail("No place specified."); return; }
+
+    const ok = await loadPlace();
+    if(!ok){ fail("That place doesn't exist or was removed."); return; }
+    renderHead();
+
+    try{ await loadEntries(); }
+    catch(e){
+      console.error(e);
+      entriesEl.innerHTML = `<div class="state"><b>Couldn't load contributions</b>The page loaded but the query failed.</div>`;
+      return;
+    }
+
+    await auth.ensure();
+    await loadMyVotes();
+    renderEntries();
+    renderComposer();
+  })();
+})();
+</script>
+</body>
+</html>
