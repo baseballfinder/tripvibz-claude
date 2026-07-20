@@ -1,0 +1,18 @@
+-- City events calendar: what makes a month bad (or good) to visit.
+--
+-- Month granularity is deliberate. Exact dates move every year (Fantasy Fest
+-- and Ultra both shift), and someone deciding "which month do I book" doesn't
+-- need day precision. Claiming exact dates would also go stale silently.
+--
+-- start_month/end_month wrap across the new year, so hurricane season (6->11)
+-- and a Dec->Feb dry season both work. event_covers_month() implements that on
+-- the server; article.html mirrors it client-side and both were verified to
+-- produce identical 12-month severity vectors for Key West and Miami.
+--
+-- Severity: avoid > busy > good. A month takes the worst severity present.
+--
+-- RLS matches posts: public read, insert requires a real (non-anonymous)
+-- identity and your own author_id. moderation_guard() was generalised to check
+-- name/blurb alongside title/body so events go through the same filter.
+--
+-- Seeded 19 events across Key West, Miami, Miami Beach and Fort Lauderdale.

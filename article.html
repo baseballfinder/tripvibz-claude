@@ -59,6 +59,54 @@
   .add .btn[disabled]{opacity:.55;cursor:not-allowed}
   .add .fine{font-size:11.5px;color:#8b8577;margin-top:11px;line-height:1.5}
 
+  /* ---- month calendar (worst_times only) ---- */
+  .cal{margin-top:34px}
+  .cal-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+  .cal-head h2{font-family:"Archivo";font-weight:900;font-size:21px}
+  .cal-head .sub{font-size:13.5px;color:var(--muted);margin:6px 0 0;line-height:1.5;flex-basis:100%}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0 12px;font-size:12px;color:var(--muted);font-weight:600}
+  .legend i{width:11px;height:11px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:-1px}
+  .sw-avoid{background:#f5b5a4}.sw-busy{background:#f0d492}.sw-good{background:#a8ddcd}.sw-none{background:var(--sand)}
+
+  .months{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+  @media(max-width:620px){.months{grid-template-columns:repeat(3,1fr)}}
+  .m{border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:10px 6px 9px;cursor:pointer;text-align:center;font-family:"Public Sans";transition:transform .08s ease}
+  .m:hover{transform:translateY(-2px)}
+  .m .mn{font-family:"Archivo";font-weight:800;font-size:14px;color:var(--ink);display:block}
+  .m .mc{font-size:11px;color:var(--muted);margin-top:3px;display:block;min-height:14px}
+  .m.avoid{background:#ffe7e0;border-color:#f5c4b6}
+  .m.avoid .mc{color:#a52d15}
+  .m.busy{background:#fff1d6;border-color:#f0dca8}
+  .m.busy .mc{color:#8a5f00}
+  .m.good{background:#dff3ec;border-color:#a8ddcd}
+  .m.good .mc{color:#0c6b5e}
+  .m[aria-pressed="true"]{outline:2.5px solid var(--ink);outline-offset:1px}
+
+  .m-detail{margin-top:14px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px}
+  .m-detail h3{font-family:"Archivo";font-weight:800;font-size:16px;margin-bottom:10px}
+  .ev{padding:11px 0;border-top:1px solid var(--line)}
+  .ev:first-of-type{border-top:none}
+  .ev .n{font-family:"Archivo";font-weight:800;font-size:14.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .ev .n .sev{font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:999px}
+  .sev.avoid{background:#ffe7e0;color:#c0341a}
+  .sev.busy{background:#fff1d6;color:#9a6a00}
+  .sev.good{background:#dff3ec;color:#0c6b5e}
+  .ev .b{font-size:14px;color:#4a463d;margin-top:5px;line-height:1.5}
+  .ev .w{font-size:12px;color:var(--muted);margin-top:5px}
+  .m-detail .none{color:var(--muted);font-size:14px}
+
+  .ev-add{margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px}
+  .ev-add h3{font-family:"Archivo";font-weight:800;font-size:15px;margin-bottom:4px}
+  .ev-add .sub{font-size:13px;color:var(--muted);margin-bottom:13px}
+  .ev-add label{display:block;font-family:"Archivo";font-weight:700;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:0 0 5px}
+  .ev-add input[type=text],.ev-add select,.ev-add textarea{width:100%;border:1px solid var(--line);border-radius:9px;padding:10px 11px;font:inherit;font-size:14.5px;background:var(--paper);margin-bottom:12px}
+  .ev-add textarea{min-height:70px;resize:vertical}
+  .ev-add input:focus,.ev-add select:focus,.ev-add textarea:focus{outline:2px solid var(--coral);outline-offset:1px;background:#fff}
+  .ev-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  @media(max-width:560px){.ev-grid{grid-template-columns:1fr}}
+  .ev-gate{text-align:center;padding:6px 0 2px}
+  .ev-gate p{font-size:13.5px;color:var(--muted);margin:0 0 12px}
+
   .nudge{background:#fff8e6;border:1px solid #f0dca8;color:#7a5b00;font-size:13px;font-weight:600;border-radius:9px;padding:11px 13px;margin:0 0 12px;line-height:1.45}
   .nudge b{display:block;margin-bottom:3px}
   .reject{background:#ffe7e0;border:1px solid #f5c4b6;color:#a52d15;font-size:13.5px;font-weight:600;border-radius:9px;padding:11px 13px;margin:0 0 12px;line-height:1.45}
@@ -144,6 +192,25 @@
   const CFG = THEMES[THEME];
 
   let CITY = null, ENTRIES = [], PLACES = [], AREA = "all", promptIx = 0;
+  let EVENTS = [], SEL_MONTH = new Date().getMonth() + 1;
+
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const MONTHS_LONG = ["January","February","March","April","May","June","July",
+                       "August","September","October","November","December"];
+  const SEV_RANK = { good:1, busy:2, avoid:3 };
+
+  // spans wrap the new year, e.g. hurricane season 6 -> 11, or Dec -> Feb
+  const covers = (ev, m) => ev.start_month <= ev.end_month
+    ? (m >= ev.start_month && m <= ev.end_month)
+    : (m >= ev.start_month || m <= ev.end_month);
+  const eventsIn = m => EVENTS.filter(e => covers(e, m));
+  function monthSeverity(m){
+    return eventsIn(m).reduce((worst, e) =>
+      SEV_RANK[e.severity] > SEV_RANK[worst || "good"] || !worst ? e.severity : worst, null);
+  }
+  const spanLabel = ev => ev.start_month === ev.end_month
+    ? MONTHS_LONG[ev.start_month-1]
+    : `${MONTHS[ev.start_month-1]} – ${MONTHS[ev.end_month-1]}`;
   const PROFILES = {}, myVotes = {};
 
   function fail(msg){
@@ -197,9 +264,12 @@
         ${list.length ? list.map(entry).join("") : emptyBlock()}
       </div>
 
+      ${THEME === "worst_times" ? calendarBlock() : ""}
+
       ${addBlock()}`;
 
     wire();
+    if(THEME === "worst_times") wireCalendar();
     if(JUMP && !window.__jumped){ window.__jumped = true; $("#add").scrollIntoView({behavior:"smooth",block:"center"}); $("#take").focus({preventScroll:true}); }
   }
 
@@ -226,6 +296,140 @@
       <p>${escapeHtml(CITY.name)} needs locals. If you know the place, the box below
          is the whole ask — one sentence is genuinely enough.</p>
     </div>`;
+  }
+
+  function calendarBlock(){
+    const cells = MONTHS.map((mn, i) => {
+      const m = i + 1;
+      const sev = monthSeverity(m);
+      const n = eventsIn(m).length;
+      return `<button class="m ${sev || ""}" data-m="${m}" aria-pressed="${SEL_MONTH===m}">
+        <span class="mn">${mn}</span>
+        <span class="mc">${n ? (sev === "good" ? "best" : n + (n===1?" flag":" flags")) : ""}</span>
+      </button>`;
+    }).join("");
+
+    const sel = eventsIn(SEL_MONTH).sort((a,b)=>SEV_RANK[b.severity]-SEV_RANK[a.severity]);
+
+    return `<section class="cal">
+      <div class="cal-head">
+        <h2>${escapeHtml(CITY.name)} month by month</h2>
+        <p class="sub">What's happening each month, and whether locals would tell you to
+           come. Dates shift year to year, so this is month-level on purpose — check
+           the exact weekend before you book.</p>
+      </div>
+
+      <div class="legend">
+        <span><i class="sw-avoid"></i>Avoid</span>
+        <span><i class="sw-busy"></i>Busy or risky</span>
+        <span><i class="sw-good"></i>Good window</span>
+        <span><i class="sw-none"></i>Nothing flagged</span>
+      </div>
+
+      <div class="months" id="months">${cells}</div>
+
+      <div class="m-detail">
+        <h3>${MONTHS_LONG[SEL_MONTH-1]} in ${escapeHtml(CITY.name)}</h3>
+        ${sel.length ? sel.map(ev => `<div class="ev">
+            <div class="n">${escapeHtml(ev.name)}<span class="sev ${ev.severity}">${ev.severity}</span></div>
+            ${ev.blurb ? `<div class="b">${escapeHtml(ev.blurb)}</div>` : ""}
+            <div class="w">${escapeHtml(spanLabel(ev))} · ${escapeHtml(ev.kind)}</div>
+          </div>`).join("")
+          : `<div class="none">Nothing flagged for ${MONTHS_LONG[SEL_MONTH-1]} yet. If you know this
+             city, add what happens then.</div>`}
+      </div>
+
+      ${eventAddBlock()}
+    </section>`;
+  }
+
+  function eventAddBlock(){
+    if(!isSignedIn()){
+      return `<div class="ev-add"><div class="ev-gate">
+        <p>Know a festival, season or week that changes this city? Add it to the calendar.</p>
+        <button class="btn" id="ev-login">Log in to add an event</button>
+      </div></div>`;
+    }
+    const opts = MONTHS_LONG.map((m,i)=>`<option value="${i+1}">${m}</option>`).join("");
+    return `<div class="ev-add">
+      <h3>Add something to the calendar</h3>
+      <div class="sub">A festival, a season, a weekend locals dread — anything that changes what a month is like.</div>
+      <div id="ev-slot"></div>
+      <label for="ev-name">What is it?</label>
+      <input type="text" id="ev-name" maxlength="80" placeholder="Fantasy Fest">
+      <div class="ev-grid">
+        <div>
+          <label for="ev-start">From</label>
+          <select id="ev-start">${opts}</select>
+        </div>
+        <div>
+          <label for="ev-end">To</label>
+          <select id="ev-end">${opts}</select>
+        </div>
+        <div>
+          <label for="ev-sev">Verdict</label>
+          <select id="ev-sev">
+            <option value="avoid">Avoid</option>
+            <option value="busy" selected>Busy or risky</option>
+            <option value="good">Good window</option>
+          </select>
+        </div>
+      </div>
+      <label for="ev-blurb">Why does it matter?</label>
+      <textarea id="ev-blurb" maxlength="400" placeholder="Rooms triple and the main strip is impassable for ten days."></textarea>
+      <button class="btn coral" id="ev-send">Add to calendar</button>
+    </div>`;
+  }
+
+  function wireCalendar(){
+    const months = $("#months");
+    if(months) months.addEventListener("click", e=>{
+      const b = e.target.closest("button[data-m]"); if(!b) return;
+      SEL_MONTH = parseInt(b.dataset.m, 10);
+      render();
+    });
+    const login = $("#ev-login");
+    if(login) login.addEventListener("click", openLogin);
+    const send = $("#ev-send");
+    if(send){
+      $("#ev-start").value = SEL_MONTH;
+      $("#ev-end").value = SEL_MONTH;
+      send.addEventListener("click", addEvent);
+    }
+  }
+
+  async function addEvent(){
+    const name = $("#ev-name").value.trim();
+    const blurb = $("#ev-blurb").value.trim();
+    const btn = $("#ev-send");
+    const evSlot = html => { const s = $("#ev-slot"); if(s) s.innerHTML = html; };
+
+    if(name.length < 3){ toast("Give the event a name"); $("#ev-name").focus(); return; }
+
+    btn.disabled = true; btn.textContent = "Adding…";
+    try{
+      const { data, error } = await sb.from("city_events").insert({
+        city_id: CITY.id,
+        name,
+        blurb: blurb || null,
+        severity: $("#ev-sev").value,
+        start_month: parseInt($("#ev-start").value, 10),
+        end_month: parseInt($("#ev-end").value, 10),
+        author_id: auth.me.id
+      }).select("id,name,blurb,kind,severity,start_month,end_month").single();
+      if(error) throw error;
+
+      EVENTS.push(data);
+      SEL_MONTH = data.start_month;
+      render();
+      toast("Added to the calendar");
+    }catch(e){
+      console.error(e);
+      btn.disabled = false; btn.textContent = "Add to calendar";
+      const blocked = moderationMessage(e);
+      if(blocked) evSlot(`<div class="reject">${escapeHtml(blocked)}</div>`);
+      else toast("Couldn't add that — try again");
+    }
   }
 
   function addBlock(){
@@ -349,6 +553,13 @@
     if(error || !city){ fail("We're not covering that city yet."); return; }
     CITY = city;
     document.title = `TripVibz · ${CFG.title(city.name)}`;
+
+    if(THEME === "worst_times"){
+      const { data: evs } = await sb.from("city_events")
+        .select("id,name,blurb,kind,severity,start_month,end_month")
+        .eq("city_id", city.id);
+      EVENTS = evs || [];
+    }
 
     const [{ data: rows }, { data: places }] = await Promise.all([
       sb.from("posts")
