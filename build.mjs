@@ -14,7 +14,9 @@ import { join, extname } from "node:path";
 
 const SRC = ".";
 const OUT = "dist";
-const SKIP = new Set(["dist", "node_modules", ".git", "supabase", ".github"]);
+// "functions" stays out: Cloudflare Pages compiles it from the project root,
+// so copying it into the output would upload the handler as a static asset.
+const SKIP = new Set(["dist", "node_modules", ".git", "supabase", ".github", "functions"]);
 
 const bytes = n => (n / 1024).toFixed(1) + "kb";
 const report = [];
