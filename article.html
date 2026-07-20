@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TripVibz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Public+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/analytics.js"></script>
+<style>
+  :root{--maxw:720px}
+  main{padding:20px 0 70px}
+  .back{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;color:var(--muted);text-decoration:none;margin-bottom:14px}
+  .back:hover{color:var(--ink)}
+
+  .hd .kicker{font-family:"Archivo";font-weight:700;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--coral)}
+  .hd h1{font-size:clamp(27px,5.4vw,42px);font-weight:900;line-height:1.08;margin:11px 0 12px}
+  .hd .lede{font-size:16.5px;color:#39352d;line-height:1.55;margin:0 0 14px}
+  .hd .by{font-size:13px;color:var(--muted);font-weight:600}
+
+  .themes{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 2px}
+  .themes a{font-family:"Archivo";font-weight:700;font-size:13px;border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:7px 14px;text-decoration:none;color:var(--muted)}
+  .themes a:hover{border-color:#bdb4a3;color:var(--ink)}
+  .themes a.on{background:var(--sand);border-color:var(--ink);color:var(--ink)}
+
+  .areas{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0 2px}
+  .areas button{font-size:12.5px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:999px;padding:5px 12px;cursor:pointer;font-family:"Public Sans"}
+  .areas button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+  /* the article body: ranked contributions */
+  .entries{counter-reset:tv;margin-top:22px}
+  .entry{position:relative;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px 16px 58px;margin-bottom:13px}
+  .entry::before{counter-increment:tv;content:counter(tv);position:absolute;left:18px;top:17px;font-family:"Archivo";font-weight:900;font-size:20px;color:var(--sand);line-height:1}
+  .entry .t{font-size:16.5px;color:#2e2b25;line-height:1.55;font-weight:500}
+  .entry .more{font-size:14.5px;color:#4a463d;margin-top:9px;white-space:pre-wrap}
+  .entry .foot{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:13px;font-size:12.5px;color:var(--muted)}
+  .entry .who b{color:var(--ink);font-weight:700}
+  .entry .area{color:var(--ocean);font-weight:600;text-decoration:none}
+
+  .empty-article{background:#fff;border:1px dashed var(--line);border-radius:var(--radius);padding:30px 22px;text-align:center;margin-top:22px}
+  .empty-article b{font-family:"Archivo";font-size:17px;display:block;margin-bottom:7px}
+  .empty-article p{color:var(--muted);font-size:14.5px;margin:0;line-height:1.5}
+
+  /* inline contribution */
+  .add{background:var(--ink);border-radius:var(--radius);padding:22px 22px 20px;margin:28px 0 6px;color:#fff;scroll-margin-top:80px}
+  .add .kicker{font-family:"Archivo";font-weight:700;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--coral);margin-bottom:9px}
+  .add h2{font-size:20px;font-weight:900;color:#fff;line-height:1.2;margin-bottom:9px}
+  .add .eg{font-size:13.5px;color:#b8b2a4;font-style:italic;border-left:3px solid #3a352b;padding-left:11px;margin:0 0 15px;line-height:1.5}
+  .add textarea{width:100%;border:1.5px solid #3a352b;border-radius:11px;padding:13px 14px;font:inherit;font-size:16px;resize:vertical;min-height:104px;background:#211e18;color:#f4f1e9;line-height:1.5}
+  .add textarea::placeholder{color:#6f6a5e}
+  .add textarea:focus{outline:2px solid var(--coral);outline-offset:1px;background:#262219}
+  .add .row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:9px 1px 13px}
+  .add .counter{font-size:12px;color:#8b8577}
+  .add .swap{border:none;background:none;color:#b8b2a4;font-size:12.5px;font-weight:600;cursor:pointer;font-family:"Public Sans";text-decoration:underline;padding:0}
+  .add .swap:hover{color:#fff}
+  .add .btn{width:100%;font-size:16px;padding:14px}
+  .add .btn[disabled]{opacity:.55;cursor:not-allowed}
+  .add .fine{font-size:11.5px;color:#8b8577;margin-top:11px;line-height:1.5}
+
+  .nudge{background:#fff8e6;border:1px solid #f0dca8;color:#7a5b00;font-size:13px;font-weight:600;border-radius:9px;padding:11px 13px;margin:0 0 12px;line-height:1.45}
+  .nudge b{display:block;margin-bottom:3px}
+  .reject{background:#ffe7e0;border:1px solid #f5c4b6;color:#a52d15;font-size:13.5px;font-weight:600;border-radius:9px;padding:11px 13px;margin:0 0 12px;line-height:1.45}
+  .saved{background:#dff3ec;border:1px solid #a8ddcd;color:#0c6b5e;font-size:13.5px;font-weight:600;border-radius:9px;padding:11px 13px;margin:0 0 12px}
+  .thanks{background:#dff3ec;border:1px solid #a8ddcd;color:#0c6b5e;border-radius:9px;padding:13px 15px;margin:0 0 12px;font-size:14px;font-weight:600}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="index.html"><span class="dot"></span>TripVibz</a>
+    <nav class="nav-links"><a href="places.html">Cities</a></nav>
+    <div class="nav-right"><div id="auth-slot"></div></div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div id="root"><div class="state"><b>Loading…</b>One second.</div></div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/tv.js"></script>
+<script>
+(function(){
+  "use strict";
+  const { sb, $, escapeHtml, timeAgo, toast, auth, openLogin, isSignedIn, moderationMessage, persistVote, CHEVRON } = window.TV;
+
+  const qs = new URLSearchParams(location.search);
+  const SLUG  = qs.get("city");
+  const THEME = qs.get("theme") || "what_not_to_do";
+  const JUMP  = qs.get("add") === "1";
+  const DRAFT_KEY = "tv_pending_take";
+
+  // ---------------------------------------------------------------------
+  // Themes = the articles. Adding one here creates a new article on every
+  // city automatically. Prompts stay about how the city works, never about
+  // a named business.
+  // ---------------------------------------------------------------------
+  const THEMES = {
+    what_not_to_do: {
+      nav:   "What not to do",
+      title: c => `What not to do in ${c}`,
+      lede:  c => `The mistakes visitors make in ${c}, according to people who live there. Ranked by how many locals cosigned them.`,
+      ask:   c => `What do visitors get wrong in ${c}?`,
+      prompts: [
+        "Standing in the bike lane to take photos. It's a road, not a viewing platform.",
+        "Renting a car. You'll pay $45 a night to park it and never once need it.",
+        "Beach chair rentals — walk two blocks north and the same sand is free.",
+        "Wearing beachwear inland. Locals cover up the second they leave the sand.",
+        "Assuming it's walkable. The two halves are 40 minutes apart in traffic."
+      ]
+    },
+    worst_times: {
+      nav:   "Worst times to visit",
+      title: c => `Worst times to visit ${c}`,
+      lede:  c => `The weeks, days and hours locals would tell you to avoid in ${c} — and what to do instead.`,
+      ask:   c => `When should visitors avoid ${c}, and why?`,
+      prompts: [
+        "Mid-March. Every hotel triples its rate and you won't get a table anywhere.",
+        "Race weekend — the downtown grid shuts and nothing moves for three days.",
+        "Don't hit the waterfront at sunset with everyone else. Go an hour early.",
+        "August. It's not the heat, it's that half the good places close for the month."
+      ]
+    },
+    hidden_gem: {
+      nav:   "What locals actually do",
+      title: c => `What locals actually do in ${c}`,
+      lede:  c => `The parts of ${c} that don't show up on the top-ten lists, from people who never left.`,
+      ask:   c => `What do locals in ${c} do that visitors never find?`,
+      prompts: [
+        "The stretch of park behind the marina — same water view, none of the crowd.",
+        "Tuesday markets. Everyone goes Saturday; Tuesday is the same vendors, no queue.",
+        "Dinner starts at 9 here. Show up at 6 and you'll eat alone in an empty room."
+      ]
+    }
+  };
+
+  const CFG = THEMES[THEME];
+
+  let CITY = null, ENTRIES = [], PLACES = [], AREA = "all", promptIx = 0;
+  const PROFILES = {}, myVotes = {};
+
+  function fail(msg){
+    $("#root").innerHTML = `<div class="state"><b>Can't load that</b>${escapeHtml(msg)}<br><br><a href="places.html">← Pick a city</a></div>`;
+  }
+  function authorName(id){
+    if(id && auth.me && id === auth.me.id) return "You";
+    const p = id ? PROFILES[id] : null;
+    return p ? (p.display_name || p.username || "A local") : "A local";
+  }
+  const visible = () => AREA === "all" ? ENTRIES : ENTRIES.filter(e => (e.place_id || "none") === AREA);
+
+  // advisory only — the DB trigger is the hard boundary
+  const BIZ = /\b(restaurant|cafe|café|bar|hotel|motel|resort|shop|store|salon|spa|club|grill|diner|bistro|tavern|pub|inn|lounge)\b/i;
+  const NAMED = /\b[A-Z][a-z]{2,}(?:'s|s')\b/;
+  const STAFF = /\b(owner|manager|waiter|waitress|bartender|server|staff|employee)\b/i;
+  function businessNudge(t){
+    const n = NAMED.test(t), b = BIZ.test(t), s = STAFF.test(t);
+    return ((n&&b)||(n&&s)||(b&&s))
+      ? "This reads like a review of one business. We publish how the city works — the pattern, not the place. Can you say it as the thing visitors should know generally?"
+      : null;
+  }
+
+  // ---------------------------------------------------------------------
+  function render(){
+    const list = visible();
+    const contributors = new Set(ENTRIES.map(e=>e.author_id).filter(Boolean)).size;
+
+    $("#root").innerHTML = `
+      <a class="back" href="city.html?slug=${encodeURIComponent(CITY.slug)}">← ${escapeHtml(CITY.name)}</a>
+
+      <div class="hd">
+        <div class="kicker">${escapeHtml(CITY.name)}${CITY.state ? ", "+escapeHtml(CITY.state) : ""}</div>
+        <h1>${escapeHtml(CFG.title(CITY.name))}</h1>
+        <p class="lede">${escapeHtml(CFG.lede(CITY.name))}</p>
+        <div class="by">${ENTRIES.length} take${ENTRIES.length===1?"":"s"}${contributors ? ` from ${contributors} local${contributors===1?"":"s"}` : ""}</div>
+      </div>
+
+      <div class="themes">
+        ${Object.keys(THEMES).map(k=>
+          `<a class="${k===THEME?"on":""}" href="article.html?city=${encodeURIComponent(CITY.slug)}&theme=${k}">${escapeHtml(THEMES[k].nav)}</a>`
+        ).join("")}
+      </div>
+
+      ${PLACES.length ? `<div class="areas" id="areas">
+        <button aria-pressed="${AREA==="all"}" data-a="all">Everywhere</button>
+        ${PLACES.map(p=>`<button aria-pressed="${AREA===p.id}" data-a="${p.id}">${escapeHtml(p.name)}</button>`).join("")}
+      </div>` : ""}
+
+      <div class="entries" id="entries">
+        ${list.length ? list.map(entry).join("") : emptyBlock()}
+      </div>
+
+      ${addBlock()}`;
+
+    wire();
+    if(JUMP && !window.__jumped){ window.__jumped = true; $("#add").scrollIntoView({behavior:"smooth",block:"center"}); $("#take").focus({preventScroll:true}); }
+  }
+
+  function entry(p){
+    const my = myVotes[p.id] || 0;
+    const area = p.place_id && PLACES.find(x=>x.id===p.place_id);
+    return `<article class="entry">
+      <div class="t">${escapeHtml(p.title)}</div>
+      ${p.body ? `<div class="more">${escapeHtml(p.body)}</div>` : ""}
+      <div class="foot">
+        <button class="endorse ${my===1?"on":""}" data-vote="1" data-id="${p.id}" aria-pressed="${my===1}">
+          ${CHEVRON}<span>${my===1?"Cosigned":"Cosign"}</span><b>${p.ups}</b>
+        </button>
+        <span class="who">by <b>${escapeHtml(authorName(p.author_id))}</b> · ${timeAgo(p.created_at)} ago</span>
+        ${area ? `<a class="area" href="place.html?id=${area.id}">${escapeHtml(area.name)}</a>` : ""}
+        <a class="cmt-link" href="thread.html?id=${p.id}" style="color:inherit;text-decoration:none">💬 ${p.comment_count}</a>
+      </div>
+    </article>`;
+  }
+
+  function emptyBlock(){
+    return `<div class="empty-article">
+      <b>Nobody's written this one yet</b>
+      <p>${escapeHtml(CITY.name)} needs locals. If you know the place, the box below
+         is the whole ask — one sentence is genuinely enough.</p>
+    </div>`;
+  }
+
+  function addBlock(){
+    const eg = CFG.prompts[promptIx % CFG.prompts.length];
+    return `<section class="add" id="add">
+      <div class="kicker">Add to this article</div>
+      <h2>${escapeHtml(CFG.ask(CITY.name))}</h2>
+      <p class="eg">${escapeHtml(eg)}</p>
+      <div id="slot"></div>
+      <textarea id="take" maxlength="600" placeholder="One or two sentences is plenty…"></textarea>
+      <div class="row">
+        <span class="counter" id="counter">0 / 600</span>
+        <button class="swap" id="swap">Show another example</button>
+      </div>
+      <button class="btn coral" id="send">Add my take</button>
+      <p class="fine">We publish how a city works — timing, norms, geography, the things
+        locals just know. Not complaints about a specific business or its staff.</p>
+    </section>`;
+  }
+
+  function wire(){
+    const ta = $("#take"), counter = $("#counter");
+    ta.addEventListener("input", ()=>{
+      counter.textContent = `${ta.value.length} / 600`;
+      counter.classList.toggle("over", ta.value.length >= 600);
+    });
+    $("#swap").addEventListener("click", ()=>{
+      promptIx++;
+      $("#add").querySelector(".eg").textContent = CFG.prompts[promptIx % CFG.prompts.length];
+    });
+    $("#send").addEventListener("click", submit);
+
+    const areas = $("#areas");
+    if(areas) areas.addEventListener("click", e=>{
+      const b = e.target.closest("button[data-a]"); if(!b) return;
+      AREA = b.dataset.a; render();
+    });
+
+    $("#entries").addEventListener("click", e=>{
+      const b = e.target.closest("[data-vote]"); if(!b) return;
+      vote(b.dataset.id);
+    });
+  }
+
+  function vote(id){
+    const p = ENTRIES.find(x=>x.id===id); if(!p) return;
+    const next = (myVotes[id]||0) === 1 ? 0 : 1;
+    p.ups += next === 1 ? 1 : -1;
+    myVotes[id] = next;
+    sortEntries(); render();
+    persistVote(id, next);
+  }
+
+  const sortEntries = () => ENTRIES.sort((a,b)=>(b.ups-b.downs)-(a.ups-a.downs) || new Date(a.created_at)-new Date(b.created_at));
+  const slot = html => { const s = $("#slot"); if(s) s.innerHTML = html; };
+
+  async function submit(){
+    const ta = $("#take");
+    const text = (ta.value || "").trim();
+    if(text.length < 15){ toast("A few more words — one sentence is fine"); ta.focus(); return; }
+
+    const nudge = businessNudge(text);
+    if(nudge && !ta.dataset.nudged){
+      ta.dataset.nudged = "1";
+      slot(`<div class="nudge"><b>Keep it about the city</b>${escapeHtml(nudge)}</div>`);
+      return;
+    }
+
+    if(!isSignedIn()){
+      try{ sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ slug:SLUG, theme:THEME, text })); }catch(e){}
+      slot(`<div class="saved">Your take is saved. Sign in and we'll add it to the article.</div>`);
+      openLogin();
+      return;
+    }
+    await publish(text, $("#send"));
+  }
+
+  async function publish(text, btn){
+    if(btn){ btn.disabled = true; btn.textContent = "Adding…"; }
+    const title = text.length <= 140 ? text : text.slice(0,137).replace(/\s+\S*$/,"") + "…";
+    const body  = text.length <= 140 ? null : text;
+
+    try{
+      const { data, error } = await sb.from("posts").insert({
+        title, body, type: THEME,
+        city_id: CITY.id,
+        place_id: AREA === "all" ? null : AREA,
+        author_id: auth.me.id
+      }).select("id,title,body,type,ups,downs,comment_count,created_at,author_id,place_id").single();
+      if(error) throw error;
+
+      PROFILES[auth.me.id] = PROFILES[auth.me.id] || { id: auth.me.id, display_name: "You" };
+      ENTRIES.push(data);
+      sortEntries();
+      try{ sessionStorage.removeItem(DRAFT_KEY); }catch(e){}
+      render();
+      slot(`<div class="thanks">That's live in the article now. Got another?</div>`);
+      toast("Added — thanks");
+    }catch(e){
+      console.error(e);
+      if(btn){ btn.disabled = false; btn.textContent = "Add my take"; }
+      const blocked = moderationMessage(e);
+      if(blocked) slot(`<div class="reject">${escapeHtml(blocked)}</div>`);
+      else toast("Couldn't add that — try again");
+    }
+  }
+
+  async function resumeDraft(){
+    let d = null;
+    try{ d = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || "null"); }catch(e){}
+    if(!d || d.slug !== SLUG || d.theme !== THEME || !isSignedIn()) return;
+    await publish(d.text, null);
+  }
+
+  (async function init(){
+    if(!CFG){ fail("That article type doesn't exist."); return; }
+    if(!SLUG){ fail("No city specified."); return; }
+
+    const { data: city, error } = await sb.from("cities")
+      .select("id,name,state,slug").eq("slug", SLUG).maybeSingle();
+    if(error || !city){ fail("We're not covering that city yet."); return; }
+    CITY = city;
+    document.title = `TripVibz · ${CFG.title(city.name)}`;
+
+    const [{ data: rows }, { data: places }] = await Promise.all([
+      sb.from("posts")
+        .select("id,title,body,type,ups,downs,comment_count,created_at,author_id,place_id")
+        .eq("city_id", city.id).eq("type", THEME),
+      sb.from("places").select("id,name").eq("city_id", city.id).order("name")
+    ]);
+    ENTRIES = rows || [];
+    sortEntries();
+
+    // only offer area chips that actually have takes in this theme
+    const used = new Set(ENTRIES.map(e=>e.place_id).filter(Boolean));
+    PLACES = (places || []).filter(p => used.has(p.id));
+
+    const ids = [...new Set(ENTRIES.map(e=>e.author_id).filter(Boolean))];
+    if(ids.length){
+      const { data: profs } = await sb.from("profiles").select("id,username,display_name").in("id", ids);
+      (profs||[]).forEach(p=>PROFILES[p.id]=p);
+    }
+
+    await auth.ensure();
+    if(auth.me && ENTRIES.length){
+      const { data: v } = await sb.from("votes").select("post_id,value")
+        .eq("user_id", auth.me.id).in("post_id", ENTRIES.map(e=>e.id));
+      (v||[]).forEach(x=>{ myVotes[x.post_id] = x.value; });
+    }
+
+    render();
+    await resumeDraft();
+  })();
+})();
+</script>
+</body>
+</html>

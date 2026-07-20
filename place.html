@@ -67,6 +67,7 @@
   const { sb, $, TYPE_LABEL, escapeHtml, timeAgo, auth } = window.TV;
 
   const PID = new URLSearchParams(location.search).get("id");
+  let CITY_SLUG = null;
 
   const GUIDE_COPY = {
     what_not_to_do: { icon:"🚫", blurb:"The mistakes that cost people time, money, or a good night." },
@@ -80,7 +81,10 @@
   function guideCard(place, kind, n){
     const c = GUIDE_COPY[kind];
     const label = n ? `${n} contribution${n===1?'':'s'}` : "Be the first to add one";
-    return `<a class="guide-card" href="guide.html?place=${place.id}&kind=${kind}">
+    const href = CITY_SLUG
+      ? `article.html?city=${encodeURIComponent(CITY_SLUG)}&theme=${kind}`
+      : `places.html`;
+    return `<a class="guide-card" href="${href}">
       <span class="badge b-${kind}">${TYPE_LABEL[kind]}</span>
       <h3>${c.icon} ${TYPE_LABEL[kind]}</h3>
       <p>${c.blurb}</p>
@@ -88,12 +92,12 @@
     </a>`;
   }
 
-  async function cityHref(place){
-    if(!place.city) return "places.html";
+  async function loadCitySlug(place){
+    if(!place.city_id) return null;
     try{
-      const { data } = await sb.from("cities").select("slug").eq("name", place.city).maybeSingle();
-      return data && data.slug ? `city.html?slug=${encodeURIComponent(data.slug)}` : "places.html";
-    }catch(e){ return "places.html"; }
+      const { data } = await sb.from("cities").select("slug").eq("id", place.city_id).maybeSingle();
+      return data ? data.slug : null;
+    }catch(e){ return null; }
   }
 
   function render(place, posts){
@@ -142,7 +146,7 @@
     if(!PID){ notFound("No place specified."); return; }
 
     const { data: place, error } = await sb.from("places")
-      .select("id,name,city,neighborhood,category,avg_rating,review_count")
+      .select("id,name,city,city_id,neighborhood,category,avg_rating,review_count")
       .eq("id", PID).maybeSingle();
     if(error || !place){ notFound("That place doesn't exist or was removed."); return; }
 
@@ -150,12 +154,12 @@
       .select("id,title,type,ups,downs,comment_count,created_at")
       .eq("place_id", PID);
 
+    CITY_SLUG = await loadCitySlug(place);
     render(place, posts || []);
 
     const back = document.querySelector(".back");
-    const href = await cityHref(place);
-    back.href = href;
-    back.textContent = href === "places.html" ? "← Places" : `← ${place.city}`;
+    back.href = CITY_SLUG ? `city.html?slug=${encodeURIComponent(CITY_SLUG)}` : "places.html";
+    back.textContent = CITY_SLUG ? `← ${place.city}` : "← Places";
   })();
 })();
 </script>

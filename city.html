@@ -33,6 +33,14 @@
   .place-card .tag{font-family:"Archivo";font-weight:700;font-size:11px;letter-spacing:.04em;padding:3px 8px;border-radius:999px}
   .place-card .none{font-size:12.5px;color:var(--muted);font-weight:600}
 
+  .articles{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:22px 0 6px}
+  .art{display:block;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;text-decoration:none;transition:transform .1s ease,box-shadow .12s ease}
+  .art:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(22,20,15,.1)}
+  .art h3{font-size:17px;font-weight:800;margin:10px 0 6px;line-height:1.25}
+  .art p{font-size:13px;color:var(--muted);margin:0 0 12px;line-height:1.45}
+  .art .go{font-family:"Archivo";font-weight:700;font-size:12.5px;color:var(--ocean)}
+  .art .go.thin{color:var(--coral)}
+
   .cta{background:var(--ink);color:#fff;border-radius:var(--radius);padding:20px 22px;margin:24px 0 6px;display:flex;gap:18px;align-items:center;flex-wrap:wrap}
   .cta h3{font-size:18px;font-weight:800;color:#fff;margin-bottom:5px}
   .cta p{font-size:13.5px;color:#bdb7a9;margin:0;max-width:46ch;line-height:1.45}
@@ -76,7 +84,18 @@
 
   const SLUG = new URLSearchParams(location.search).get("slug");
 
-  let CITY = null, PLACES = [], CITYWIDE = [], FILTER = "all";
+  // Themes must match the THEMES map in article.html.
+  const THEMES = {
+    what_not_to_do:{ nav:"What not to do", title:c=>`What not to do in ${c}`,
+      blurb:"The mistakes visitors make, ranked by locals." },
+    worst_times:{ nav:"Worst times", title:c=>`Worst times to visit ${c}`,
+      blurb:"The weeks, days and hours to avoid." },
+    hidden_gem:{ nav:"What locals do", title:c=>`What locals actually do in ${c}`,
+      blurb:"The parts that never make the top-ten lists." }
+  };
+
+  let CITY = null, PLACES = [], FILTER = "all";
+  const THEME_COUNTS = {};
 
   function notFound(msg){
     $("#city").innerHTML = `<div class="state"><b>City not found</b>${escapeHtml(msg)}<br><br><a href="places.html">← All cities</a></div>`;
@@ -122,6 +141,20 @@
         ${CITY.blurb ? `<p class="blurb">${escapeHtml(CITY.blurb)}</p>` : ""}
         <span class="pill">${PLACES.length} place${PLACES.length===1?'':'s'} · ${total} take${total===1?'':'s'}</span>
       </div>
+      <div class="section-label">The ${escapeHtml(CITY.name)} articles</div>
+      <div class="articles">
+        ${Object.keys(THEMES).map(k=>{
+          const n = THEME_COUNTS[k] || 0;
+          return `<a class="art" href="article.html?city=${encodeURIComponent(CITY.slug)}&theme=${k}">
+            <span class="badge b-${k}">${escapeHtml(THEMES[k].nav)}</span>
+            <h3>${escapeHtml(THEMES[k].title(CITY.name))}</h3>
+            <p>${escapeHtml(THEMES[k].blurb)}</p>
+            <div class="go ${n ? "" : "thin"}">${n ? `${n} local take${n===1?"":"s"} →` : "Needs locals — add the first →"}</div>
+          </a>`;
+        }).join("")}
+      </div>
+
+      <div class="section-label">Places in ${escapeHtml(CITY.name)}</div>
       <div class="filters" id="filters">
         <button aria-pressed="true" data-f="all">All places</button>
         <button aria-pressed="false" data-f="has_takes">Has takes</button>
@@ -137,12 +170,7 @@
           <p>We're collecting what locals just know — the timing, the norms, the
              things visitors get wrong. Not business reviews. One sentence helps.</p>
         </div>
-        <a class="btn" href="contribute.html?city=${encodeURIComponent(CITY.slug)}">Add a local take</a>
-      </div>
-
-      <div id="citywide-wrap" hidden>
-        <div class="section-label">What locals say about ${escapeHtml(CITY.name)}</div>
-        <div class="citywide" id="citywide"></div>
+        <a class="btn" href="article.html?city=${encodeURIComponent(CITY.slug)}&theme=what_not_to_do&add=1">Add a local take</a>
       </div>`;
 
     $("#filters").addEventListener("click", e=>{
@@ -154,22 +182,8 @@
     });
 
     renderList();
-    renderCitywide();
   }
 
-  // Takes attached to the city itself rather than a specific place. These come
-  // from the contribution flow, which deliberately asks about the city overall.
-  function renderCitywide(){
-    if(!CITYWIDE.length) return;
-    $("#citywide-wrap").hidden = false;
-    $("#citywide").innerHTML = CITYWIDE
-      .sort((a,b)=>(b.ups-b.downs)-(a.ups-a.downs))
-      .map(p=>`<div class="cw">
-        <div class="t">${escapeHtml(p.body || p.title)}</div>
-        <div class="m"><span class="badge b-${p.type}">${TYPE_LABEL[p.type]||p.type}</span>
-          &nbsp;▲ ${p.ups} · <a href="thread.html?id=${p.id}">discuss</a></div>
-      </div>`).join("");
-  }
 
   (async function init(){
     auth.ensure();
@@ -198,10 +212,9 @@
       PLACES.forEach(p=>{ p.counts = by[p.id] || { what_not_to_do:0, worst_times:0, total:0 }; });
     }
 
-    const { data: cw } = await sb.from("posts")
-      .select("id,title,body,type,ups,downs,created_at")
-      .eq("city_id", city.id).is("place_id", null);
-    CITYWIDE = cw || [];
+    const { data: themed } = await sb.from("posts")
+      .select("type").eq("city_id", city.id);
+    (themed || []).forEach(r => { THEME_COUNTS[r.type] = (THEME_COUNTS[r.type] || 0) + 1; });
 
     render();
   })();
