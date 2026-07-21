@@ -403,6 +403,7 @@ Allow: /
 Disallow: /*?add=
 Disallow: /place.html
 Disallow: /thread.html
+Disallow: /admin.html
 
 Sitemap: ${SITE}/sitemap.xml
 `);

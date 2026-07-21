@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TripVibz · Admin</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Public+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/site.css">
+<style>
+  :root{--maxw:1080px}
+  main{padding:20px 0 70px}
+
+  .bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+  .bar h1{font-size:24px;font-weight:900}
+  .bar .count{font-size:13px;color:var(--muted);font-weight:600}
+
+  .filters{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 14px}
+  .filters button{font-size:13px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:999px;padding:6px 13px;cursor:pointer;font-family:"Public Sans"}
+  .filters button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+  .tools input,.tools select{border:1px solid var(--line);border-radius:9px;padding:8px 11px;font:inherit;font-size:14px;background:#fff}
+  .tools input[type=search]{min-width:230px}
+
+  .row{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px}
+  .row.is-hidden{background:#faf7f4;border-style:dashed;opacity:.85}
+  .row.is-rejected{background:#fff6f4;border-color:#f0cfc4}
+  .row .top{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:8px}
+  .row .t{font-size:15.5px;font-weight:500;color:#2e2b25;line-height:1.5}
+  .row .b{font-size:14px;color:#57534a;margin-top:6px;white-space:pre-wrap;line-height:1.5}
+  .row .meta{font-size:12px;color:var(--muted);margin-top:9px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .row .meta a{color:var(--ocean);font-weight:600;text-decoration:none}
+  .st{font-family:"Archivo";font-weight:700;font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:999px}
+  .st-approved{background:#dff3ec;color:#0c6b5e}
+  .st-hidden{background:var(--sand);color:#5b5448}
+  .st-rejected{background:#ffe7e0;color:#c0341a}
+
+  .acts{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+  .acts button{font-family:"Archivo";font-weight:700;font-size:12.5px;border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:6px 13px;cursor:pointer;color:var(--ink)}
+  .acts button:hover{border-color:#bdb4a3}
+  .acts button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .acts button.danger{color:#c0341a;border-color:#f0cfc4}
+  .acts button.danger:hover{background:#ffe7e0}
+  .acts button.go{background:var(--ocean);color:#fff;border-color:var(--ocean)}
+
+  .editor{margin-top:11px;padding-top:11px;border-top:1px solid var(--line)}
+  .editor label{display:block;font-family:"Archivo";font-weight:700;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:0 0 5px}
+  .editor input,.editor textarea,.editor select{width:100%;border:1px solid var(--line);border-radius:9px;padding:10px 11px;font:inherit;font-size:14.5px;background:var(--paper);margin-bottom:10px}
+  .editor textarea{min-height:90px;resize:vertical}
+  .editor .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:600px){.editor .two{grid-template-columns:1fr}}
+
+  .gate{max-width:420px;margin:60px auto;text-align:center;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:34px 26px}
+  .gate h2{font-size:21px;font-weight:900;margin-bottom:8px}
+  .gate p{color:var(--muted);font-size:14.5px;margin:0 0 18px;line-height:1.5}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="/"><span class="dot"></span>TripVibz</a>
+    <nav class="nav-links"><a href="/admin.html" class="active">Admin</a></nav>
+    <div class="nav-right"><div id="auth-slot"></div></div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap"><div id="root">
+    <div class="state"><b>Checking access…</b>One second.</div>
+  </div></div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/tv.js"></script>
+<script>
+(function(){
+  "use strict";
+  const { sb, $, TYPE_LABEL, escapeHtml, timeAgo, toast, auth, openLogin, isSignedIn, routes } = window.TV;
+
+  let ROWS = [], CITIES = {}, PROFILES = {};
+  let FILTER = "all", CITY = "", SEARCH = "", editing = null;
+
+  const STATUSES = ["approved","hidden","rejected"];
+
+  function fail(html){ $("#root").innerHTML = html; }
+
+  /* ---------- access ---------- */
+
+  async function amAdmin(){
+    if(!isSignedIn()) return false;
+    try{
+      const { data } = await sb.from("profiles").select("is_admin").eq("id", auth.me.id).maybeSingle();
+      return !!(data && data.is_admin);
+    }catch(e){ console.error(e); return false; }
+  }
+
+  function gate(signedIn){
+    fail(`<div class="gate">
+      <h2>${signedIn ? "Not an admin" : "Admin sign-in"}</h2>
+      <p>${signedIn
+        ? "This account doesn't have moderator access. Sign in with an admin account."
+        : "Sign in with your admin account to review submissions."}</p>
+      <button class="btn coral" id="gate-btn">${signedIn ? "Switch account" : "Log in"}</button>
+    </div>`);
+    $("#gate-btn").addEventListener("click", openLogin);
+  }
+
+  /* ---------- data ---------- */
+
+  async function load(){
+    const [{ data: rows }, { data: cities }] = await Promise.all([
+      sb.from("posts")
+        .select("id,title,body,type,status,ups,downs,created_at,author_id,city_id,city_match,submitted_city,moderated_at,moderation_note")
+        .order("created_at", { ascending: false }),
+      sb.from("cities").select("id,name,slug,state")
+    ]);
+    ROWS = rows || [];
+    (cities||[]).forEach(c => { CITIES[c.id] = c; });
+
+    const ids = [...new Set(ROWS.map(r => r.author_id).filter(Boolean))];
+    if(ids.length){
+      const { data: profs } = await sb.from("profiles").select("id,display_name,username").in("id", ids);
+      (profs||[]).forEach(p => { PROFILES[p.id] = p; });
+    }
+  }
+
+  const authorName = id => {
+    const p = id ? PROFILES[id] : null;
+    return p ? (p.display_name || p.username || "Guest") : "Unknown";
+  };
+
+  function visible(){
+    return ROWS.filter(r => {
+      if(FILTER !== "all" && r.status !== FILTER) return false;
+      if(CITY && r.city_id !== CITY) return false;
+      if(SEARCH){
+        const hay = ((r.title||"") + " " + (r.body||"")).toLowerCase();
+        if(!hay.includes(SEARCH.toLowerCase())) return false;
+      }
+      return true;
+    });
+  }
+
+  /* ---------- render ---------- */
+
+  function render(){
+    const list = visible();
+    const counts = STATUSES.reduce((a,s)=>(a[s]=ROWS.filter(r=>r.status===s).length,a),{});
+
+    $("#root").innerHTML = `
+      <div class="bar">
+        <h1>Submissions</h1>
+        <span class="count">${ROWS.length} total · ${counts.approved} live · ${counts.hidden} hidden · ${counts.rejected} rejected</span>
+      </div>
+
+      <div class="filters" id="filters">
+        <button data-f="all" aria-pressed="${FILTER==="all"}">All</button>
+        ${STATUSES.map(s=>`<button data-f="${s}" aria-pressed="${FILTER===s}">${s} (${counts[s]})</button>`).join("")}
+      </div>
+
+      <div class="tools">
+        <input type="search" id="q" placeholder="Search title or body…" value="${escapeHtml(SEARCH)}">
+        <select id="city">
+          <option value="">All cities</option>
+          ${Object.values(CITIES).sort((a,b)=>a.name.localeCompare(b.name))
+            .map(c=>`<option value="${c.id}" ${CITY===c.id?"selected":""}>${escapeHtml(c.name)}</option>`).join("")}
+        </select>
+        <span class="count">${list.length} shown</span>
+      </div>
+
+      <div id="rows">${list.length ? list.map(row).join("") : `<div class="state"><b>Nothing matches</b>Try another filter.</div>`}</div>`;
+
+    $("#filters").addEventListener("click", e=>{
+      const b=e.target.closest("button[data-f]"); if(!b) return;
+      FILTER=b.dataset.f; editing=null; render();
+    });
+    const q=$("#q");
+    q.addEventListener("input", ()=>{ SEARCH=q.value; const p=q.selectionStart; render(); const n=$("#q"); n.focus(); n.setSelectionRange(p,p); });
+    $("#city").addEventListener("change", e=>{ CITY=e.target.value; editing=null; render(); });
+    $("#rows").addEventListener("click", onAction);
+  }
+
+  function row(r){
+    const city = CITIES[r.city_id];
+    const isEditing = editing === r.id;
+    return `<article class="row ${r.status==='hidden'?'is-hidden':''} ${r.status==='rejected'?'is-rejected':''}" data-id="${r.id}">
+      <div class="top">
+        <span class="st st-${r.status}">${r.status}</span>
+        <span class="badge b-${r.type}">${TYPE_LABEL[r.type]||r.type}</span>
+        ${r.city_match === true ? '<span class="loc loc-local">Local</span>' : ""}
+      </div>
+
+      <div class="t">${escapeHtml(r.title)}</div>
+      ${r.body ? `<div class="b">${escapeHtml(r.body)}</div>` : ""}
+
+      <div class="meta">
+        <span>${escapeHtml(authorName(r.author_id))}</span>
+        <span>${timeAgo(r.created_at)} ago</span>
+        <span>▲ ${r.ups} ▼ ${r.downs}</span>
+        ${city ? `<span>${escapeHtml(city.name)}</span>` : '<span style="color:#c0341a">no city</span>'}
+        ${r.submitted_city ? `<span>from ${escapeHtml(r.submitted_city)}</span>` : ""}
+        ${city ? `<a href="${routes.article(city.slug, r.type)}" target="_blank" rel="noopener">view →</a>` : ""}
+      </div>
+
+      <div class="acts">
+        ${r.status !== "approved" ? `<button data-act="approved" class="go">Approve</button>` : ""}
+        ${r.status !== "hidden"   ? `<button data-act="hidden">Hide</button>` : ""}
+        ${r.status !== "rejected" ? `<button data-act="rejected">Reject</button>` : ""}
+        <button data-act="edit" class="${isEditing?"on":""}">${isEditing?"Cancel":"Edit"}</button>
+        <button data-act="delete" class="danger">Delete</button>
+      </div>
+
+      ${isEditing ? editor(r) : ""}
+    </article>`;
+  }
+
+  function editor(r){
+    return `<div class="editor">
+      <label>Headline</label>
+      <input type="text" data-f="title" maxlength="140" value="${escapeHtml(r.title)}">
+      <label>Body</label>
+      <textarea data-f="body" maxlength="2000">${escapeHtml(r.body||"")}</textarea>
+      <div class="two">
+        <div>
+          <label>Type</label>
+          <select data-f="type">
+            ${Object.keys(TYPE_LABEL).map(t=>`<option value="${t}" ${r.type===t?"selected":""}>${TYPE_LABEL[t]}</option>`).join("")}
+          </select>
+        </div>
+        <div>
+          <label>City</label>
+          <select data-f="city_id">
+            <option value="">— none —</option>
+            ${Object.values(CITIES).sort((a,b)=>a.name.localeCompare(b.name))
+              .map(c=>`<option value="${c.id}" ${r.city_id===c.id?"selected":""}>${escapeHtml(c.name)}</option>`).join("")}
+          </select>
+        </div>
+      </div>
+      <label>Internal note (not public)</label>
+      <input type="text" data-f="moderation_note" maxlength="300" value="${escapeHtml(r.moderation_note||"")}">
+      <button class="btn coral" data-act="save">Save changes</button>
+    </div>`;
+  }
+
+  /* ---------- actions ---------- */
+
+  async function onAction(e){
+    const btn = e.target.closest("button[data-act]"); if(!btn) return;
+    const art = btn.closest(".row"); const id = art.dataset.id;
+    const r = ROWS.find(x=>x.id===id); if(!r) return;
+    const act = btn.dataset.act;
+
+    if(act === "edit"){ editing = editing === id ? null : id; render(); return; }
+
+    if(act === "save"){
+      const get = f => art.querySelector(`[data-f="${f}"]`).value;
+      const patch = {
+        title: get("title").trim(),
+        body: get("body").trim() || null,
+        type: get("type"),
+        city_id: get("city_id") || null,
+        moderation_note: get("moderation_note").trim() || null
+      };
+      if(patch.title.length < 5){ toast("Headline is too short"); return; }
+      btn.disabled = true; btn.textContent = "Saving…";
+      try{
+        const { error } = await sb.from("posts").update(patch).eq("id", id);
+        if(error) throw error;
+        Object.assign(r, patch);
+        editing = null; render(); toast("Saved");
+      }catch(err){
+        console.error(err); btn.disabled = false; btn.textContent = "Save changes";
+        toast(window.TV.moderationMessage(err) || "Couldn't save");
+      }
+      return;
+    }
+
+    if(act === "delete"){
+      // Deletion is permanent and cascades to comments and votes.
+      if(!confirm(`Permanently delete this submission?\n\n"${r.title}"\n\nThis cannot be undone. Use Hide if you only want it off the site.`)) return;
+      try{
+        const { error } = await sb.from("posts").delete().eq("id", id);
+        if(error) throw error;
+        ROWS = ROWS.filter(x=>x.id!==id); render(); toast("Deleted");
+      }catch(err){ console.error(err); toast("Couldn't delete"); }
+      return;
+    }
+
+    if(STATUSES.includes(act)){
+      try{
+        const { error } = await sb.from("posts").update({ status: act }).eq("id", id);
+        if(error) throw error;
+        r.status = act; render();
+        toast(act === "approved" ? "Live again" : act === "hidden" ? "Hidden from the site" : "Rejected");
+      }catch(err){ console.error(err); toast("Couldn't update status"); }
+    }
+  }
+
+  /* ---------- init ---------- */
+
+  auth.onSignOut = async function(){ location.reload(); };
+
+  (async function init(){
+    await auth.ensure();
+    if(!isSignedIn()){ gate(false); return; }
+    if(!(await amAdmin())){ gate(true); return; }
+    try{
+      await load();
+      render();
+    }catch(e){
+      console.error(e);
+      fail(`<div class="state"><b>Couldn't load submissions</b>${escapeHtml(e.message||"")}</div>`);
+    }
+  })();
+})();
+</script>
+</body>
+</html>
