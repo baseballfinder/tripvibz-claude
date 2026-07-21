@@ -1,0 +1,20 @@
+-- Search readiness notes (no schema change; recorded here for history).
+--
+-- The site was 6 URLs of client-rendered HTML: article.html shipped 45
+-- characters of static text ("Loading… One second.") and every article lived
+-- behind a query string, which Google collapses into one document per file.
+--
+-- build.mjs now fetches Supabase at build time and writes real HTML at real
+-- paths: /{city}/ and /{city}/{theme}/. 74 URLs, each with its own title,
+-- description, canonical and Open Graph tags, plus a generated sitemap.xml
+-- and robots.txt.
+--
+-- Rebuild on contribution: point a Supabase Database Webhook on posts INSERT
+-- at a Cloudflare Pages deploy hook so new takes appear without waiting for a
+-- manual deploy. Create the deploy hook in the Pages project first, then add
+-- the webhook in Supabase (Database -> Webhooks) with the hook URL.
+--
+-- Still outstanding before public launch: JSON-LD (Article, ItemList,
+-- BreadcrumbList, and Event for the calendar), 404 page, favicon set,
+-- _headers cache policy, privacy policy, terms + UGC takedown path, and
+-- cookie consent for GA4/Clarity in the EU.
