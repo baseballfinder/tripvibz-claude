@@ -6,8 +6,11 @@ for voting and contributing.
 
 ## Running it locally
 
-    npm install
+    npm install        # once, installs esbuild
     npm run dev        # builds, then serves dist/ on :8080
+
+`npm run dev` and `npm run build` both run `npm install` first, so a fresh
+clone works without remembering that step.
 
 **Serve `dist/`, not the project root.** Clean URLs like
 `/key-west/what-not-to-do/` only exist in the build output. Opening the

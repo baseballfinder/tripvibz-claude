@@ -19,9 +19,20 @@
    still ships to the browser.
    ========================================================================== */
 
-import { transform } from "esbuild";
 import { readdir, readFile, writeFile, mkdir, rm } from "node:fs/promises";
 import { join, extname, dirname } from "node:path";
+
+// Dynamic so a missing dependency produces an instruction rather than a
+// module-resolution stack trace.
+let transform;
+try {
+  ({ transform } = await import("esbuild"));
+} catch {
+  console.error("\n  esbuild isn't installed.\n");
+  console.error("  Run this first:\n");
+  console.error("      npm install\n");
+  process.exit(1);
+}
 
 const SRC = ".";
 const OUT = "dist";

@@ -5,11 +5,16 @@
   "type": "module",
   "description": "TripVibz \u2014 static site backed by Supabase",
   "scripts": {
-    "build": "node build.mjs",
+    "predev": "npm install --no-audit --no-fund",
     "dev": "node build.mjs && npx --yes serve dist -l 8080",
+    "prebuild": "npm install --no-audit --no-fund",
+    "build": "node build.mjs",
     "serve": "npx --yes serve dist -l 8080"
   },
   "devDependencies": {
     "esbuild": "^0.24.0"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
