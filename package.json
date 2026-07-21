@@ -6,7 +6,8 @@
   "description": "TripVibz \u2014 static site backed by Supabase",
   "scripts": {
     "build": "node build.mjs",
-    "serve": "node build.mjs && npx --yes serve dist -l 8080"
+    "dev": "node build.mjs && npx --yes serve dist -l 8080",
+    "serve": "npx --yes serve dist -l 8080"
   },
   "devDependencies": {
     "esbuild": "^0.24.0"

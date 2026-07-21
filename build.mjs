@@ -124,23 +124,33 @@ ${image ? `<meta property="og:image" content="${esc(image)}" />` : ""}
 ${image ? `<meta name="twitter:image" content="${esc(image)}" />` : ""}`;
 }
 
+// Find <div id="X"> and replace its contents, walking nested divs to find the
+// matching close. Regex alone can't do this reliably for mounts that already
+// contain markup.
+function injectInto(html, id, content) {
+  const open = new RegExp(`<div[^>]*\\bid="${id}"[^>]*>`);
+  const m = open.exec(html);
+  if (!m) throw new Error(`injectInto: no #${id}`);
+
+  const start = m.index + m[0].length;
+  let depth = 1, i = start;
+  const tag = /<\/?div\b[^>]*>/g;
+  tag.lastIndex = start;
+  let t;
+  while ((t = tag.exec(html))) {
+    depth += t[0][1] === "/" ? -1 : 1;
+    if (depth === 0) { i = t.index; break; }
+  }
+  return html.slice(0, start) + content + html.slice(i);
+}
+
 // Replace the shell's <title> and inject metadata + pre-rendered body.
 // The shell's own description is stripped FIRST, so it can't delete the one
 // we then inject (that ordering bug shipped pages with no description).
 function render(template, { title, desc, canonical, image, body, mount = "root" }) {
   let out = template.replace(/<meta name="description"[^>]*>\s*/g, "");
   out = out.replace(/<title>[\s\S]*?<\/title>/, head({ title, desc, canonical, image }));
-
-  if (body) {
-    // Each shell mounts its client render into a different id; inject into
-    // whichever this page uses so crawlers get the same content.
-    const re = new RegExp(`<div id="${mount}">[\\s\\S]*?</div>\\s*</div>`, "");
-    if (re.test(out)) {
-      out = out.replace(re, `<div id="${mount}">${body}</div></div>`);
-    } else {
-      throw new Error(`render: could not find mount #${mount}`);
-    }
-  }
+  if (body) out = injectInto(out, mount, body);
   return out;
 }
 
@@ -186,6 +196,30 @@ function articleBody(city, theme, takes, events) {
   `<a class="${k === theme ? "on" : ""}" href="/${esc(city.slug)}/${THEMES[k].slug}/">${esc(THEMES[k].nav)}</a>`).join("")}</div>
 ${entries}
 ${cal}`;
+}
+
+// Without these, every city and article page is orphaned: the home page and
+// city index build their grids in JS, so a crawler following links finds
+// nothing beyond the two shells. Pre-render real <a> tags.
+function cityGrid(cities, countsBySlug) {
+  return cities.map(c => {
+    const n = countsBySlug[c.slug] || 0;
+    return `<a class="need" href="/${esc(c.slug)}/what-not-to-do/">
+      <span class="txt"><b>${esc(c.name)}</b>
+      <span class="s">${esc(c.state || "")}</span>
+      <span class="n">${n ? `${n} take${n === 1 ? "" : "s"}` : "Be the first"}</span></span></a>`;
+  }).join("");
+}
+
+function cityList(cities, countsBySlug) {
+  return cities.map(c => {
+    const n = countsBySlug[c.slug] || 0;
+    return `<a class="city-card" href="/${esc(c.slug)}/">
+      <div class="city-body"><h3>${esc(c.name)}</h3>
+      <p>${esc(c.state || "")}</p>
+      <div class="city-foot">${n ? `${n} local take${n === 1 ? "" : "s"}` : "Needs locals"}</div>
+      </div></a>`;
+  }).join("");
 }
 
 function cityBody(city, counts) {
@@ -272,6 +306,11 @@ const cityTpl = await readFile("city.html", "utf8");
 const indexTpl = await readFile("index.html", "utf8");
 const placesTpl = await readFile("places.html", "utf8");
 
+const countsBySlug = {};
+for (const c of cities) {
+  countsBySlug[c.slug] = posts.filter(p => p.city_id === c.id).length;
+}
+
 const newest = rows => rows.length
   ? rows.map(r => r.created_at).sort().slice(-1)[0].slice(0, 10)
   : new Date().toISOString().slice(0, 10);
@@ -282,14 +321,18 @@ await emit("index.html", await minifyHtml(render(indexTpl, {
   title: "TripVibz — what locals know that guidebooks don't",
   desc: "Locals tell visitors what to avoid, when not to come, and what the guidebooks get wrong. One sentence at a time.",
   canonical: `${SITE}/`,
-  image: photo("key-west")
+  image: photo("key-west"),
+  body: cityGrid(cities, countsBySlug),
+  mount: "needs"
 }), null));
 
 pages.push({ path: "/cities/", lastmod: newest(posts), priority: "0.8" });
 await emit("cities/index.html", await minifyHtml(render(placesTpl, {
   title: "Every city on TripVibz — local guides by residents",
   desc: "Browse cities where locals have written what visitors get wrong, when not to visit, and what residents actually do.",
-  canonical: `${SITE}/cities/`
+  canonical: `${SITE}/cities/`,
+  body: cityList(cities, countsBySlug),
+  mount: "live-grid"
 }), null));
 
 let cityCount = 0, articleCount = 0;
