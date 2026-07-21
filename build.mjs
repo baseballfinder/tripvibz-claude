@@ -160,7 +160,8 @@ function injectInto(html, id, content) {
 // we then inject (that ordering bug shipped pages with no description).
 function render(template, { title, desc, canonical, image, body, mount = "root" }) {
   let out = template.replace(/<meta name="description"[^>]*>\s*/g, "");
-  out = out.replace(/<title>[\s\S]*?<\/title>/, head({ title, desc, canonical, image }));
+  const headOut = head({ title, desc, canonical, image });
+  out = out.replace(/<title>[\s\S]*?<\/title>/, () => headOut);
   if (body) out = injectInto(out, mount, body);
   return out;
 }
@@ -252,15 +253,33 @@ async function minifyHtml(html, label) {
     const [full, attrs, code] = m;
     if (!code.trim()) continue;
     const r = await transform(code, { loader: "js", minify: true, target: "es2020" });
-    out = out.replace(full, `<script${attrs}>${r.code.trim()}</script>`);
+    // Replacement must be a FUNCTION. Minified JS routinely contains $& (e.g.
+    // a variable renamed to $ followed by &&), and String.replace treats that
+    // as "insert the whole match" — which silently re-injects the original
+    // <script> block after the minified one and breaks the page.
+    const scriptOut = `<script${attrs}>${r.code.trim()}</script>`;
+    out = out.replace(full, () => scriptOut);
   }
   for (const m of [...out.matchAll(/<style([^>]*)>([\s\S]*?)<\/style>/g)]) {
     const [full, attrs, css] = m;
     if (!css.trim()) continue;
     const r = await transform(css, { loader: "css", minify: true });
-    out = out.replace(full, `<style${attrs}>${r.code.trim()}</style>`);
+    const styleOut = `<style${attrs}>${r.code.trim()}</style>`;
+    out = out.replace(full, () => styleOut);
   }
   out = out.replace(/<!--(?!\[if)[\s\S]*?-->/g, "").replace(/\n{2,}/g, "\n");
+
+  // Minifying must never grow a file or change how many scripts it has.
+  // Both are symptoms of a replacement-string bug rather than a size win.
+  const before = (html.match(/<script/g) || []).length;
+  const after = (out.match(/<script/g) || []).length;
+  if (after !== before) {
+    throw new Error(`minify: ${label || "page"} script count changed ${before} -> ${after}`);
+  }
+  if (out.length > html.length) {
+    throw new Error(`minify: ${label || "page"} grew ${html.length} -> ${out.length} bytes`);
+  }
+
   if (label) report.push([label, html.length, out.length]);
   return out;
 }
