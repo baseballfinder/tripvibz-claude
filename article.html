@@ -98,6 +98,8 @@
   .ev-add{margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px}
   .ev-add h3{font-family:"Archivo";font-weight:800;font-size:15px;margin-bottom:4px}
   .ev-add .sub{font-size:13px;color:var(--muted);margin-bottom:13px}
+  .ev-swap{border:none;background:none;color:var(--ocean);font-size:12.5px;font-weight:600;cursor:pointer;font-family:"Public Sans";text-decoration:underline;padding:0;margin-left:6px}
+  .ev-swap:hover{color:var(--ink)}
   .ev-add label{display:block;font-family:"Archivo";font-weight:700;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:0 0 5px}
   .ev-add input[type=text],.ev-add select,.ev-add textarea{width:100%;border:1px solid var(--line);border-radius:9px;padding:10px 11px;font:inherit;font-size:14.5px;background:var(--paper);margin-bottom:12px}
   .ev-add textarea{min-height:70px;resize:vertical}
@@ -193,7 +195,27 @@
   const CFG = THEMES[THEME];
 
   let CITY = null, ENTRIES = [], PLACES = [], AREA = "all", promptIx = 0;
-  let EVENTS = [], SEL_MONTH = new Date().getMonth() + 1;
+  let EVENTS = [], SEL_MONTH = new Date().getMonth() + 1, evEgIx = 0;
+
+  // Deliberately generic. Naming one city's festival on another city's page
+  // ("Fantasy Fest" on Austin) reads as a mistake and suggests the wrong
+  // kind of answer. These work anywhere and interpolate the city name.
+  const EVENT_EG = [
+    { n: "Marathon weekend",
+      w: c => `Downtown ${c} closes to traffic and the hotels book out months ahead.` },
+    { n: "Peak season",
+      w: c => `Rooms roughly double and you need a reservation for everything.` },
+    { n: "Convention week",
+      w: c => `A big convention takes most of the hotel rooms in ${c} and rates spike city-wide.` },
+    { n: "Festival weekend",
+      w: c => `The main strip is impassable and every bar runs a 40-minute wait.` },
+    { n: "State fair",
+      w: c => `Parking anywhere near the grounds is gone by mid-morning.` },
+    { n: "Shoulder season",
+      w: c => `Same weather, thinner crowds, noticeably cheaper — the locals' answer.` },
+    { n: "Holiday week",
+      w: c => `Everything in ${c} is booked and priced for people who planned in advance.` }
+  ];
 
   const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   const MONTHS_LONG = ["January","February","March","April","May","June","July",
@@ -359,12 +381,14 @@
       </div></div>`;
     }
     const opts = MONTHS_LONG.map((m,i)=>`<option value="${i+1}">${m}</option>`).join("");
+    const eg = EVENT_EG[evEgIx % EVENT_EG.length];
     return `<div class="ev-add">
       <h3>Add something to the calendar</h3>
-      <div class="sub">A festival, a season, a weekend locals dread — anything that changes what a month is like.</div>
+      <div class="sub">A festival, a season, a weekend locals dread — anything that changes what a month is like.
+        <button class="ev-swap" id="ev-swap">Show another example</button></div>
       <div id="ev-slot"></div>
       <label for="ev-name">What is it?</label>
-      <input type="text" id="ev-name" maxlength="80" placeholder="Fantasy Fest">
+      <input type="text" id="ev-name" maxlength="80" placeholder="${escapeHtml(eg.n)}">
       <div class="ev-grid">
         <div>
           <label for="ev-start">From</label>
@@ -384,7 +408,7 @@
         </div>
       </div>
       <label for="ev-blurb">Why does it matter?</label>
-      <textarea id="ev-blurb" maxlength="400" placeholder="Rooms triple and the main strip is impassable for ten days."></textarea>
+      <textarea id="ev-blurb" maxlength="400" placeholder="${escapeHtml(eg.w(CITY.name))}"></textarea>
       <button class="btn coral" id="ev-send">Add to calendar</button>
     </div>`;
   }
@@ -398,6 +422,15 @@
     });
     const login = $("#ev-login");
     if(login) login.addEventListener("click", openLogin);
+    const swap = $("#ev-swap");
+    if(swap) swap.addEventListener("click", ()=>{
+      evEgIx++;
+      const eg = EVENT_EG[evEgIx % EVENT_EG.length];
+      const n = $("#ev-name"), b = $("#ev-blurb");
+      if(n) n.placeholder = eg.n;
+      if(b) b.placeholder = eg.w(CITY.name);
+    });
+
     const send = $("#ev-send");
     if(send){
       $("#ev-start").value = SEL_MONTH;
