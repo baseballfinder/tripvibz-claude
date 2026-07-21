@@ -7,8 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Public+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/site.css">
-<script src="assets/analytics.js"></script>
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/analytics.js"></script>
 <style>
   main{padding:22px 0 60px}
   .back{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;color:var(--muted);text-decoration:none;margin-bottom:14px}
@@ -57,10 +57,10 @@
 
 <header class="nav">
   <div class="nav-inner">
-    <a class="brand" href="index.html"><span class="dot"></span>TripVibz</a>
+    <a class="brand" href="/"><span class="dot"></span>TripVibz</a>
     <nav class="nav-links">
-      <a href="index.html">Feed</a>
-      <a href="places.html" class="active">Places</a>
+      <a href="/">Feed</a>
+      <a href="/cities/" class="active">Places</a>
     </nav>
     <div class="nav-right"><div id="auth-slot"></div></div>
   </div>
@@ -68,7 +68,7 @@
 
 <main>
   <div class="wrap">
-    <a class="back" href="places.html">← All cities</a>
+    <a class="back" href="/cities/">← All cities</a>
     <div id="city"><div class="state"><b>Loading…</b>Pulling this city from the database.</div></div>
   </div>
 </main>
@@ -76,13 +76,13 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/tv.js"></script>
+<script src="/assets/tv.js"></script>
 <script>
 (function(){
   "use strict";
-  const { sb, $, TYPE_LABEL, escapeHtml, auth } = window.TV;
+  const { sb, $, TYPE_LABEL, escapeHtml, auth, routes } = window.TV;
 
-  const SLUG = new URLSearchParams(location.search).get("slug");
+  const SLUG = window.TV.parseRoute().city;
 
   // Themes must match the THEMES map in article.html.
   const THEMES = {
@@ -98,7 +98,7 @@
   const THEME_COUNTS = {};
 
   function notFound(msg){
-    $("#city").innerHTML = `<div class="state"><b>City not found</b>${escapeHtml(msg)}<br><br><a href="places.html">← All cities</a></div>`;
+    $("#city").innerHTML = `<div class="state"><b>City not found</b>${escapeHtml(msg)}<br><br><a href="/cities/">← All cities</a></div>`;
   }
 
   function placeCard(p){
@@ -108,7 +108,7 @@
     const other = p.counts.total - p.counts.what_not_to_do - p.counts.worst_times;
     if(other) tags.push(`<span class="tag b-take">${other} other take${other===1?'':'s'}</span>`);
 
-    return `<a class="place-card" href="place.html?id=${p.id}">
+    return `<a class="place-card" href="${routes.place(p.id)}">
       <h3>${escapeHtml(p.name)}</h3>
       <div class="hood">${escapeHtml([p.neighborhood, p.category].filter(Boolean).join(" · ") || "—")}</div>
       <div class="tally">${tags.length ? tags.join("") : '<span class="none">No takes yet — add the first</span>'}</div>
@@ -145,7 +145,7 @@
       <div class="articles">
         ${Object.keys(THEMES).map(k=>{
           const n = THEME_COUNTS[k] || 0;
-          return `<a class="art" href="article.html?city=${encodeURIComponent(CITY.slug)}&theme=${k}">
+          return `<a class="art" href="${routes.article(CITY.slug,k)}">
             <span class="badge b-${k}">${escapeHtml(THEMES[k].nav)}</span>
             <h3>${escapeHtml(THEMES[k].title(CITY.name))}</h3>
             <p>${escapeHtml(THEMES[k].blurb)}</p>
@@ -170,7 +170,7 @@
           <p>We're collecting what locals just know — the timing, the norms, the
              things visitors get wrong. Not business reviews. One sentence helps.</p>
         </div>
-        <a class="btn" href="article.html?city=${encodeURIComponent(CITY.slug)}&theme=what_not_to_do&add=1">Add a local take</a>
+        <a class="btn" href="${routes.article(CITY.slug,'what_not_to_do',true)}">Add a local take</a>
       </div>`;
 
     $("#filters").addEventListener("click", e=>{

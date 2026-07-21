@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "TripVibz — static site backed by Supabase",
+  "description": "TripVibz \u2014 static site backed by Supabase",
   "scripts": {
     "build": "node build.mjs",
     "serve": "node build.mjs && npx --yes serve dist -l 8080"

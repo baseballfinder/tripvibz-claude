@@ -29,6 +29,51 @@
   var GOOGLE_SVG = '<svg viewBox="0 0 18 18" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>';
   var FACEBOOK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#fff" d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07c0 6.02 4.39 11.01 10.13 11.93v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.96.93-1.96 1.89v2.25h3.33l-.53 3.49h-2.8V24C19.61 23.08 24 18.09 24 12.07z"/></svg>';
 
+  /* ---------- routing ----------
+     Pre-rendered pages live at real paths (/key-west/what-not-to-do/), not
+     query strings, because Google treats ?a=1 variants of one static file as
+     a single document. Every link in the app goes through routes() so the
+     static build and the client agree on URLs. */
+
+  var THEME_SLUG = {
+    what_not_to_do: "what-not-to-do",
+    worst_times: "worst-times-to-visit",
+    hidden_gem: "what-locals-do"
+  };
+  var SLUG_THEME = {};
+  Object.keys(THEME_SLUG).forEach(function (k) { SLUG_THEME[THEME_SLUG[k]] = k; });
+
+  var routes = {
+    home:    function () { return "/"; },
+    cities:  function () { return "/cities/"; },
+    city:    function (slug) { return "/" + encodeURIComponent(slug) + "/"; },
+    article: function (slug, theme, add) {
+      return "/" + encodeURIComponent(slug) + "/" + (THEME_SLUG[theme] || theme) + "/" +
+             (add ? "?add=1" : "");
+    },
+    place:   function (id) { return "/place.html?id=" + encodeURIComponent(id); },
+    thread:  function (id) { return "/thread.html?id=" + encodeURIComponent(id); }
+  };
+
+  // Reads /{city}/{theme}/ from the path, falling back to query params so the
+  // pages still work when opened directly during local development.
+  function parseRoute() {
+    var parts = location.pathname.split("/").filter(Boolean);
+    var qs = new URLSearchParams(location.search);
+    var out = { city: qs.get("city") || null, theme: null };
+
+    if (parts.length >= 1 && parts[0] !== "cities" && !/\.html$/.test(parts[0])) {
+      out.city = parts[0];
+      if (parts.length >= 2 && SLUG_THEME[parts[1]]) out.theme = SLUG_THEME[parts[1]];
+    }
+    if (!out.theme) {
+      var t = qs.get("theme");
+      out.theme = SLUG_THEME[t] || (THEME_SLUG[t] ? t : null);
+    }
+    if (!out.city) out.city = qs.get("slug");
+    return out;
+  }
+
   /* ---------- formatting helpers ---------- */
 
   function escapeHtml(s) {
@@ -318,6 +363,10 @@
   window.TV = {
     sb: sb,
     persistVote: persistVote,
+    routes: routes,
+    parseRoute: parseRoute,
+    THEME_SLUG: THEME_SLUG,
+    SLUG_THEME: SLUG_THEME,
     submitTake: submitTake,
     moderationMessage: moderationMessage,
     isSignedIn: isSignedIn,

@@ -7,8 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Public+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/site.css">
-<script src="assets/analytics.js"></script>
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/analytics.js"></script>
 <style>
   /* places-only layout */
   .head{padding:26px 0 4px}
@@ -42,12 +42,12 @@
 
 <header class="nav">
   <div class="nav-inner">
-    <a class="brand" href="index.html"><span class="dot"></span>TripVibz</a>
+    <a class="brand" href="/"><span class="dot"></span>TripVibz</a>
     <nav class="nav-links">
-      <a href="index.html">Feed</a>
-      <a href="places.html" class="active">Places</a>
+      <a href="/">Feed</a>
+      <a href="/cities/" class="active">Places</a>
     </nav>
-    <div class="nav-right"><a class="btn" href="index.html">Back to feed</a></div>
+    <div class="nav-right"><a class="btn" href="/">Back to feed</a></div>
   </div>
 </header>
 
@@ -71,11 +71,11 @@
 <footer><div class="wrap"><span class="tagline">Take the city, don't let the city take you.</span> · TripVibz</div></footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/tv.js"></script>
+<script src="/assets/tv.js"></script>
 <script>
 (function(){
   "use strict";
-  const { sb, $, escapeHtml } = window.TV;
+  const { sb, $, escapeHtml, routes } = window.TV;
 
   let CITIES=[];
 
@@ -106,7 +106,7 @@
         <p>${escapeHtml(c.blurb||"")}</p>
         <div class="city-foot ${live?'':'soon'}">${countLine(c)}</div>
       </div>`;
-    return `<a class="city-card${live ? "" : " is-thin"}" href="city.html?slug=${encodeURIComponent(c.slug)}">${inner}</a>`;
+    return `<a class="city-card${live ? "" : " is-thin"}" href="${routes.city(c.slug)}">${inner}</a>`;
   }
 
   function render(q){

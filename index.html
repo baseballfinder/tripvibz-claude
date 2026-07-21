@@ -8,8 +8,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Public+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/site.css">
-<script src="assets/analytics.js"></script>
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/analytics.js"></script>
 <style>
   :root{--maxw:760px}
   main{padding:0 0 60px}
@@ -96,8 +96,8 @@
 
 <header class="nav">
   <div class="nav-inner">
-    <a class="brand" href="index.html"><span class="dot"></span>TripVibz</a>
-    <nav class="nav-links"><a href="places.html">Cities</a></nav>
+    <a class="brand" href="/"><span class="dot"></span>TripVibz</a>
+    <nav class="nav-links"><a href="/cities/">Cities</a></nav>
     <div class="nav-right"><div id="auth-slot"></div></div>
   </div>
 </header>
@@ -123,18 +123,18 @@
       <div class="recent" id="recent"></div>
     </div>
 
-    <p class="visitor">Just visiting somewhere? <a href="places.html">Browse what locals said →</a></p>
+    <p class="visitor">Just visiting somewhere? <a href="/cities/">Browse what locals said →</a></p>
   </div>
 </main>
 
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/tv.js"></script>
+<script src="/assets/tv.js"></script>
 <script>
 (function(){
   "use strict";
-  const { sb, $, escapeHtml, timeAgo, toast, auth, openLogin, isSignedIn, moderationMessage, submitTake } = window.TV;
+  const { sb, $, escapeHtml, timeAgo, toast, auth, openLogin, isSignedIn, moderationMessage, submitTake, routes } = window.TV;
 
   const DRAFT_KEY = "tv_pending_home";
 
@@ -228,7 +228,7 @@
            ${escapeHtml(c ? c.name : "that city")}. The more locals add, the harder it is to fake.</p>
         <div class="row">
           <button class="btn coral" id="again">Add another</button>
-          <a class="btn" href="article.html?city=${encodeURIComponent(lastPosted.slug)}&theme=${lastPosted.kind}">See the article</a>
+          <a class="btn" href="${routes.article(lastPosted.slug, lastPosted.kind)}">See the article</a>
         </div>
       </section>`;
     $("#again").addEventListener("click", ()=>{ lastPosted = null; renderAsk(); });
@@ -248,7 +248,7 @@
     const ordered = CITIES.slice().sort((a,b)=>(COUNTS[a.id]||0)-(COUNTS[b.id]||0) || a.name.localeCompare(b.name));
     $("#needs").innerHTML = ordered.map(c=>{
       const n = COUNTS[c.id] || 0;
-      return `<a class="need" href="article.html?city=${encodeURIComponent(c.slug)}&theme=what_not_to_do&add=1">
+      return `<a class="need" href="${routes.article(c.slug,'what_not_to_do',true)}">
         <img src="${PHOTO}/${encodeURIComponent(c.slug)}.webp" alt="" loading="lazy" onerror="this.remove()">
         <span class="scrim"></span>
         <span class="txt">
@@ -267,7 +267,7 @@
       const c = CITIES.find(x=>x.id===p.city_id);
       return `<div class="rec">
         <div class="t">${escapeHtml(p.title)}</div>
-        <div class="m">${c ? `<a href="article.html?city=${encodeURIComponent(c.slug)}&theme=${p.type}">${escapeHtml(c.name)}</a> · ` : ""}
+        <div class="m">${c ? `<a href="${routes.article(c.slug,p.type)}">${escapeHtml(c.name)}</a> · ` : ""}
           ${escapeHtml((KINDS[p.type]||{short:p.type}).short)} · ${timeAgo(p.created_at)} ago</div>
       </div>`;
     }).join("");
