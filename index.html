@@ -249,7 +249,7 @@
     $("#needs").innerHTML = ordered.map(c=>{
       const n = COUNTS[c.id] || 0;
       return `<a class="need" href="${routes.article(c.slug,'what_not_to_do',true)}">
-        <img src="${PHOTO}/${encodeURIComponent(c.slug)}.webp" alt="" loading="lazy" onerror="this.remove()">
+        <img src="${PHOTO}/${encodeURIComponent(c.photo || c.slug + ".webp")}" alt="" loading="lazy" onerror="this.remove()">
         <span class="scrim"></span>
         <span class="txt">
           <b>${escapeHtml(c.name)}</b>
@@ -333,7 +333,7 @@
 
   (async function init(){
     const [{ data: cities }, { data: posts }] = await Promise.all([
-      sb.from("cities").select("id,name,state,slug").order("sort"),
+      sb.from("cities").select("id,name,state,slug,photo").order("sort"),
       // Small enough to aggregate client-side today. Move to a view when
       // volume makes this a real payload.
       sb.from("posts").select("id,title,type,city_id,author_id,created_at").order("created_at",{ascending:false})

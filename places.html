@@ -97,7 +97,7 @@
     const live = c.take_count > 0;
     const inner = `
       <div class="city-top" style="background:${band(c.name)}">
-        <img class="city-img" src="${IMG_BASE}/${encodeURIComponent(c.slug)}.webp" alt="${escapeHtml(c.name)}" loading="lazy" onerror="this.remove()">
+        <img class="city-img" src="${IMG_BASE}/${encodeURIComponent(c.photo || c.slug + ".webp")}" alt="${escapeHtml(c.name)}" loading="lazy" onerror="this.remove()">
         <span class="pin">📍</span>
         <span class="city-state">${escapeHtml(c.state||"US")}</span>
       </div>

@@ -93,7 +93,7 @@ async function fetchTable(name, query = "") {
 async function loadContent() {
   try {
     const [cities, posts, events] = await Promise.all([
-      fetchTable("cities", "select=id,name,state,slug&order=sort"),
+      fetchTable("cities", "select=id,name,state,slug,photo&order=sort"),
       fetchTable("posts", "select=id,title,body,type,ups,downs,created_at,city_id"),
       fetchTable("city_events", "select=id,name,blurb,kind,severity,start_month,end_month,city_id")
     ]);
@@ -166,7 +166,11 @@ function render(template, { title, desc, canonical, image, body, mount = "root" 
   return out;
 }
 
-const photo = slug => `${SUPABASE_URL}/storage/v1/object/public/city-photos/${slug}.webp`;
+// Resolves a city's og:image. PHOTO_BY_SLUG is filled after content loads;
+// falls back to {slug}.webp for cities with no explicit photo filename.
+const PHOTO_BY_SLUG = {};
+const photo = slug => `${SUPABASE_URL}/storage/v1/object/public/city-photos/` +
+  encodeURIComponent(PHOTO_BY_SLUG[slug] || `${slug}.webp`);
 
 /* ---------------- article body ---------------- */
 
@@ -329,6 +333,7 @@ await walk(SRC);
 
 console.log("\n  fetching content…");
 const { cities, posts, events } = await loadContent();
+cities.forEach(c => { if (c.photo) PHOTO_BY_SLUG[c.slug] = c.photo; });
 console.log(`  ${cities.length} cities · ${posts.length} posts · ${events.length} events`);
 
 const articleTpl = await readFile("article.html", "utf8");

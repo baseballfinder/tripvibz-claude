@@ -1,0 +1,21 @@
+-- cities.photo: DB is now the source of truth for a city's image filename.
+--
+-- The 7 Florida photos were uploaded under their original Envato names as
+-- .jpg, so the old {slug}.webp convention couldn't find them. cities.photo
+-- holds the real object name; NULL falls back to {slug}.webp (all 18 originals).
+-- This means future uploads no longer require exact slug-naming discipline.
+--
+-- cities_with_counts view extended with photo (appended last, since CREATE OR
+-- REPLACE can't reorder columns). places.html reads that view.
+--
+-- Removed Destin, Clearwater and Sanibel — no image existed and none could be
+-- sourced. 0 posts / 0 places each; their seeded calendar events cascade via
+-- the city_events FK.
+--
+-- Client (index.html, places.html) and build.mjs all resolve
+-- photo || `${slug}.webp` and URL-encode the result (the Envato names contain
+-- spaces and parentheses). Verified: Orlando og:image = the encoded jpg,
+-- Key West still key-west.webp, 25 cities, 102 URLs, 0 broken links.
+--
+-- PERF NOTE: the 7 jpgs are full-size (0.7–2.8 MB). Fine to ship, but worth
+-- converting to sized WebP later — they're the heaviest assets on the site.
