@@ -7,6 +7,7 @@
 <meta name="description" content="Locals tell visitors what to avoid, when not to come, and what the guidebooks get wrong. One sentence at a time." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://nkxorlktzbgwqnfwmuus.supabase.co" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Public+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/site.css">
 <script src="/assets/analytics.js"></script>
@@ -249,7 +250,7 @@
     $("#needs").innerHTML = ordered.map(c=>{
       const n = COUNTS[c.id] || 0;
       return `<a class="need" href="${routes.article(c.slug,'what_not_to_do',true)}">
-        <img src="${PHOTO}/${encodeURIComponent(c.photo || c.slug + ".webp")}" alt="" loading="lazy" onerror="this.remove()">
+        <img src="${PHOTO}/${encodeURIComponent(c.photo || c.slug + ".webp")}" alt="${escapeHtml(c.name)}" width="336" height="132" loading="lazy" decoding="async" onerror="this.remove()">
         <span class="scrim"></span>
         <span class="txt">
           <b>${escapeHtml(c.name)}</b>

@@ -1,0 +1,16 @@
+# Cloudflare Pages reads this from the build output root.
+# Note: city photos come from Supabase, so their cache-control is set there,
+# not here — these rules only cover same-origin assets and HTML.
+
+/assets/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/*.webp
+  Cache-Control: public, max-age=604800
+
+/*.svg
+  Cache-Control: public, max-age=604800
+
+# HTML pages: short cache so pre-rendered content updates propagate on rebuild.
+/*
+  Cache-Control: public, max-age=600, must-revalidate
