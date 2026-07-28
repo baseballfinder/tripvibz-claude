@@ -18,3 +18,8 @@ dist/
 
 # Local-only content snapshot for offline builds. Production fetches live.
 content.fixture.json
+
+# City photo working dirs — originals + resized output live in Supabase, not git.
+# The resize script (scripts/) is tracked; the images it reads/writes are not.
+city-photos-src/
+city-photos-out/
