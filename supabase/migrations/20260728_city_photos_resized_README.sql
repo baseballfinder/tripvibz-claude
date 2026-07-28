@@ -1,0 +1,17 @@
+-- City photos: resized + reset to {slug}.webp defaults.
+--
+-- The 7 Florida photos were re-encoded to 1600px WebP (scripts/resize_city_photos.py)
+-- and re-uploaded as clean {slug}.webp objects:
+--   orlando 261 | sarasota 243 | st-augustine 234 | tampa 228 | fort-myers 117
+--   | naples 55 | daytona-beach 43   (KB) — down from 0.7-2.8 MB each.
+--
+-- cities.photo overrides cleared to NULL: all 25 cities now resolve via the
+-- default {slug}.webp path. Verified every city maps to an object that exists,
+-- all under 261 KB.
+--
+-- Manual follow-ups in the Supabase dashboard (not doable via SQL safely):
+--  1. Storage cache-control came through as max-age=3600 (1h). Acceptable for
+--     PageSpeed; for a longer TTL, re-upload with cache-control set or use the
+--     storage API. Optional.
+--  2. 15 leftover objects (long Envato-named jpg/webp + Sarasota dupes) can be
+--     deleted from the city-photos bucket. Unreferenced; cosmetic cleanup only.
