@@ -158,10 +158,11 @@ function injectInto(html, id, content) {
 // Replace the shell's <title> and inject metadata + pre-rendered body.
 // The shell's own description is stripped FIRST, so it can't delete the one
 // we then inject (that ordering bug shipped pages with no description).
-function render(template, { title, desc, canonical, image, body, mount = "root" }) {
+function render(template, { title, desc, canonical, image, body, mount = "root", jsonLd }) {
   let out = template.replace(/<meta name="description"[^>]*>\s*/g, "");
   const headOut = head({ title, desc, canonical, image });
   out = out.replace(/<title>[\s\S]*?<\/title>/, () => headOut);
+  if (jsonLd) out = out.replace(/<\/head>/, () => jsonLd + "</head>");
   if (body) out = injectInto(out, mount, body);
   return out;
 }
@@ -171,6 +172,124 @@ function render(template, { title, desc, canonical, image, body, mount = "root" 
 const PHOTO_BY_SLUG = {};
 const photo = slug => `${SUPABASE_URL}/storage/v1/object/public/city-photos/` +
   encodeURIComponent(PHOTO_BY_SLUG[slug] || `${slug}.webp`);
+
+/* ---------------- structured data (JSON-LD) ----------------
+   Article + BreadcrumbList + ItemList on theme pages, BreadcrumbList on city
+   pages, Organization + WebSite on the home page. Google-supported types only.
+
+   Deliberately NOT emitting Event markup for the calendar: Google's Event
+   structured data requires a concrete startDate, and our events are recurring,
+   month-level (Fantasy Fest "late October", no year/day). Fabricating dates
+   risks a Search Console manual action, so the calendar stays as on-page HTML
+   until we track confirmed per-year dates. */
+
+const ORG = {
+  "@type": "Organization",
+  "@id": `${SITE}/#org`,
+  name: "TripVibz",
+  url: `${SITE}/`,
+  logo: `${SITE}/favicon-512.png`,
+  description: "Local guides to what visitors get wrong, when not to come, and what residents actually do.",
+  sameAs: []
+};
+
+function ld(obj) {
+  // JSON in a script tag: escape </ so a "</script>" in data can't break out.
+  return `<script type="application/ld+json">` +
+    JSON.stringify(obj).replace(/</g, "\\u003c") +
+    `</script>`;
+}
+
+function homeLd() {
+  return ld({
+    "@context": "https://schema.org",
+    "@graph": [
+      ORG,
+      {
+        "@type": "WebSite",
+        "@id": `${SITE}/#website`,
+        url: `${SITE}/`,
+        name: "TripVibz",
+        publisher: { "@id": `${SITE}/#org` },
+        inLanguage: "en-US"
+      }
+    ]
+  });
+}
+
+function breadcrumbLd(items) {
+  return {
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((it, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: it.name,
+      item: it.url
+    }))
+  };
+}
+
+function cityLd(city, url) {
+  return ld({
+    "@context": "https://schema.org",
+    "@graph": [
+      breadcrumbLd([
+        { name: "TripVibz", url: `${SITE}/` },
+        { name: "Cities", url: `${SITE}/cities/` },
+        { name: city.name, url }
+      ])
+    ]
+  });
+}
+
+function articleLd(city, theme, takes, url, cfg, image) {
+  const dates = takes.map(t => t.created_at).filter(Boolean).sort();
+  const published = dates[0] || new Date().toISOString();
+  const modified = dates[dates.length - 1] || published;
+
+  const graph = [
+    {
+      "@type": "Article",
+      "@id": `${url}#article`,
+      headline: cfg.title(city.name),
+      description: cfg.desc(city.name),
+      mainEntityOfPage: url,
+      inLanguage: "en-US",
+      datePublished: published,
+      dateModified: modified,
+      image: image ? [image] : undefined,
+      author: { "@id": `${SITE}/#org` },
+      publisher: { "@id": `${SITE}/#org` },
+      about: { "@type": "Place", name: `${city.name}${city.state ? ", " + city.state : ""}` }
+    },
+    breadcrumbLd([
+      { name: "TripVibz", url: `${SITE}/` },
+      { name: city.name, url: `${SITE}/${city.slug}/` },
+      { name: cfg.nav, url }
+    ])
+  ];
+
+  // The ranked contributions as an ItemList — the substance of the page.
+  const ranked = takes.slice()
+    .sort((a, b) => (b.ups - b.downs) - (a.ups - a.downs) ||
+                    new Date(a.created_at) - new Date(b.created_at));
+  if (ranked.length) {
+    graph.push({
+      "@type": "ItemList",
+      "@id": `${url}#takes`,
+      name: cfg.title(city.name),
+      numberOfItems: ranked.length,
+      itemListOrder: "https://schema.org/ItemListOrderDescending",
+      itemListElement: ranked.map((t, i) => ({
+        "@type": "ListItem",
+        position: i + 1,
+        name: t.title
+      }))
+    });
+  }
+
+  return ld({ "@context": "https://schema.org", "@graph": graph });
+}
 
 /* ---------------- article body ---------------- */
 
@@ -256,6 +375,9 @@ async function minifyHtml(html, label) {
   for (const m of [...out.matchAll(/<script(?![^>]*\bsrc=)([^>]*)>([\s\S]*?)<\/script>/g)]) {
     const [full, attrs, code] = m;
     if (!code.trim()) continue;
+    // JSON-LD is data, not JavaScript — the js loader would choke on a bare
+    // object literal. Leave it as-is (JSON.stringify already produced it tight).
+    if (/type\s*=\s*["']application\/ld\+json["']/i.test(attrs)) continue;
     const r = await transform(code, { loader: "js", minify: true, target: "es2020" });
     // Replacement must be a FUNCTION. Minified JS routinely contains $& (e.g.
     // a variable renamed to $ followed by &&), and String.replace treats that
@@ -358,7 +480,8 @@ await emit("index.html", await minifyHtml(render(indexTpl, {
   canonical: `${SITE}/`,
   image: photo("key-west"),
   body: cityGrid(cities, countsBySlug),
-  mount: "needs"
+  mount: "needs",
+  jsonLd: homeLd()
 }), null));
 
 pages.push({ path: "/cities/", lastmod: newest(posts), priority: "0.8" });
@@ -383,7 +506,8 @@ for (const city of cities) {
     canonical: `${SITE}/${city.slug}/`,
     image: photo(city.slug),
     body: cityBody(city, counts),
-    mount: "city"
+    mount: "city",
+    jsonLd: cityLd(city, `${SITE}/${city.slug}/`)
   }), null));
   pages.push({ path: `/${city.slug}/`, lastmod: newest(cityPosts), priority: "0.8" });
   cityCount++;
@@ -396,7 +520,8 @@ for (const city of cities) {
       desc: t.desc(city.name),
       canonical: `${SITE}/${city.slug}/${t.slug}/`,
       image: photo(city.slug),
-      body: articleBody(city, theme, takes, cityEvents)
+      body: articleBody(city, theme, takes, cityEvents),
+      jsonLd: articleLd(city, theme, takes, `${SITE}/${city.slug}/${t.slug}/`, t, photo(city.slug))
     }), null));
     pages.push({
       path: `/${city.slug}/${t.slug}/`,
