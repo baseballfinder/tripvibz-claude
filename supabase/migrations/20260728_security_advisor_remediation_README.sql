@@ -1,0 +1,33 @@
+-- Security advisor remediation (from the "security vulnerabilities" email).
+--
+-- FIXED (verified: clean insert works, moderation still blocks, admin RLS works,
+-- anon still reads app tables):
+--   • cities_with_counts + contributor_local_status: SECURITY DEFINER -> INVOKER
+--     (were ERROR-level; views now respect the caller's RLS)
+--   • search_path pinned on moderation_normalize, moderation_squash,
+--     posts_sync_city, event_covers_month
+--   • EXECUTE revoked from public/anon/authenticated on the trigger-internal
+--     definer functions (moderation_guard, moderation_violation,
+--     stamp_moderation, bump_locality) — no longer exposed as RPC. Triggers
+--     still fire. Verified anon_can_exec_guard = false.
+--   • moderation_allowlist: added admin read/write policies (was RLS-no-policy)
+--
+-- LEFT INTENTIONALLY:
+--   • is_admin(uuid) stays EXECUTE-able — RLS read policies call it for anon
+--     and authenticated; revoking it would break every read. Low exposure
+--     (returns a boolean).
+--
+-- CANNOT FIX FROM SQL (not the table owner — supabase_admin owns these):
+--   • spatial_ref_sys RLS + grants. This is the email's CRITICAL. It's PostGIS
+--     EPSG reference data (public, non-sensitive), but anon currently has
+--     read/insert/update/delete via a PUBLIC grant made by the owner. Our
+--     REVOKE is a no-op because only the grantor can revoke it, and we can't
+--     ENABLE RLS without ownership.
+--     >> FIX: click "Resolve issue" in the Supabase email/dashboard — it runs
+--        with elevated privileges and can enable RLS. If it fails, contact
+--        Supabase support. This is the one item requiring the dashboard.
+--   • st_estimatedextent (x3) definer WARN — PostGIS internal, owner-managed.
+--   • extension_in_public (postgis, ltree) — moving them is invasive (ltree
+--     powers comment paths, postgis powers geo columns). Not worth it.
+--   • auth_leaked_password_protection — irrelevant: the site uses OAuth +
+--     anonymous, no passwords. Optional Auth dashboard toggle.
