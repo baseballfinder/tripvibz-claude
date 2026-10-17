@@ -105,8 +105,9 @@ def card(city, q, photo_bytes):
     bf = font(26, 800)
     brand = "TripVibz"
     bw = d.textlength(brand, font=bf)
-    d.ellipse([W - pad - bw - 26, pad + 18, W - pad - bw - 12, pad + 32], fill=CORAL)
     d.text((W - pad, pad + 25), brand, font=bf, fill=(255, 255, 255), anchor="rm")
+    mark = Image.open(os.path.join(os.path.dirname(__file__), "..", "assets", "brand", "mark-512.png")).convert("RGBA").resize((52, 52), Image.LANCZOS)
+    base.paste(mark, (int(W - pad - bw - 64), pad - 1), mark)
     return base
 
 
