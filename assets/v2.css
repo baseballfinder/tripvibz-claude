@@ -127,3 +127,5 @@
 .composer .send{width:46px;height:46px;border-radius:50%;border:none;background:#c4391b;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
 
 @media (prefers-reduced-motion: reduce){.qopt .fill{transition:none}}
+
+.city-hero{display:block;width:100%;height:auto;aspect-ratio:16/10;max-height:260px;object-fit:cover;border-radius:16px;margin:4px 0 14px;background:#efe9dd}
