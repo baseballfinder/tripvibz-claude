@@ -107,6 +107,8 @@
 
   /* ---------- rendering ---------- */
 
+  function ago(iso) { var t = TV.timeAgo(iso); return /now/.test(t) ? t : t + " ago"; }
+
   function authorHtml(p, ctx) {
     if (!p.author_verified || !p.author_id) {
       return '<b>Anonymous</b><span class="bdg unv">Unverified</span>';
@@ -133,7 +135,7 @@
       "</div>" +
       (opts.noLink ? '<h1 class="tt" style="font-size:23px">' + esc(p.title) + "</h1>" : '<a class="tt" href="' + href + '">' + esc(p.title) + "</a>") +
       (p.body ? '<div class="more">' + esc(p.body) + "</div>" : "") +
-      '<div class="who">' + authorHtml(p, ctx) + "<span>· " + TV.timeAgo(p.created_at) + " ago</span></div>" +
+      '<div class="who">' + authorHtml(p, ctx) + "<span>· " + ago(p.created_at) + "</span></div>" +
       (opts.noBar ? "" : '<div class="bar" aria-hidden="true"><i style="width:' + pct + '%"></i></div>' +
       '<div class="tv-actions">' +
         '<button class="tvb yes" data-vote="1" data-id="' + p.id + '" aria-pressed="' + (v === 1) + '">' + ICON.check + "True · " + p.ups + "</button>" +
@@ -297,6 +299,6 @@
     takeHtml: takeHtml, castVote: castVote,
     loadQuestions: loadQuestions, qTotal: qTotal, answer: answer, qOptionsHtml: qOptionsHtml,
     prepareClaim: prepareClaim, finishClaim: finishClaim, signInForBadge: signInForBadge, saveTenure: saveTenure,
-    drawShareCard: drawShareCard, shareCard: shareCard
+    drawShareCard: drawShareCard, shareCard: shareCard, ago: ago
   };
 })();
