@@ -7,10 +7,10 @@
 -- Run once in Supabase → SQL editor. Safe to re-run.
 
 create or replace function public.jwt_is_verified()
-returns boolean language sql stable set search_path = public as $$
+returns boolean language sql stable set search_path = public as $fn$
   select auth.uid() is not null
      and coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) is false
-$$;
+$fn$;
 
 alter table public.posts
   add column if not exists months smallint[],
@@ -27,33 +27,33 @@ update public.posts p set author_verified = true
     and exists (select 1 from auth.users u where u.id = p.author_id and coalesce(u.is_anonymous, false) = false);
 
 create or replace function public.posts_stamp_author()
-returns trigger language plpgsql security definer set search_path = public as $$
-declare n int;
+returns trigger language plpgsql security definer set search_path = public as $fn$
+declare n int; lim int := 3;
 begin
   new.author_verified := (new.author_id is not null and public.jwt_is_verified());
+  if new.author_verified then lim := 20; end if;
   if new.author_id is not null then
     select count(*) into n from public.posts
       where author_id = new.author_id and created_at > now() - interval '24 hours';
-    if n >= case when new.author_verified then 20 else 3 end then
-      raise exception 'RATE_LIMITED' using errcode = 'P0001',
-        hint = case when new.author_verified then 'Daily limit reached.' else 'Sign in to post more today.' end;
+    if n >= lim then
+      raise exception 'RATE_LIMITED' using errcode = 'P0001';
     end if;
   end if;
   return new;
-end $$;
+end $fn$;
 drop trigger if exists trg_posts_stamp_author on public.posts;
 create trigger trg_posts_stamp_author before insert on public.posts
   for each row execute function public.posts_stamp_author();
 
 create or replace function public.posts_lock_verified()
-returns trigger language plpgsql set search_path = public as $$
+returns trigger language plpgsql set search_path = public as $fn$
 begin
   if new.author_verified is distinct from old.author_verified and not public.is_admin()
      and current_setting('tv.claiming', true) is distinct from 'on' then
     new.author_verified := old.author_verified;
   end if;
   return new;
-end $$;
+end $fn$;
 drop trigger if exists trg_posts_lock_verified on public.posts;
 create trigger trg_posts_lock_verified before update on public.posts
   for each row execute function public.posts_lock_verified();
@@ -67,19 +67,20 @@ alter table public.comments
   add column if not exists author_verified boolean not null default false;
 
 create or replace function public.comments_stamp_author()
-returns trigger language plpgsql security definer set search_path = public as $$
-declare n int;
+returns trigger language plpgsql security definer set search_path = public as $fn$
+declare n int; lim int := 10;
 begin
   new.author_verified := (new.author_id is not null and public.jwt_is_verified());
+  if new.author_verified then lim := 60; end if;
   if new.author_id is not null then
     select count(*) into n from public.comments
       where author_id = new.author_id and created_at > now() - interval '24 hours';
-    if n >= case when new.author_verified then 60 else 10 end then
+    if n >= lim then
       raise exception 'RATE_LIMITED' using errcode = 'P0001';
     end if;
   end if;
   return new;
-end $$;
+end $fn$;
 drop trigger if exists trg_comments_stamp_author on public.comments;
 create trigger trg_comments_stamp_author before insert on public.comments
   for each row execute function public.comments_stamp_author();
@@ -118,7 +119,7 @@ drop policy if exists "change own answer" on public.question_votes;
 create policy "change own answer" on public.question_votes for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create or replace function public.question_votes_check()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public as $fn$
 begin
   if not exists (select 1 from public.questions q, jsonb_array_elements(q.options) o
                  where q.id = new.question_id and q.active and o->>'id' = new.option_id) then
@@ -126,20 +127,20 @@ begin
   end if;
   new.verified := public.jwt_is_verified();
   return new;
-end $$;
+end $fn$;
 drop trigger if exists trg_question_votes_check on public.question_votes;
 create trigger trg_question_votes_check before insert or update on public.question_votes
   for each row execute function public.question_votes_check();
 
 create or replace function public.question_results(qids uuid[])
 returns table(question_id uuid, option_id text, n bigint, verified_n bigint)
-language sql stable security definer set search_path = public as $$
+language sql stable security definer set search_path = public as $fn$
   select v.question_id, v.option_id, count(*), count(*) filter (where v.verified)
   from public.question_votes v
   join public.questions q on q.id = v.question_id and q.active
   where v.question_id = any(qids)
   group by v.question_id, v.option_id
-$$;
+$fn$;
 
 create table if not exists public.city_tenure (
   user_id uuid not null references public.profiles(id) on delete cascade,
@@ -173,7 +174,7 @@ create table if not exists public.claims (
 alter table public.claims enable row level security;
 
 create or replace function public.create_claim()
-returns text language plpgsql security definer set search_path = public, extensions as $$
+returns text language plpgsql security definer set search_path = public, extensions as $fn$
 declare t text;
 begin
   if auth.uid() is null or public.jwt_is_verified() then
@@ -183,10 +184,10 @@ begin
   t := encode(gen_random_bytes(24), 'hex');
   insert into public.claims(token, anon_user_id) values (t, auth.uid());
   return t;
-end $$;
+end $fn$;
 
 create or replace function public.redeem_claim(tok text)
-returns int language plpgsql security definer set search_path = public as $$
+returns int language plpgsql security definer set search_path = public as $fn$
 declare a uuid; me uuid := auth.uid(); moved int := 0;
 begin
   if me is null or not public.jwt_is_verified() then
@@ -207,7 +208,7 @@ begin
     on conflict (user_id, city_id) do nothing;
   delete from public.city_tenure where user_id = a;
   return moved;
-end $$;
+end $fn$;
 
 revoke execute on function public.posts_stamp_author() from public, anon, authenticated;
 revoke execute on function public.posts_lock_verified() from public, anon, authenticated;
