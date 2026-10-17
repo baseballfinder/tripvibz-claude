@@ -88,9 +88,12 @@
         <div class="seg" role="group" aria-label="Sort">${[["top","Top"],["hot","Hot"],["new","New"]].map(([id,l]) => `<button data-sort="${id}" aria-pressed="${SORT===id}">${l}</button>`).join("")}</div>
         <span style="font-size:12.5px;color:var(--muted);font-weight:600">${CTX.founderCount}/10 founding locals</span>
       </div>
-      <div class="feed" id="feed">${list.length ? list.map(p => T2.takeHtml(p, CTX)).join("") :
-        `<div class="empty2"><b>No takes here yet</b>Live in ${esc(CITY.name)}? Tell visitors what they get wrong. One sentence is enough, and the first 10 signed-in locals are its founding locals.</div>`}</div>`;
+      <div class="feed" id="feed">${list.length ? list.map((p, i) => T2.takeHtml(p, CTX, { city: CITY, placement: "feed" }) +
+          (i === 2 ? T2.stay22MapHtml(CITY, "city-feed") : "")).join("") :
+        `<div class="empty2"><b>No takes here yet</b>Live in ${esc(CITY.name)}? Tell visitors what they get wrong. One sentence is enough, and the first 10 signed-in locals are its founding locals.</div>`}</div>
+      ${list.length < 3 ? T2.stay22MapHtml(CITY, "city-feed") : ""}`;
     wire();
+    T2.mountStay22($("#city"));
   }
 
   function wire(){
@@ -100,7 +103,7 @@
       const b = e.target.closest("[data-vote]"); if (!b) return;
       const p = POSTS.find(x => x.id === b.dataset.id); if (!p) return;
       await T2.castVote(p, CTX, Number(b.dataset.vote));
-      const card = b.closest(".take"); card.outerHTML = T2.takeHtml(p, CTX);
+      const card = b.closest(".take"); card.outerHTML = T2.takeHtml(p, CTX, { city: CITY, placement: "feed" });
     });
   }
 

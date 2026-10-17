@@ -131,3 +131,11 @@
 .city-hero{display:block;width:100%;height:auto;aspect-ratio:16/10;max-height:260px;object-fit:cover;border-radius:16px;margin:4px 0 14px;background:#efe9dd}
 
 .photo-credit{display:block;margin:-8px 0 10px;font-size:11px;color:var(--muted);text-decoration:none;text-align:right}
+
+/* Stay22 hotel placements */
+.s22{margin:22px 0 6px}
+.s22 h2{font-size:18px;font-weight:800;margin:0 0 4px}
+.s22 p{font-size:12.5px;color:var(--muted);margin:0 0 10px}
+.s22-map{height:420px;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:#efe9dd;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px}
+.s22-map iframe{width:100%;height:100%;border:0;display:block}
+.s22-link{display:inline-flex;align-items:center;gap:6px;margin-top:10px;min-height:36px;padding:0 12px;border-radius:999px;background:#eef3fb;color:#1f4fa3;font-weight:700;font-size:13px;text-decoration:none}

@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://nkxorlktzbgwqnfwmuus.supabase.co" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Public+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/site.css">
+<link rel="stylesheet" href="/assets/v2.css">
 <script src="/assets/analytics.js"></script>
 <style>
   :root{--maxw:720px}
@@ -147,6 +148,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/assets/tv.js"></script>
+<script src="/assets/v2.js"></script>
 <script>
 (function(){
   "use strict";
@@ -318,8 +320,11 @@
 
       ${THEME === "worst_times" ? calendarBlock() : ""}
 
+      ${window.TV2 ? window.TV2.stay22MapHtml(CITY, THEME === "worst_times" ? "worst-times" : "article", THEME === "worst_times" ? `Planning around it? Hotels in ${CITY.name}` : "") : ""}
+
       ${list.length ? addBlock(false) : ""}`;
 
+    if(window.TV2) window.TV2.mountStay22($("#root"));
     wire();
     if(THEME === "worst_times") wireCalendar();
     if(JUMP && !window.__jumped){ window.__jumped = true; $("#add").scrollIntoView({behavior:"smooth",block:"center"}); $("#take").focus({preventScroll:true}); }
@@ -628,7 +633,7 @@
     if(!SLUG){ fail("No city specified."); return; }
 
     const { data: city, error } = await sb.from("cities")
-      .select("id,name,state,slug").eq("slug", SLUG).maybeSingle();
+      .select("id,name,state,slug,lat,lng").eq("slug", SLUG).maybeSingle();
     if(error || !city){ fail("We're not covering that city yet."); return; }
     CITY = city;
     document.title = `TripVibz · ${CFG.title(city.name)}`;
