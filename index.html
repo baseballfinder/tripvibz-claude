@@ -112,8 +112,6 @@
         One sentence is enough.</p>
     </section>
 
-    <div id="ask-host"></div>
-
     <div class="stats" id="stats"></div>
 
     <div class="section-label" id="needs-label">Pick your city</div>
@@ -135,9 +133,8 @@
 <script>
 (function(){
   "use strict";
-  const { sb, $, escapeHtml, timeAgo, toast, auth, openLogin, isSignedIn, moderationMessage, submitTake, routes } = window.TV;
+  const { sb, $, escapeHtml, timeAgo, routes } = window.TV;
 
-  const DRAFT_KEY = "tv_pending_home";
 
   // Mirrors THEMES in article.html.
   const KINDS = {
@@ -163,77 +160,8 @@
   };
 
   let CITIES = [], COUNTS = {}, RECENT = [], TOTALS = { takes:0, locals:0, cities:0 };
-  let kind = "what_not_to_do", citySlug = "", egIx = 0, lastPosted = null;
 
   const cityBySlug = s => CITIES.find(c=>c.slug===s);
-  const slot = html => { const s = $("#slot"); if(s) s.innerHTML = html; };
-
-  const BIZ = /\b(restaurant|cafe|café|bar|hotel|motel|resort|shop|store|salon|spa|club|grill|diner|bistro|tavern|pub|inn|lounge)\b/i;
-  const NAMED = /\b[A-Z][a-z]{2,}(?:'s|s')\b/;
-  const STAFF = /\b(owner|manager|waiter|waitress|bartender|server|staff|employee)\b/i;
-  const businessNudge = t => {
-    const n=NAMED.test(t), b=BIZ.test(t), s=STAFF.test(t);
-    return ((n&&b)||(n&&s)||(b&&s))
-      ? "This reads like a review of one business. We publish how a city works — the pattern, not the place."
-      : null;
-  };
-
-  // ------------------------------------------------------------------
-  function renderAsk(){
-    const c = cityBySlug(citySlug);
-    const cfg = KINDS[kind];
-    const cityName = c ? c.name : "your city";
-
-    $("#ask-host").innerHTML = `
-      <section class="ask">
-        <div class="step">Add a take · 30 seconds</div>
-        <h2>${escapeHtml(cfg.ask(cityName))}</h2>
-
-        <label for="city">Which city do you know?</label>
-        <select id="city">
-          <option value="">Pick a city…</option>
-          ${CITIES.map(x=>`<option value="${x.slug}" ${x.slug===citySlug?"selected":""}>${escapeHtml(x.name)}${x.state?", "+escapeHtml(x.state):""}</option>`).join("")}
-        </select>
-
-        <label>What kind of thing?</label>
-        <div class="kinds" id="kinds">
-          ${Object.keys(KINDS).map(k=>`<button class="kind" data-k="${k}" aria-pressed="${k===kind}">
-            <b>${escapeHtml(KINDS[k].short)}</b><span>${escapeHtml(KINDS[k].hint)}</span></button>`).join("")}
-        </div>
-
-        <p class="eg">${escapeHtml(cfg.egs[egIx % cfg.egs.length])}</p>
-        <button class="swap" id="swap">Show another example</button>
-
-        <div id="slot"></div>
-        <textarea id="take" maxlength="600" placeholder="One or two sentences is plenty…"></textarea>
-        <button class="btn coral" id="send">Add my take</button>
-        <p class="fine">We publish how a city works — timing, norms, geography, the things
-          locals just know. Not complaints about a specific business or its staff.</p>
-      </section>`;
-
-    $("#city").addEventListener("change", e=>{ citySlug = e.target.value; renderAsk(); });
-    $("#kinds").addEventListener("click", e=>{
-      const b = e.target.closest("button[data-k]"); if(!b) return;
-      kind = b.dataset.k; egIx = 0; renderAsk();
-    });
-    $("#swap").addEventListener("click", ()=>{ egIx++; renderAsk(); });
-    $("#send").addEventListener("click", submit);
-  }
-
-  function renderDone(){
-    const c = cityBySlug(lastPosted.slug);
-    $("#ask-host").innerHTML = `
-      <section class="done">
-        <h2>That's live.</h2>
-        <p>Your take is now part of <b>${escapeHtml(KINDS[lastPosted.kind].short)}</b> for
-           ${escapeHtml(c ? c.name : "that city")}. The more locals add, the harder it is to fake.</p>
-        <div class="row">
-          <button class="btn coral" id="again">Add another</button>
-          <a class="btn" href="${routes.article(lastPosted.slug, lastPosted.kind)}">See the article</a>
-        </div>
-      </section>`;
-    $("#again").addEventListener("click", ()=>{ lastPosted = null; renderAsk(); });
-  }
 
   function renderStats(){
     $("#stats").innerHTML = `
@@ -249,7 +177,7 @@
     const ordered = CITIES.slice().sort((a,b)=>(COUNTS[a.id]||0)-(COUNTS[b.id]||0) || a.name.localeCompare(b.name));
     $("#needs").innerHTML = ordered.map(c=>{
       const n = COUNTS[c.id] || 0;
-      return `<a class="need" href="${routes.article(c.slug,'what_not_to_do',true)}">
+      return `<a class="need" href="${routes.city(c.slug)}">
         <img src="${PHOTO}/${encodeURIComponent(c.photo || c.slug + ".webp")}" alt="${escapeHtml(c.name)}" width="336" height="132" loading="lazy" decoding="async" onerror="this.remove()">
         <span class="scrim"></span>
         <span class="txt">
@@ -267,64 +195,11 @@
     $("#recent").innerHTML = RECENT.map(p=>{
       const c = CITIES.find(x=>x.id===p.city_id);
       return `<div class="rec">
-        <div class="t">${escapeHtml(p.title)}</div>
-        <div class="m">${c ? `<a href="${routes.article(c.slug,p.type)}">${escapeHtml(c.name)}</a> · ` : ""}
+        <a class="t" href="${routes.thread(p.id)}" style="color:inherit;text-decoration:none">${escapeHtml(p.title)}</a>
+        <div class="m">${c ? `<a href="${routes.city(c.slug)}">${escapeHtml(c.name)}</a> · ` : ""}
           ${escapeHtml((KINDS[p.type]||{short:p.type}).short)} · ${timeAgo(p.created_at)} ago</div>
       </div>`;
     }).join("");
-  }
-
-  // ------------------------------------------------------------------
-  async function submit(){
-    const ta = $("#take");
-    const text = (ta.value||"").trim();
-
-    if(!citySlug){ toast("Pick a city first"); $("#city").focus(); return; }
-    if(text.length < 15){ toast("A few more words — one sentence is fine"); ta.focus(); return; }
-
-    const nudge = businessNudge(text);
-    if(nudge && !ta.dataset.nudged){
-      ta.dataset.nudged = "1";
-      slot(`<div class="nudge"><b>Keep it about the city</b>${escapeHtml(nudge)}</div>`);
-      return;
-    }
-
-    // Finish on the city's post page: place, months, and optional sign-in live there.
-    location.href = `/${encodeURIComponent(citySlug)}/add/?kind=${encodeURIComponent(kind)}&text=${encodeURIComponent(text)}`;
-  }
-
-  async function publish(slug, k, text, btn){
-    const c = cityBySlug(slug);
-    if(!c){ toast("That city isn't available"); return; }
-    if(btn){ btn.disabled = true; btn.textContent = "Posting…"; }
-
-    const title = text.length <= 140 ? text : text.slice(0,137).replace(/\s+\S*$/,"") + "…";
-    const body  = text.length <= 140 ? null : text;
-
-    try{
-      await submitTake({ title, body, type:k, city_id:c.id, city_name:c.name, place_id:null });
-
-      try{ sessionStorage.removeItem(DRAFT_KEY); }catch(e){}
-      COUNTS[c.id] = (COUNTS[c.id]||0) + 1;
-      TOTALS.takes++;
-      lastPosted = { slug, kind:k };
-      renderDone(); renderStats(); renderNeeds();
-      toast("Added — thanks");
-    }catch(e){
-      console.error(e);
-      if(btn){ btn.disabled = false; btn.textContent = "Add my take"; }
-      const blocked = moderationMessage(e);
-      if(blocked) slot(`<div class="reject">${escapeHtml(blocked)}</div>`);
-      else toast("Couldn't post that — try again");
-    }
-  }
-
-  async function resumeDraft(){
-    let d = null;
-    try{ d = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || "null"); }catch(e){}
-    if(!d || !isSignedIn()) return;
-    citySlug = d.slug; kind = d.kind;
-    await publish(d.slug, d.kind, d.text, null);
   }
 
   (async function init(){
@@ -343,9 +218,7 @@
     TOTALS.cities = CITIES.length;
     RECENT = rows.filter(p=>KINDS[p.type]).slice(0,5);
 
-    renderAsk(); renderStats(); renderNeeds(); renderRecent();
-    await auth.ensure();
-    await resumeDraft();
+    renderStats(); renderNeeds(); renderRecent();
   })();
 })();
 </script>

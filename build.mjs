@@ -62,7 +62,7 @@ const THEMES = {
     slug: "what-not-to-do",
     nav: "What not to do",
     title: c => `What not to do in ${c}`,
-    lede: c => `The mistakes visitors make in ${c}, according to people who live there. Ranked by how many locals cosigned them.`,
+    lede: c => `The mistakes visitors make in ${c}, according to people who live there. Ranked by how many locals say it's true.`,
     desc: c => `Local advice on what not to do in ${c} — the mistakes visitors make, written and ranked by people who live there.`
   },
   worst_times: {
@@ -334,10 +334,10 @@ function articleBody(city, theme, takes, events) {
   const entries = list.length
     ? `<ol class="entries">${list.map(p => `<li class="entry"><div class="t">${esc(p.title)}</div>${
         p.body ? `<div class="more">${esc(p.body)}</div>` : ""
-      }<div class="foot"><span class="who">${p.ups} cosign${p.ups === 1 ? "" : "s"}</span></div></li>`).join("")}</ol>`
+      }<div class="foot"><span class="who">${p.ups} say true</span></div></li>`).join("")}</ol>`
     : `<div class="empty-article"><b>Live in ${esc(city.name)}? What do tourists get wrong?</b>
        <p>Say it here and visitors will actually read it. One sentence is enough.</p>
-       <a class="btn coral" href="/${esc(city.slug)}/${t.slug}/?add=1">Add my take</a></div>`;
+       <a class="btn coral" href="/${esc(city.slug)}/add/?kind=${theme}">Add your take</a></div>`;
 
   const cal = theme === "worst_times" && events.length
     ? `<section class="cal"><h2>${esc(city.name)} month by month</h2>${
