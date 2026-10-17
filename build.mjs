@@ -21,6 +21,7 @@
 
 import { readdir, readFile, writeFile, mkdir, rm } from "node:fs/promises";
 import { join, extname, dirname } from "node:path";
+import { createHash } from "node:crypto";
 
 // Dynamic so a missing dependency produces an instruction rather than a
 // module-resolution stack trace.
@@ -416,7 +417,19 @@ async function minifyHtml(html, label) {
   return out;
 }
 
+// Browsers keep /assets/* for a day (see _headers), so a changed tv.js or
+// site.css would otherwise reach returning visitors up to a day late. Every
+// HTML file gets ?v=<content hash> on its asset URLs: same file, same URL
+// (still cached); changed file, new URL (fetched immediately).
+const ASSET_VERSION = {};
+for (const f of await readdir("assets")) {
+  ASSET_VERSION[f] = createHash("sha256").update(await readFile(join("assets", f))).digest("hex").slice(0, 10);
+}
+const versionAssets = html => html.replace(/(["'])\/assets\/([\w.-]+)\1/g,
+  (m, q, f) => ASSET_VERSION[f] ? `${q}/assets/${f}?v=${ASSET_VERSION[f]}${q}` : m);
+
 async function emit(path, html) {
+  if (typeof html === "string" && path.endsWith(".html")) html = versionAssets(html);
   const full = join(OUT, path);
   await mkdir(dirname(full), { recursive: true });
   await writeFile(full, html);
