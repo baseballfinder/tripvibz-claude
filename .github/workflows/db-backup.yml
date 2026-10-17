@@ -1,0 +1,77 @@
+# Nightly encrypted backup of the Supabase database.
+#
+# Why: the Supabase free plan keeps no backups you can download, so a bad
+# migration or a deleted table would be unrecoverable.
+#
+# Why encrypted: this repository is public, and public-repo artifacts can be
+# downloaded by any signed-in GitHub user. The dump includes auth.users
+# (sign-in emails), so it is encrypted before it leaves the runner.
+#
+# One-time setup (repo Settings -> Secrets and variables -> Actions):
+#   SUPABASE_DB_URL     Supabase dashboard -> Connect -> "Session pooler"
+#                       connection string, with the database password filled in.
+#   BACKUP_PASSPHRASE   Any long random phrase. Keep a copy in your password
+#                       manager; without it the backups cannot be opened.
+#
+# Restore (on your machine):
+#   gpg --decrypt tripvibz-YYYY-MM-DD.dump.gpg > tripvibz.dump
+#   pg_restore --no-owner --no-privileges -d "<target db url>" tripvibz.dump
+
+name: Nightly database backup
+
+on:
+  schedule:
+    - cron: "17 7 * * *"   # 3:17 am Eastern (daylight time)
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check secrets are set
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ] || [ -z "$BACKUP_PASSPHRASE" ]; then
+            echo "::error::Add SUPABASE_DB_URL and BACKUP_PASSPHRASE as repository secrets (see the comment at the top of this file)."
+            exit 1
+          fi
+
+      - name: Install pg_dump 17 (must match the server's Postgres 17)
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSo /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+
+      - name: Dump and encrypt
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          day=$(date -u +%F)
+          /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" \
+            --format=custom --no-owner --no-privileges \
+            --schema=public --schema=auth --schema=storage \
+            --file=tripvibz.dump
+          /usr/lib/postgresql/17/bin/pg_restore --list tripvibz.dump > /dev/null   # fails if the dump is unreadable
+          echo "Dump size: $(du -h tripvibz.dump | cut -f1)"
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" \
+              --symmetric --cipher-algo AES256 -o "tripvibz-$day.dump.gpg" tripvibz.dump
+          shred -u tripvibz.dump
+          echo "DAY=$day" >> "$GITHUB_ENV"
+
+      - name: Keep for 30 days
+        uses: actions/upload-artifact@v4
+        with:
+          name: tripvibz-db-${{ env.DAY }}
+          path: tripvibz-*.dump.gpg
+          retention-days: 30
+          if-no-files-found: error
