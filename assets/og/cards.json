@@ -2,8 +2,29 @@
   "asheville": {
     "prompt": "Biltmore: worth the ticket price?"
   },
+  "austin": {
+    "prompt": "Sixth Street on a Saturday night: worth it, or skip it?"
+  },
+  "charleston": {
+    "prompt": "Rainbow Row: worth the stop, or just a photo?"
+  },
+  "chicago": {
+    "prompt": "Deep dish: worth it, or a tourist thing?"
+  },
+  "daytona-beach": {
+    "prompt": "Driving on the beach: fun, or a bad idea?"
+  },
+  "denver": {
+    "prompt": "Red Rocks: worth it without a concert?"
+  },
   "fort-lauderdale": {
     "prompt": "Las Olas on a Saturday night: worth it, or skip it?"
+  },
+  "fort-myers": {
+    "prompt": "Sanibel for a beach day: worth the drive?"
+  },
+  "honolulu": {
+    "prompt": "Waikiki: worth staying, or base yourself elsewhere?"
   },
   "key-biscayne": {
     "prompt": "Crossing the Rickenbacker on a Sunday afternoon: fine, or avoid?"
@@ -14,13 +35,49 @@
   "knoxville": {
     "prompt": "UT home game weekend: come for it, or stay away?"
   },
+  "las-vegas": {
+    "prompt": "Stay on the Strip or Downtown?"
+  },
   "miami": {
     "prompt": "First trip to Miami: stay in South Beach or somewhere else?"
   },
   "miami-beach": {
     "prompt": "Ocean Drive for dinner: worth it, or skip it?"
   },
+  "naples": {
+    "prompt": "Fifth Avenue South: worth an evening?"
+  },
   "nashville": {
     "prompt": "Party wagons and pedal taverns: part of the fun, or the worst part of downtown?"
+  },
+  "new-orleans": {
+    "prompt": "Bourbon Street: worth it, or skip it?"
+  },
+  "new-york": {
+    "prompt": "Times Square: worth seeing, or avoid it?"
+  },
+  "orlando": {
+    "prompt": "Disney or Universal for a first trip?"
+  },
+  "san-diego": {
+    "prompt": "Gaslamp Quarter at night: worth it, or skip it?"
+  },
+  "san-francisco": {
+    "prompt": "Fisherman's Wharf: worth it, or skip it?"
+  },
+  "sarasota": {
+    "prompt": "Siesta Key on a Saturday: worth it?"
+  },
+  "savannah": {
+    "prompt": "St. Patrick's Day in Savannah: come for it, or stay away?"
+  },
+  "seattle": {
+    "prompt": "Pike Place Market: worth it, or a tourist trap?"
+  },
+  "st-augustine": {
+    "prompt": "St. George Street: worth it, or a tourist trap?"
+  },
+  "tampa": {
+    "prompt": "Clearwater Beach on a weekend: worth the traffic?"
   }
 }
