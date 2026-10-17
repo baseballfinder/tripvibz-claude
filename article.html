@@ -169,6 +169,7 @@
   // ---------------------------------------------------------------------
   const THEMES = {
     what_not_to_do: {
+      vent: c => `What do tourists do in ${c} that drives you crazy?`,
       starters: c => [`Never ___ in ${c}, because ___.`, `Skip ___. Locals ___ instead.`, `Visitors always ___. Don't.`],
       nav:   "What not to do",
       title: c => `What not to do in ${c}`,
@@ -183,6 +184,7 @@
       ]
     },
     worst_times: {
+      vent: c => `When should tourists just stay away from ${c}?`,
       starters: c => [`Avoid ${c} in ___, because ___.`, `Don't go to ___ on ___. ___.`, `___ is the worst week. Come ___ instead.`],
       nav:   "Worst times to visit",
       title: c => `Worst times to visit ${c}`,
@@ -196,6 +198,7 @@
       ]
     },
     hidden_gem: {
+      vent: c => `What do tourists never figure out about ${c}?`,
       starters: c => [`Locals actually go to ___ for ___.`, `Instead of ___, try ___.`, `Nobody visiting knows about ___.`],
       nav:   "What locals actually do",
       title: c => `What locals actually do in ${c}`,
@@ -489,16 +492,16 @@
   function addBlock(hero, contributors){
     const eg = CFG.prompts[promptIx % CFG.prompts.length];
     const left = Math.max(FOUNDING_SPOTS - (contributors || 0), 0);
+    // Lead with the itch locals already have (tourists), not our need for
+    // content. "Help build a guide" is our motive, not theirs.
     const kicker = hero
-      ? (FROM_MT ? "Miami Take readers are writing this one" : "Founding locals wanted")
+      ? (FROM_MT ? `For people who live in ${CITY.name}` : "Locals only")
       : "Add to this article";
-    const heading = hero
-      ? `Be one of ${CITY.name}'s first ${FOUNDING_SPOTS} founding locals`
-      : CFG.ask(CITY.name);
+    const heading = hero ? CFG.vent(CITY.name) : CFG.ask(CITY.name);
     return `<section class="add ${hero ? "hero" : ""}" id="add">
       <div class="kicker">${escapeHtml(kicker)}</div>
       <h2>${escapeHtml(heading)}</h2>
-      ${hero ? `<p class="sub">${escapeHtml(CFG.ask(CITY.name))} One sentence is enough.</p>
+      ${hero ? `<p class="sub">Say it here and visitors will actually read it. One sentence is enough. You'll be one of ${escapeHtml(CITY.name)}'s first ${FOUNDING_SPOTS} founding locals.</p>
       <div class="spots" aria-label="${left} of ${FOUNDING_SPOTS} founding spots open">${
         Array.from({length: FOUNDING_SPOTS}, (_, i) => `<i class="${i < FOUNDING_SPOTS - left ? "on" : ""}"></i>`).join("")
       }<span>${left} of ${FOUNDING_SPOTS} spots open</span></div>` : ""}

@@ -309,8 +309,8 @@ function articleBody(city, theme, takes, events) {
     ? `<ol class="entries">${list.map(p => `<li class="entry"><div class="t">${esc(p.title)}</div>${
         p.body ? `<div class="more">${esc(p.body)}</div>` : ""
       }<div class="foot"><span class="who">${p.ups} cosign${p.ups === 1 ? "" : "s"}</span></div></li>`).join("")}</ol>`
-    : `<div class="empty-article"><b>Be one of ${esc(city.name)}'s first 10 founding locals</b>
-       <p>Live in ${esc(city.name)}? Tell visitors one thing they get wrong. One sentence is enough.</p>
+    : `<div class="empty-article"><b>Live in ${esc(city.name)}? What do tourists get wrong?</b>
+       <p>Say it here and visitors will actually read it. One sentence is enough.</p>
        <a class="btn coral" href="/${esc(city.slug)}/${t.slug}/?add=1">Add my take</a></div>`;
 
   const cal = theme === "worst_times" && events.length
