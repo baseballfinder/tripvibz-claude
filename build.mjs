@@ -124,20 +124,25 @@ async function loadContent() {
 const MONTHS = ["January","February","March","April","May","June","July",
                 "August","September","October","November","December"];
 
-function head({ title, desc, canonical, image, noindex }) {
+function head({ title, desc, canonical, image, noindex, og = {} }) {
+  const ogTitle = og.title || title, ogDesc = og.desc || desc;
   return `<title>${esc(title)}</title>
 ${noindex ? `<meta name="robots" content="noindex,follow" />` : ""}
 <meta name="description" content="${esc(desc)}" />
 <link rel="canonical" href="${esc(canonical)}" />
 <meta property="og:type" content="article" />
 <meta property="og:site_name" content="TripVibz" />
-<meta property="og:title" content="${esc(title)}" />
-<meta property="og:description" content="${esc(desc)}" />
+<meta property="og:title" content="${esc(ogTitle)}" />
+<meta property="og:description" content="${esc(ogDesc)}" />
 <meta property="og:url" content="${esc(canonical)}" />
 ${image ? `<meta property="og:image" content="${esc(image)}" />` : ""}
+${og.card ? `<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:type" content="image/jpeg" />
+<meta property="og:image:alt" content="${esc(ogTitle)}" />` : ""}
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="${esc(title)}" />
-<meta name="twitter:description" content="${esc(desc)}" />
+<meta name="twitter:title" content="${esc(ogTitle)}" />
+<meta name="twitter:description" content="${esc(ogDesc)}" />
 ${image ? `<meta name="twitter:image" content="${esc(image)}" />` : ""}`;
 }
 
@@ -164,9 +169,9 @@ function injectInto(html, id, content) {
 // Replace the shell's <title> and inject metadata + pre-rendered body.
 // The shell's own description is stripped FIRST, so it can't delete the one
 // we then inject (that ordering bug shipped pages with no description).
-function render(template, { title, desc, canonical, image, body, mount = "root", jsonLd, noindex }) {
+function render(template, { title, desc, canonical, image, body, mount = "root", jsonLd, noindex, og }) {
   let out = template.replace(/<meta name="description"[^>]*>\s*/g, "");
-  const headOut = head({ title, desc, canonical, image, noindex });
+  const headOut = head({ title, desc, canonical, image, noindex, og });
   out = out.replace(/<title>[\s\S]*?<\/title>/, () => headOut);
   if (jsonLd) out = out.replace(/<\/head>/, () => jsonLd + "</head>");
   if (body) out = injectInto(out, mount, body);
@@ -176,6 +181,22 @@ function render(template, { title, desc, canonical, image, body, mount = "root",
 // Resolves a city's og:image. PHOTO_BY_SLUG is filled after content loads;
 // falls back to {slug}.webp for cities with no explicit photo filename.
 const PHOTO_BY_SLUG = {};
+
+// Social share cards (scripts/og_cards.py): a 1200x630 JPEG with the city's
+// hook question over its photo. Facebook shows og:title in bold, so for share
+// previews the title is the question itself, aimed at locals.
+let OG_CARDS = {};
+try { OG_CARDS = JSON.parse(await readFile("assets/og/cards.json", "utf8")); } catch {}
+const shareCard = city => {
+  const c = OG_CARDS[city.slug];
+  if (!c) return null;
+  return {
+    card: true,
+    image: `${SITE}/assets/og/${city.slug}.jpg`,
+    title: `${c.prompt} (${city.name} locals vote)`,
+    desc: "One tap to vote, then see how many locals agree with you. Plus what tourists keep getting wrong."
+  };
+};
 const photo = slug => `${SUPABASE_URL}/storage/v1/object/public/city-photos/` +
   encodeURIComponent(PHOTO_BY_SLUG[slug] || `${slug}.webp`);
 
@@ -424,7 +445,9 @@ async function minifyHtml(html, label) {
 // HTML file gets ?v=<content hash> on its asset URLs: same file, same URL
 // (still cached); changed file, new URL (fetched immediately).
 const ASSET_VERSION = {};
-for (const f of await readdir("assets")) {
+for (const e of await readdir("assets", { withFileTypes: true })) {
+  if (!e.isFile()) continue;
+  const f = e.name;
   ASSET_VERSION[f] = createHash("sha256").update(await readFile(join("assets", f))).digest("hex").slice(0, 10);
 }
 const versionAssets = html => html.replace(/(["'])\/assets\/([\w.-]+)\1/g,
@@ -527,7 +550,8 @@ for (const city of cities) {
     title: `${city.name}${city.state ? ", " + city.state : ""} — what locals say`,
     desc: `Local guides for ${city.name}: what not to do, the worst times to visit, and what residents actually do.`,
     canonical: `${SITE}/${city.slug}/`,
-    image: photo(city.slug),
+    image: shareCard(city) ? shareCard(city).image : photo(city.slug),
+    og: shareCard(city) || undefined,
     body: cityBody(city, counts, cityPosts.filter(p => THEMES[p.type])),
     mount: "city",
     jsonLd: cityLd(city, `${SITE}/${city.slug}/`),
@@ -543,7 +567,8 @@ for (const city of cities) {
   await emit(`${city.slug}/vote/index.html`, await minifyHtml(render(voteTpl, {
     title: `Locals, settle this: ${city.name} · TripVibz`,
     desc: `Quick questions for people who live in ${city.name}. One tap each.`,
-    canonical: `${SITE}/${city.slug}/`, image: photo(city.slug), noindex: true
+    canonical: `${SITE}/${city.slug}/`, image: shareCard(city) ? shareCard(city).image : photo(city.slug),
+    og: shareCard(city) || undefined, noindex: true
   }), null));
   await emit(`${city.slug}/add/index.html`, await minifyHtml(render(addTpl, {
     title: `What do tourists get wrong about ${city.name}? · TripVibz`,

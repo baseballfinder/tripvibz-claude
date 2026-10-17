@@ -1,0 +1,26 @@
+{
+  "asheville": {
+    "prompt": "Biltmore: worth the ticket price?"
+  },
+  "fort-lauderdale": {
+    "prompt": "Las Olas on a Saturday night: worth it, or skip it?"
+  },
+  "key-biscayne": {
+    "prompt": "Crossing the Rickenbacker on a Sunday afternoon: fine, or avoid?"
+  },
+  "key-west": {
+    "prompt": "Duval Street at night: worth it, or skip it?"
+  },
+  "knoxville": {
+    "prompt": "UT home game weekend: come for it, or stay away?"
+  },
+  "miami": {
+    "prompt": "First trip to Miami: stay in South Beach or somewhere else?"
+  },
+  "miami-beach": {
+    "prompt": "Ocean Drive for dinner: worth it, or skip it?"
+  },
+  "nashville": {
+    "prompt": "Party wagons and pedal taverns: part of the fun, or the worst part of downtown?"
+  }
+}
