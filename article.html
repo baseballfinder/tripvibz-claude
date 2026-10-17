@@ -586,7 +586,7 @@
     if(!isSignedIn()){
       try{ sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ slug:SLUG, theme:THEME, text })); }catch(e){}
       slot(`<div class="saved">Your take is saved. Sign in and we'll add it to the article.</div>`);
-      openLogin();
+      openLogin({ pending: true });
       return;
     }
     await publish(text, $("#send"));

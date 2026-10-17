@@ -109,6 +109,8 @@
 
   /* ---------- login modal (injected so pages don't duplicate markup) ---------- */
 
+  var FACEBOOK_LOGIN = false;
+
   function mountLoginModal() {
     if ($("#loginmodal")) return;
     var wrap = document.createElement("div");
@@ -117,10 +119,12 @@
     wrap.hidden = true;
     wrap.innerHTML =
       '<div class="modal-card">' +
-      "<h3>Join TripVibz</h3>" +
-      "<p>Save your cosigns, post takes, and review places.</p>" +
+      '<h3 data-login-title>Join TripVibz</h3>' +
+      '<p data-login-text>Save your cosigns, post takes, and review places.</p>' +
       '<button class="oauth google" data-provider="google">' + GOOGLE_SVG + "Continue with Google</button>" +
-      '<button class="oauth facebook" data-provider="facebook">' + FACEBOOK_SVG + "Continue with Facebook</button>" +
+      // Facebook login is off until Meta app review is done; an unapproved
+      // app fails for everyone who isn't a listed tester.
+      (FACEBOOK_LOGIN ? '<button class="oauth facebook" data-provider="facebook">' + FACEBOOK_SVG + "Continue with Facebook</button>" : "") +
       '<button class="modal-close" data-modal-close>Maybe later</button>' +
       '<div class="modal-fine">We only use your name and photo to set up your profile. You can keep browsing and voting without an account.</div>' +
       "</div>";
@@ -133,7 +137,18 @@
     wrap.addEventListener("click", function (e) { if (e.target === wrap) closeLogin(); });
   }
 
-  function openLogin() { mountLoginModal(); $("#loginmodal").hidden = false; }
+  // openLogin({ pending: true }) when the visitor has already written a take:
+  // tell them it's saved and what signing in does, not a generic "join" pitch.
+  function openLogin(opts) {
+    mountLoginModal();
+    var m = $("#loginmodal");
+    var pending = !!(opts && opts.pending);
+    m.querySelector("[data-login-title]").textContent = pending ? "Almost there" : "Join TripVibz";
+    m.querySelector("[data-login-text]").textContent = pending
+      ? "Your take is saved. Sign in with Google and we'll post it right away."
+      : "Save your cosigns, post takes, and review places.";
+    m.hidden = false;
+  }
   function closeLogin() { var m = $("#loginmodal"); if (m) m.hidden = true; }
 
   /* ---------- auth ----------

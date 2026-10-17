@@ -106,10 +106,10 @@
 <main>
   <div class="wrap">
     <section class="hero">
-      <div class="eyebrow">Written by locals, not visitors</div>
-      <h1>You know your city.</h1>
-      <p class="lede">One sentence is enough. Enough of them and a city gets a guide
-        no guidebook can copy — because it came from people who live there.</p>
+      <div class="eyebrow">For people who live there</div>
+      <h1>What do tourists get wrong about your city?</h1>
+      <p class="lede">Say it once and the people planning a trip will actually read it.
+        One sentence is enough.</p>
     </section>
 
     <div id="ask-host"></div>
@@ -143,7 +143,7 @@
   const KINDS = {
     what_not_to_do: {
       short:"What not to do", hint:"Mistakes visitors make",
-      ask:c=>`What do visitors get wrong in ${c}?`,
+      ask:c=>`What do tourists do in ${c} that drives you crazy?`,
       egs:["Standing in the bike lane to take photos. It's a road, not a viewing platform.",
            "Renting a car. You'll pay $45 a night to park it and never once need it.",
            "Wearing beachwear inland. Locals cover up the second they leave the sand."]
@@ -292,7 +292,7 @@
     if(!isSignedIn()){
       try{ sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ slug:citySlug, kind, text })); }catch(e){}
       slot(`<div class="saved">Your take is saved. Sign in and we'll post it straight away.</div>`);
-      openLogin();
+      openLogin({ pending: true });
       return;
     }
     await publish(citySlug, kind, text, $("#send"));
