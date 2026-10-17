@@ -45,7 +45,7 @@ export async function onRequestPost(context) {
     return json({ error: "bad_json" }, 400);
   }
 
-  const { title, body, type, city_id, place_id, city_name } = payload || {};
+  const { title, body, type, city_id, place_id, city_name, place_label, months } = payload || {};
   if (!title || !type || !city_id) {
     return json({ error: "missing_fields" }, 400);
   }
@@ -76,6 +76,8 @@ export async function onRequestPost(context) {
       type,
       city_id,
       place_id: place_id || null,
+      place_label: typeof place_label === "string" && place_label.trim() ? place_label.trim().slice(0, 60) : null,
+      months: Array.isArray(months) && months.length ? months.filter(m => Number.isInteger(m) && m >= 1 && m <= 12) : null,
       submitted_city,
       submitted_region,
       submitted_country,

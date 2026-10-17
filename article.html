@@ -583,13 +583,8 @@
       return;
     }
 
-    if(!isSignedIn()){
-      try{ sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ slug:SLUG, theme:THEME, text })); }catch(e){}
-      slot(`<div class="saved">Your take is saved. Sign in and we'll add it to the article.</div>`);
-      openLogin({ pending: true });
-      return;
-    }
-    await publish(text, $("#send"));
+    // Finish on the city's post page: place, months, and optional sign-in live there.
+    location.href = `/${encodeURIComponent(SLUG)}/add/?kind=${encodeURIComponent(THEME)}&text=${encodeURIComponent(text)}`;
   }
 
   async function publish(text, btn){

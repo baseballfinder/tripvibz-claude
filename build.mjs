@@ -50,7 +50,7 @@ const SKIP = new Set([
   "dist", "node_modules", ".git", "supabase", ".github", "functions",
   "build.mjs", "package.json", "package-lock.json",
   // Maintenance scripts and docs are not site content; never publish them.
-  "scripts", "README.md"
+  "scripts", "README.md", "vote.html", "add.html"
 ]);
 
 const THEMES = {
@@ -364,15 +364,17 @@ function cityList(cities, countsBySlug) {
   }).join("");
 }
 
-function cityBody(city, counts) {
+// Crawler-readable version of the city feed; the page script replaces it.
+function cityBody(city, counts, takes) {
+  const ranked = takes.slice().sort((a, b) => (b.ups - b.downs) - (a.ups - a.downs));
   return `<a class="back" href="/cities/">← All cities</a>
-<div class="city-head"><h1>${esc(city.name)}${city.state ? ", " + esc(city.state) : ""}</h1></div>
-<div class="articles">${Object.keys(THEMES).map(k => {
-    const n = counts[k] || 0;
-    return `<a class="art" href="/${esc(city.slug)}/${THEMES[k].slug}/">
-      <h3>${esc(THEMES[k].title(city.name))}</h3>
-      <div class="go">${n ? `${n} local take${n === 1 ? "" : "s"} →` : "Needs locals — add the first →"}</div></a>`;
-  }).join("")}</div>`;
+<div class="kicker">${esc(city.name)}${city.state ? ", " + esc(city.state) : ""}</div>
+<h1>What locals say about ${esc(city.name)}</h1>
+<nav class="chips">${Object.keys(THEMES).map(k =>
+    `<a class="chip" href="/${esc(city.slug)}/${THEMES[k].slug}/">${esc(THEMES[k].nav)}${counts[k] ? ` (${counts[k]})` : ""}</a>`).join("")}</nav>
+<div class="feed">${ranked.length ? ranked.map(p => `<article class="take"><a class="tt" href="/thread.html?id=${p.id}">${esc(p.title)}</a>${
+    p.body ? `<div class="more">${esc(p.body)}</div>` : ""}<div class="who">${p.ups} true · ${p.downs} nope</div></article>`).join("")
+  : `<div class="empty2"><b>No takes here yet</b>Live in ${esc(city.name)}? <a href="/${esc(city.slug)}/add/">Tell visitors what they get wrong.</a></div>`}</div>`;
 }
 
 /* ---------------- minify ---------------- */
@@ -479,6 +481,8 @@ console.log(`  ${cities.length} cities · ${posts.length} posts · ${events.leng
 
 const articleTpl = await readFile("article.html", "utf8");
 const cityTpl = await readFile("city.html", "utf8");
+const voteTpl = await readFile("vote.html", "utf8");
+const addTpl = await readFile("add.html", "utf8");
 const indexTpl = await readFile("index.html", "utf8");
 const placesTpl = await readFile("places.html", "utf8");
 
@@ -524,7 +528,7 @@ for (const city of cities) {
     desc: `Local guides for ${city.name}: what not to do, the worst times to visit, and what residents actually do.`,
     canonical: `${SITE}/${city.slug}/`,
     image: photo(city.slug),
-    body: cityBody(city, counts),
+    body: cityBody(city, counts, cityPosts.filter(p => THEMES[p.type])),
     mount: "city",
     jsonLd: cityLd(city, `${SITE}/${city.slug}/`),
     // Empty pages stay reachable for people (links, email, social) but out of
@@ -534,6 +538,18 @@ for (const city of cities) {
   }), null));
   if (cityPosts.length) pages.push({ path: `/${city.slug}/`, lastmod: newest(cityPosts), priority: "0.8" });
   cityCount++;
+
+  // App pages: one-tap voting (email links land here) and posting. Not for Google.
+  await emit(`${city.slug}/vote/index.html`, await minifyHtml(render(voteTpl, {
+    title: `Locals, settle this: ${city.name} · TripVibz`,
+    desc: `Quick questions for people who live in ${city.name}. One tap each.`,
+    canonical: `${SITE}/${city.slug}/`, image: photo(city.slug), noindex: true
+  }), null));
+  await emit(`${city.slug}/add/index.html`, await minifyHtml(render(addTpl, {
+    title: `What do tourists get wrong about ${city.name}? · TripVibz`,
+    desc: `Tell visitors one thing they get wrong about ${city.name}. One sentence is enough.`,
+    canonical: `${SITE}/${city.slug}/`, image: photo(city.slug), noindex: true
+  }), null));
 
   for (const theme of Object.keys(THEMES)) {
     const takes = cityPosts.filter(p => p.type === theme);

@@ -400,7 +400,9 @@
       type: fields.type,
       city_id: fields.city_id,
       city_name: fields.city_name || null,
-      place_id: fields.place_id || null
+      place_id: fields.place_id || null,
+      place_label: fields.place_label || null,
+      months: fields.months && fields.months.length ? fields.months : null
     };
 
     var token = null;
@@ -437,8 +439,10 @@
       type: payload.type,
       city_id: payload.city_id,
       place_id: payload.place_id,
+      place_label: payload.place_label,
+      months: payload.months,
       author_id: auth.me && auth.me.id
-    }).select("id,title,body,type,ups,downs,comment_count,created_at,author_id,place_id,city_match").single();
+    }).select("id,title,body,type,ups,downs,comment_count,created_at,author_id,author_verified,place_id,place_label,months,city_match").single();
 
     if (ins.error) throw ins.error;
     return { row: ins.data, locality: null };
