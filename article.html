@@ -58,6 +58,16 @@
   .add .swap:hover{color:#fff}
   .add .btn{width:100%;font-size:16px;padding:14px}
   .add .btn[disabled]{opacity:.55;cursor:not-allowed}
+  .add.hero{margin-top:14px;border:2px solid var(--coral)}
+  .add .sub{color:#d8d2c4;font-size:15px;line-height:1.5;margin:0 0 13px}
+  .add .spots{display:flex;align-items:center;gap:5px;margin:0 0 16px}
+  .add .spots i{width:14px;height:14px;border-radius:50%;border:1.5px solid #5a5446;display:inline-block}
+  .add .spots i.on{background:var(--coral);border-color:var(--coral)}
+  .add .spots{flex-wrap:wrap}
+  .add .spots span{font-size:12.5px;color:#b8b2a4;margin-left:6px;font-weight:600;white-space:nowrap}
+  .add .starters{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 12px}
+  .add .starters button{font:inherit;font-size:13.5px;border:1.5px solid #3a352b;background:#262219;color:#f4f1e9;border-radius:999px;padding:7px 12px;cursor:pointer;text-align:left}
+  .add .starters button:hover,.add .starters button:focus{border-color:var(--coral);outline:none}
   .add .fine{font-size:11.5px;color:#8b8577;margin-top:11px;line-height:1.5}
 
   /* ---- month calendar (worst_times only) ---- */
@@ -147,6 +157,9 @@
   const SLUG  = R.city;
   const THEME = R.theme || "what_not_to_do";
   const JUMP  = qs.get("add") === "1";
+  // Links from Miami Take (email/social) carry src=miamitake.
+  const FROM_MT = (qs.get("src") || qs.get("utm_source") || "").toLowerCase().indexOf("miamitake") === 0;
+  const FOUNDING_SPOTS = 10;
   const DRAFT_KEY = "tv_pending_take";
 
   // ---------------------------------------------------------------------
@@ -156,6 +169,8 @@
   // ---------------------------------------------------------------------
   const THEMES = {
     what_not_to_do: {
+      vent: c => `What do tourists do in ${c} that drives you crazy?`,
+      starters: c => [`Never ___ in ${c}, because ___.`, `Skip ___. Locals ___ instead.`, `Visitors always ___. Don't.`],
       nav:   "What not to do",
       title: c => `What not to do in ${c}`,
       lede:  c => `The mistakes visitors make in ${c}, according to people who live there. Ranked by how many locals cosigned them.`,
@@ -169,6 +184,8 @@
       ]
     },
     worst_times: {
+      vent: c => `When should tourists just stay away from ${c}?`,
+      starters: c => [`Avoid ${c} in ___, because ___.`, `Don't go to ___ on ___. ___.`, `___ is the worst week. Come ___ instead.`],
       nav:   "Worst times to visit",
       title: c => `Worst times to visit ${c}`,
       lede:  c => `The weeks, days and hours locals would tell you to avoid in ${c} — and what to do instead.`,
@@ -181,6 +198,8 @@
       ]
     },
     hidden_gem: {
+      vent: c => `What do tourists never figure out about ${c}?`,
+      starters: c => [`Locals actually go to ___ for ___.`, `Instead of ___, try ___.`, `Nobody visiting knows about ___.`],
       nav:   "What locals actually do",
       title: c => `What locals actually do in ${c}`,
       lede:  c => `The parts of ${c} that don't show up on the top-ten lists, from people who never left.`,
@@ -292,12 +311,14 @@
       </div>` : ""}
 
       <div class="entries" id="entries">
-        ${list.length ? list.map(entry).join("") : emptyBlock()}
+        ${list.length ? list.map(entry).join("") : ""}
       </div>
+
+      ${list.length ? "" : addBlock(true, contributors)}
 
       ${THEME === "worst_times" ? calendarBlock() : ""}
 
-      ${addBlock()}`;
+      ${list.length ? addBlock(false) : ""}`;
 
     wire();
     if(THEME === "worst_times") wireCalendar();
@@ -319,14 +340,6 @@
         <a class="cmt-link" href="${routes.thread(p.id)}" style="color:inherit;text-decoration:none">💬 ${p.comment_count}</a>
       </div>
     </article>`;
-  }
-
-  function emptyBlock(){
-    return `<div class="empty-article">
-      <b>Nobody's written this one yet</b>
-      <p>${escapeHtml(CITY.name)} needs locals. If you know the place, the box below
-         is the whole ask — one sentence is genuinely enough.</p>
-    </div>`;
   }
 
   function calendarBlock(){
@@ -474,11 +487,26 @@
     }
   }
 
-  function addBlock(){
+  // Empty article: the composer IS the page. A blank box asks people to
+  // invent a format; tappable sentence starters hand them one.
+  function addBlock(hero, contributors){
     const eg = CFG.prompts[promptIx % CFG.prompts.length];
-    return `<section class="add" id="add">
-      <div class="kicker">Add to this article</div>
-      <h2>${escapeHtml(CFG.ask(CITY.name))}</h2>
+    const left = Math.max(FOUNDING_SPOTS - (contributors || 0), 0);
+    // Lead with the itch locals already have (tourists), not our need for
+    // content. "Help build a guide" is our motive, not theirs.
+    const kicker = hero
+      ? (FROM_MT ? `For people who live in ${CITY.name}` : "Locals only")
+      : "Add to this article";
+    const heading = hero ? CFG.vent(CITY.name) : CFG.ask(CITY.name);
+    return `<section class="add ${hero ? "hero" : ""}" id="add">
+      <div class="kicker">${escapeHtml(kicker)}</div>
+      <h2>${escapeHtml(heading)}</h2>
+      ${hero ? `<p class="sub">Say it here and visitors will actually read it. One sentence is enough. You'll be one of ${escapeHtml(CITY.name)}'s first ${FOUNDING_SPOTS} founding locals.</p>
+      <div class="spots" aria-label="${left} of ${FOUNDING_SPOTS} founding spots open">${
+        Array.from({length: FOUNDING_SPOTS}, (_, i) => `<i class="${i < FOUNDING_SPOTS - left ? "on" : ""}"></i>`).join("")
+      }<span>${left} of ${FOUNDING_SPOTS} spots open</span></div>` : ""}
+      <div class="starters" id="starters">${CFG.starters(CITY.name).map(s =>
+        `<button type="button" data-s="${escapeHtml(s)}">${escapeHtml(s)}</button>`).join("")}</div>
       <p class="eg">${escapeHtml(eg)}</p>
       <div id="slot"></div>
       <textarea id="take" maxlength="600" placeholder="One or two sentences is plenty…"></textarea>
@@ -503,6 +531,19 @@
       $("#add").querySelector(".eg").textContent = CFG.prompts[promptIx % CFG.prompts.length];
     });
     $("#send").addEventListener("click", submit);
+    $("#starters").addEventListener("click", e=>{
+      const b = e.target.closest("button[data-s]"); if(!b) return;
+      ta.value = b.dataset.s;
+      ta.dispatchEvent(new Event("input"));
+      ta.focus();
+      const i = ta.value.indexOf("___");
+      if(i >= 0) ta.setSelectionRange(i, i + 3);   // typing replaces the first blank
+    });
+    ta.addEventListener("keyup", e=>{
+      // Tab-free blank hopping: after filling one blank, select the next.
+      if(e.key !== "Enter" || !e.ctrlKey) return;
+      const i = ta.value.indexOf("___"); if(i >= 0) ta.setSelectionRange(i, i + 3);
+    });
 
     const areas = $("#areas");
     if(areas) areas.addEventListener("click", e=>{
@@ -532,6 +573,8 @@
     const ta = $("#take");
     const text = (ta.value || "").trim();
     if(text.length < 15){ toast("A few more words — one sentence is fine"); ta.focus(); return; }
+    const blank = text.indexOf("___");
+    if(blank >= 0){ toast("Fill in the blanks first"); ta.focus(); ta.setSelectionRange(blank, blank + 3); return; }
 
     const nudge = businessNudge(text);
     if(nudge && !ta.dataset.nudged){
@@ -543,7 +586,7 @@
     if(!isSignedIn()){
       try{ sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ slug:SLUG, theme:THEME, text })); }catch(e){}
       slot(`<div class="saved">Your take is saved. Sign in and we'll add it to the article.</div>`);
-      openLogin();
+      openLogin({ pending: true });
       return;
     }
     await publish(text, $("#send"));
