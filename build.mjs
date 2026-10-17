@@ -219,7 +219,7 @@ const ORG = {
   "@id": `${SITE}/#org`,
   name: "TripVibz",
   url: `${SITE}/`,
-  logo: `${SITE}/favicon-512.png`,
+  logo: `${SITE}/assets/brand/icon-512.png`,
   description: "Local guides to what visitors get wrong, when not to come, and what residents actually do.",
   sameAs: []
 };
@@ -457,8 +457,14 @@ for (const e of await readdir("assets", { withFileTypes: true })) {
 const versionAssets = html => html.replace(/(["'])\/assets\/([\w.-]+)\1/g,
   (m, q, f) => ASSET_VERSION[f] ? `${q}/assets/${f}?v=${ASSET_VERSION[f]}${q}` : m);
 
+// Logo / favicon links for every page (files: scripts/brand_assets.py).
+const ICON_LINKS = `<link rel="icon" href="/favicon.ico" sizes="48x48"><link rel="icon" href="/assets/brand/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><meta name="theme-color" content="#ff5630">`;
+
 async function emit(path, html) {
-  if (typeof html === "string" && path.endsWith(".html")) html = versionAssets(html);
+  if (typeof html === "string" && path.endsWith(".html")) {
+    if (!html.includes('rel="icon"')) html = html.replace(/<\/head>/i, () => ICON_LINKS + "</head>");
+    html = versionAssets(html);
+  }
   const full = join(OUT, path);
   await mkdir(dirname(full), { recursive: true });
   await writeFile(full, html);
