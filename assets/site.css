@@ -102,13 +102,15 @@ footer{border-top:1px solid var(--line);padding:26px 0;font-size:13px;color:var(
 .userchip button{border:none;background:none;cursor:pointer;color:var(--muted);font-size:15px;padding:2px 6px;border-radius:6px}
 .userchip button:hover{background:var(--sand);color:var(--ink)}
 .modal{position:fixed;inset:0;background:rgba(22,20,15,.5);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px}
-.modal[hidden]{display:none}
+.modal[hidden],.gsi-host[hidden],.oauth[hidden],.modal-alt[hidden]{display:none}
 .modal-card{background:#fff;border-radius:18px;padding:28px 26px;max-width:360px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.25)}
 .modal-card h3{font-family:"Archivo";font-weight:900;font-size:24px;margin-bottom:6px}
 .modal-card p{color:var(--muted);font-size:14.5px;margin:0 0 20px}
 .oauth{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;border-radius:11px;padding:12px;font-family:"Archivo";font-weight:700;font-size:14.5px;cursor:pointer;margin-bottom:10px;border:1px solid var(--line);background:#fff;color:var(--ink);transition:all .12s ease}
 .oauth:hover{border-color:#bdb4a3}
 .oauth svg{width:18px;height:18px}
+.gsi-host{display:flex;justify-content:center;min-height:44px;margin-bottom:10px}
+.modal-alt{border:none;background:none;color:var(--muted);font-size:12.5px;text-decoration:underline;cursor:pointer;margin:0 0 8px;font-family:"Public Sans"}
 .oauth.facebook{background:#1877f2;border-color:#1877f2;color:#fff}
 .oauth.facebook:hover{background:#1467d2}
 .modal-close{border:none;background:none;color:var(--muted);font-size:13.5px;font-weight:600;cursor:pointer;margin-top:6px}

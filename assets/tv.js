@@ -111,6 +111,77 @@
 
   var FACEBOOK_LOGIN = false;
 
+  /* Google Identity Services ("Sign in with Google" button).
+     The redirect flow sends people through nkxorlktzbgwqnfwmuus.supabase.co,
+     so Google's account chooser says "continue to …supabase.co". The GIS
+     button runs on our own origin, so Google shows tripvibz.com instead, and
+     the ID token is handed to Supabase with signInWithIdToken. Free; the
+     alternative (Supabase custom domain) needs a paid plan.
+     Requires: these origins listed under "Authorized JavaScript origins" on
+     the Google OAuth client. Anywhere else (previews, localhost) falls back
+     to the redirect flow. */
+  var GOOGLE_CLIENT_ID = "194312146210-vm4u23cdk8k8me4gcjt3viufsue1i018.apps.googleusercontent.com";
+  var GIS_ORIGINS = ["https://www.tripvibz.com", "https://tripvibz.com", "https://tripvibz.pages.dev"];
+  var gisReady = null;
+
+  function loadGis() {
+    if (gisReady) return gisReady;
+    gisReady = new Promise(function (resolve, reject) {
+      if (GIS_ORIGINS.indexOf(location.origin) < 0) return reject(new Error("origin not enabled for GIS"));
+      var s = document.createElement("script");
+      s.src = "https://accounts.google.com/gsi/client";
+      s.async = true;
+      s.onload = function () { window.google && google.accounts ? resolve() : reject(new Error("gis missing")); };
+      s.onerror = function () { reject(new Error("gis failed to load")); };
+      document.head.appendChild(s);
+      setTimeout(function () { reject(new Error("gis timeout")); }, 6000);
+    });
+    return gisReady;
+  }
+
+  async function sha256hex(str) {
+    var buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+  }
+
+  async function mountGoogleButton(host, fallbackBtn) {
+    try {
+      await loadGis();
+      var raw = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+        .map(function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        nonce: await sha256hex(raw),
+        use_fedcm_for_prompt: true,
+        callback: async function (resp) {
+          var out = await sb.auth.signInWithIdToken({ provider: "google", token: resp.credential, nonce: raw });
+          if (out.error) {
+            console.error(out.error);
+            toast("Sign-in didn't go through — try the other button");
+            fallbackBtn.hidden = false;
+            return;
+          }
+          // Reload so every page runs its normal signed-in path, including
+          // posting a take that was saved before sign-in.
+          location.reload();
+        }
+      });
+      host.innerHTML = "";
+      google.accounts.id.renderButton(host, {
+        theme: "outline", size: "large", shape: "pill", text: "continue_with",
+        logo_alignment: "center", width: Math.min(host.clientWidth || 300, 400)
+      });
+      host.hidden = false;
+      fallbackBtn.hidden = true;
+      var alt = host.parentNode.querySelector("[data-login-alt]");
+      if (alt) alt.hidden = false;
+    } catch (e) {
+      // Not enabled here or blocked: the redirect button still works.
+      host.hidden = true;
+      fallbackBtn.hidden = false;
+    }
+  }
+
   function mountLoginModal() {
     if ($("#loginmodal")) return;
     var wrap = document.createElement("div");
@@ -121,7 +192,9 @@
       '<div class="modal-card">' +
       '<h3 data-login-title>Join TripVibz</h3>' +
       '<p data-login-text>Save your cosigns, post takes, and review places.</p>' +
+      '<div class="gsi-host" data-gsi hidden></div>' +
       '<button class="oauth google" data-provider="google">' + GOOGLE_SVG + "Continue with Google</button>" +
+      '<button class="modal-alt" data-login-alt hidden>Trouble signing in? Use the other way</button>' +
       // Facebook login is off until Meta app review is done; an unapproved
       // app fails for everyone who isn't a listed tester.
       (FACEBOOK_LOGIN ? '<button class="oauth facebook" data-provider="facebook">' + FACEBOOK_SVG + "Continue with Facebook</button>" : "") +
@@ -134,6 +207,10 @@
       b.addEventListener("click", function () { auth.login(b.dataset.provider); });
     });
     wrap.querySelector("[data-modal-close]").addEventListener("click", closeLogin);
+    var redirectBtn = wrap.querySelector(".oauth.google");
+    var alt = wrap.querySelector("[data-login-alt]");
+    alt.addEventListener("click", function () { alt.hidden = true; redirectBtn.hidden = false; });
+    mountGoogleButton(wrap.querySelector("[data-gsi]"), redirectBtn);
     wrap.addEventListener("click", function (e) { if (e.target === wrap) closeLogin(); });
   }
 
