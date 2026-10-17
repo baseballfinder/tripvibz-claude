@@ -120,7 +120,7 @@
      Requires: these origins listed under "Authorized JavaScript origins" on
      the Google OAuth client. Anywhere else (previews, localhost) falls back
      to the redirect flow. */
-  var GOOGLE_CLIENT_ID = "194312146210-vm4u23cdk8k8me4gcjt3viufsue1i018.apps.googleusercontent.com";
+  var GOOGLE_CLIENT_ID = "348430375161-cghpf3tlg93qhlm62pc6lmtap4d1b0lb.apps.googleusercontent.com"; // TripVibz client; must also be listed in Supabase → Auth → Google → Client IDs
   var GIS_ORIGINS = ["https://www.tripvibz.com", "https://tripvibz.com", "https://tripvibz.pages.dev"];
   var gisReady = null;
 
