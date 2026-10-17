@@ -59,7 +59,7 @@
   /* ---------- data ---------- */
 
   async function loadCity(slug) {
-    var r = await sb.from("cities").select("id,name,state,slug").eq("slug", slug).maybeSingle();
+    var r = await sb.from("cities").select("id,name,state,slug,lat,lng,photo").eq("slug", slug).maybeSingle();
     return r.data || null;
   }
 

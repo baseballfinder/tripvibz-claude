@@ -42,6 +42,10 @@
   const { sb, $, escapeHtml: esc, auth } = window.TV;
   const T2 = window.TV2;
   const SLUG = window.TV.parseRoute().city;
+  const PHOTO_BASE = "https://nkxorlktzbgwqnfwmuus.supabase.co/storage/v1/object/public/city-photos/";
+  // Attribution for openly licensed hero photos (Wikimedia Commons etc.).
+  const PHOTO_CREDIT = {
+  };
 
   const SECTIONS = [["all","Everything"],["what_not_to_do","What not to do"],["worst_times","Worst times"],["hidden_gem","What locals do"]];
   let CITY = null, POSTS = [], CTX = null, QS = [], SECTION = "all", SORT = "top";
@@ -72,9 +76,11 @@
     const votes = POSTS.reduce((s,p) => s + p.ups + p.downs, 0) + QS.reduce((s,q) => s + T2.qTotal(q), 0);
     $("#city").innerHTML = `
       <a class="back" href="/cities/">← All cities</a>
+      <img class="city-hero" src="${PHOTO_BASE}${encodeURIComponent(CITY.photo || CITY.slug + ".webp")}" alt="${esc(CITY.name)}" width="800" height="500" onerror="this.nextElementSibling && this.nextElementSibling.classList.contains('photo-credit') && this.nextElementSibling.remove(); this.remove()">
+      ${PHOTO_CREDIT[CITY.slug] ? `<a class="photo-credit" href="${PHOTO_CREDIT[CITY.slug][1]}" target="_blank" rel="noopener">Photo: ${esc(PHOTO_CREDIT[CITY.slug][0])}</a>` : ""}
       <div class="kicker">${esc(CITY.name)}${CITY.state ? ", " + esc(CITY.state) : ""}</div>
       <h1>What locals say about ${esc(CITY.name)}</h1>
-      <div class="stats"><span>${POSTS.length} take${POSTS.length === 1 ? "" : "s"}</span><span>${locals} local${locals === 1 ? "" : "s"}</span><span>${votes} vote${votes === 1 ? "" : "s"}</span></div>
+      ${POSTS.length || votes ? `<div class="stats"><span>${POSTS.length} take${POSTS.length === 1 ? "" : "s"}</span><span>${locals} local${locals === 1 ? "" : "s"}</span><span>${votes} vote${votes === 1 ? "" : "s"}</span></div>` : ""}
       <div style="height:14px"></div>
       ${questionCard()}
       <nav class="chips" aria-label="Sections">${SECTIONS.map(([id,l]) => `<button class="chip" data-sec="${id}" aria-pressed="${SECTION===id}">${l}</button>`).join("")}</nav>
