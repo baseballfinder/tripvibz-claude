@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://nkxorlktzbgwqnfwmuus.supabase.co" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Public+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/site.css">
+<link rel="stylesheet" href="/assets/v2.css">
 <script src="/assets/analytics.js"></script>
 <style>
   :root{--maxw:720px}
@@ -29,46 +30,6 @@
   .areas{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0 2px}
   .areas button{font-size:12.5px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:999px;padding:5px 12px;cursor:pointer;font-family:"Public Sans"}
   .areas button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
-
-  /* the article body: ranked contributions */
-  .entries{counter-reset:tv;margin-top:22px}
-  .entry{position:relative;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px 16px 58px;margin-bottom:13px}
-  .entry::before{counter-increment:tv;content:counter(tv);position:absolute;left:18px;top:17px;font-family:"Archivo";font-weight:900;font-size:20px;color:var(--sand);line-height:1}
-  .entry .t{font-size:16.5px;color:#2e2b25;line-height:1.55;font-weight:500}
-  .entry .more{font-size:14.5px;color:#4a463d;margin-top:9px;white-space:pre-wrap}
-  .entry .foot{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:13px;font-size:12.5px;color:var(--muted)}
-  .entry .who b{color:var(--ink);font-weight:700}
-  .entry .area{color:var(--ocean);font-weight:600;text-decoration:none}
-
-  .empty-article{background:#fff;border:1px dashed var(--line);border-radius:var(--radius);padding:30px 22px;text-align:center;margin-top:22px}
-  .empty-article b{font-family:"Archivo";font-size:17px;display:block;margin-bottom:7px}
-  .empty-article p{color:var(--muted);font-size:14.5px;margin:0;line-height:1.5}
-
-  /* inline contribution */
-  .add{background:var(--ink);border-radius:var(--radius);padding:22px 22px 20px;margin:28px 0 6px;color:#fff;scroll-margin-top:80px}
-  .add .kicker{font-family:"Archivo";font-weight:700;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--coral);margin-bottom:9px}
-  .add h2{font-size:20px;font-weight:900;color:#fff;line-height:1.2;margin-bottom:9px}
-  .add .eg{font-size:13.5px;color:#b8b2a4;font-style:italic;border-left:3px solid #3a352b;padding-left:11px;margin:0 0 15px;line-height:1.5}
-  .add textarea{width:100%;border:1.5px solid #3a352b;border-radius:11px;padding:13px 14px;font:inherit;font-size:16px;resize:vertical;min-height:104px;background:#211e18;color:#f4f1e9;line-height:1.5}
-  .add textarea::placeholder{color:#6f6a5e}
-  .add textarea:focus{outline:2px solid var(--coral);outline-offset:1px;background:#262219}
-  .add .row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:9px 1px 13px}
-  .add .counter{font-size:12px;color:#8b8577}
-  .add .swap{border:none;background:none;color:#b8b2a4;font-size:12.5px;font-weight:600;cursor:pointer;font-family:"Public Sans";text-decoration:underline;padding:0}
-  .add .swap:hover{color:#fff}
-  .add .btn{width:100%;font-size:16px;padding:14px}
-  .add .btn[disabled]{opacity:.55;cursor:not-allowed}
-  .add.hero{margin-top:14px;border:2px solid var(--coral)}
-  .add .sub{color:#d8d2c4;font-size:15px;line-height:1.5;margin:0 0 13px}
-  .add .spots{display:flex;align-items:center;gap:5px;margin:0 0 16px}
-  .add .spots i{width:14px;height:14px;border-radius:50%;border:1.5px solid #5a5446;display:inline-block}
-  .add .spots i.on{background:var(--coral);border-color:var(--coral)}
-  .add .spots{flex-wrap:wrap}
-  .add .spots span{font-size:12.5px;color:#b8b2a4;margin-left:6px;font-weight:600;white-space:nowrap}
-  .add .starters{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 12px}
-  .add .starters button{font:inherit;font-size:13.5px;border:1.5px solid #3a352b;background:#262219;color:#f4f1e9;border-radius:999px;padding:7px 12px;cursor:pointer;text-align:left}
-  .add .starters button:hover,.add .starters button:focus{border-color:var(--coral);outline:none}
-  .add .fine{font-size:11.5px;color:#8b8577;margin-top:11px;line-height:1.5}
 
   /* ---- month calendar (worst_times only) ---- */
   .cal{margin-top:34px}
@@ -120,11 +81,8 @@
   .ev-gate{text-align:center;padding:6px 0 2px}
   .ev-gate p{font-size:13.5px;color:var(--muted);margin:0 0 12px}
 
-  .nudge{background:#fff8e6;border:1px solid #f0dca8;color:#7a5b00;font-size:13px;font-weight:600;border-radius:9px;padding:11px 13px;margin:0 0 12px;line-height:1.45}
-  .nudge b{display:block;margin-bottom:3px}
   .reject{background:#ffe7e0;border:1px solid #f5c4b6;color:#a52d15;font-size:13.5px;font-weight:600;border-radius:9px;padding:11px 13px;margin:0 0 12px;line-height:1.45}
-  .saved{background:#dff3ec;border:1px solid #a8ddcd;color:#0c6b5e;font-size:13.5px;font-weight:600;border-radius:9px;padding:11px 13px;margin:0 0 12px}
-  .thanks{background:#dff3ec;border:1px solid #a8ddcd;color:#0c6b5e;border-radius:9px;padding:13px 15px;margin:0 0 12px;font-size:14px;font-weight:600}
+  main{padding-bottom:110px}
 </style>
 </head>
 <body>
@@ -143,14 +101,21 @@
   </div>
 </main>
 
+<a class="fab" id="fab" href="#" hidden>
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+  <span>Add your take</span>
+</a>
+
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/assets/tv.js"></script>
+<script src="/assets/v2.js"></script>
 <script>
 (function(){
   "use strict";
-  const { sb, $, escapeHtml, timeAgo, toast, auth, openLogin, isSignedIn, moderationMessage, persistVote, submitTake, routes, CHEVRON } = window.TV;
+  const { sb, $, escapeHtml, toast, auth, openLogin, isSignedIn, moderationMessage, routes } = window.TV;
+  const T2 = window.TV2;
 
   const qs = new URLSearchParams(location.search);
   const R = window.TV.parseRoute();
@@ -158,9 +123,6 @@
   const THEME = R.theme || "what_not_to_do";
   const JUMP  = qs.get("add") === "1";
   // Links from Miami Take (email/social) carry src=miamitake.
-  const FROM_MT = (qs.get("src") || qs.get("utm_source") || "").toLowerCase().indexOf("miamitake") === 0;
-  const FOUNDING_SPOTS = 10;
-  const DRAFT_KEY = "tv_pending_take";
 
   // ---------------------------------------------------------------------
   // Themes = the articles. Adding one here creates a new article on every
@@ -173,7 +135,7 @@
       starters: c => [`Never ___ in ${c}, because ___.`, `Skip ___. Locals ___ instead.`, `Visitors always ___. Don't.`],
       nav:   "What not to do",
       title: c => `What not to do in ${c}`,
-      lede:  c => `The mistakes visitors make in ${c}, according to people who live there. Ranked by how many locals cosigned them.`,
+      lede:  c => `The mistakes visitors make in ${c}, according to people who live there. Ranked by how many locals say it's true.`,
       ask:   c => `What do visitors get wrong in ${c}?`,
       prompts: [
         "Standing in the bike lane to take photos. It's a road, not a viewing platform.",
@@ -214,7 +176,7 @@
 
   const CFG = THEMES[THEME];
 
-  let CITY = null, ENTRIES = [], PLACES = [], AREA = "all", promptIx = 0;
+  let CITY = null, ENTRIES = [], CTX = null;
   let EVENTS = [], SEL_MONTH = new Date().getMonth() + 1, evEgIx = 0;
 
   // Deliberately generic. Naming one city's festival on another city's page
@@ -254,40 +216,16 @@
   const spanLabel = ev => ev.start_month === ev.end_month
     ? MONTHS_LONG[ev.start_month-1]
     : `${MONTHS[ev.start_month-1]} – ${MONTHS[ev.end_month-1]}`;
-  const PROFILES = {}, myVotes = {};
-  const VERIFIED = {};   // author_id -> true when verified local for THIS city
-
-  function localBadge(p){
-    if(VERIFIED[p.author_id]) return ' <span class="loc loc-verified">Verified local</span>';
-    if(p.city_match === true)  return ' <span class="loc loc-local">Local</span>';
-    return "";
-  }
 
   function fail(msg){
     $("#root").innerHTML = `<div class="state"><b>Can't load that</b>${escapeHtml(msg)}<br><br><a href="/cities/">← Pick a city</a></div>`;
   }
-  function authorName(id){
-    if(id && auth.me && id === auth.me.id) return "You";
-    const p = id ? PROFILES[id] : null;
-    return p ? (p.display_name || p.username || "A local") : "A local";
-  }
-  const visible = () => AREA === "all" ? ENTRIES : ENTRIES.filter(e => (e.place_id || "none") === AREA);
-
-  // advisory only — the DB trigger is the hard boundary
-  const BIZ = /\b(restaurant|cafe|café|bar|hotel|motel|resort|shop|store|salon|spa|club|grill|diner|bistro|tavern|pub|inn|lounge)\b/i;
-  const NAMED = /\b[A-Z][a-z]{2,}(?:'s|s')\b/;
-  const STAFF = /\b(owner|manager|waiter|waitress|bartender|server|staff|employee)\b/i;
-  function businessNudge(t){
-    const n = NAMED.test(t), b = BIZ.test(t), s = STAFF.test(t);
-    return ((n&&b)||(n&&s)||(b&&s))
-      ? "This reads like a review of one business. We publish how the city works — the pattern, not the place. Can you say it as the thing visitors should know generally?"
-      : null;
-  }
+  const addHref = text => `/${encodeURIComponent(SLUG)}/add/?kind=${encodeURIComponent(THEME)}` + (text ? `&text=${encodeURIComponent(text)}` : "");
 
   // ---------------------------------------------------------------------
   function render(){
-    const list = visible();
-    const contributors = new Set(ENTRIES.map(e=>e.author_id).filter(Boolean)).size;
+    const list = T2.sortPosts(ENTRIES, "top");
+    const locals = new Set(ENTRIES.filter(e => e.author_verified && e.author_id).map(e => e.author_id)).size;
 
     $("#root").innerHTML = `
       <a class="back" href="${routes.city(CITY.slug)}">← ${escapeHtml(CITY.name)}</a>
@@ -296,7 +234,7 @@
         <div class="kicker">${escapeHtml(CITY.name)}${CITY.state ? ", "+escapeHtml(CITY.state) : ""}</div>
         <h1>${escapeHtml(CFG.title(CITY.name))}</h1>
         <p class="lede">${escapeHtml(CFG.lede(CITY.name))}</p>
-        <div class="by">${ENTRIES.length} take${ENTRIES.length===1?"":"s"}${contributors ? ` from ${contributors} local${contributors===1?"":"s"}` : ""}</div>
+        ${ENTRIES.length ? `<div class="by">${ENTRIES.length} take${ENTRIES.length===1?"":"s"}${locals ? ` · ${locals} signed-in local${locals===1?"":"s"}` : ""}</div>` : ""}
       </div>
 
       <div class="themes">
@@ -305,41 +243,34 @@
         ).join("")}
       </div>
 
-      ${PLACES.length ? `<div class="areas" id="areas">
-        <button aria-pressed="${AREA==="all"}" data-a="all">Everywhere</button>
-        ${PLACES.map(p=>`<button aria-pressed="${AREA===p.id}" data-a="${p.id}">${escapeHtml(p.name)}</button>`).join("")}
-      </div>` : ""}
-
-      <div class="entries" id="entries">
-        ${list.length ? list.map(entry).join("") : ""}
+      <div class="feed" id="entries" style="margin-top:20px">
+        ${list.length ? list.map(p => T2.takeHtml(p, CTX)).join("") :
+          `<div class="empty2"><b>No takes here yet</b>Live in ${escapeHtml(CITY.name)}? One sentence is enough, and the first 10 signed-in locals are its founding locals.</div>`}
       </div>
 
-      ${list.length ? "" : addBlock(true, contributors)}
+      ${addCard()}
 
-      ${THEME === "worst_times" ? calendarBlock() : ""}
+      ${THEME === "worst_times" ? calendarBlock() : ""}`;
 
-      ${list.length ? addBlock(false) : ""}`;
-
-    wire();
+    $("#entries").addEventListener("click", async e => {
+      const b = e.target.closest("[data-vote]"); if (!b) return;
+      const p = ENTRIES.find(x => x.id === b.dataset.id); if (!p) return;
+      await T2.castVote(p, CTX, Number(b.dataset.vote));
+      b.closest(".take").outerHTML = T2.takeHtml(p, CTX);
+    });
     if(THEME === "worst_times") wireCalendar();
-    if(JUMP && !window.__jumped){ window.__jumped = true; $("#add").scrollIntoView({behavior:"smooth",block:"center"}); $("#take").focus({preventScroll:true}); }
   }
 
-  function entry(p){
-    const my = myVotes[p.id] || 0;
-    const area = p.place_id && PLACES.find(x=>x.id===p.place_id);
-    return `<article class="entry">
-      <div class="t">${escapeHtml(p.title)}</div>
-      ${p.body ? `<div class="more">${escapeHtml(p.body)}</div>` : ""}
-      <div class="foot">
-        <button class="endorse ${my===1?"on":""}" data-vote="1" data-id="${p.id}" aria-pressed="${my===1}">
-          ${CHEVRON}<span>${my===1?"Cosigned":"Cosign"}</span><b>${p.ups}</b>
-        </button>
-        <span class="who">by <b>${escapeHtml(authorName(p.author_id))}</b>${localBadge(p)} · ${timeAgo(p.created_at)} ago</span>
-        ${area ? `<a class="area" href="${routes.place(area.id)}">${escapeHtml(area.name)}</a>` : ""}
-        <a class="cmt-link" href="${routes.thread(p.id)}" style="color:inherit;text-decoration:none">💬 ${p.comment_count}</a>
-      </div>
-    </article>`;
+  // Posting happens on the city's add page (kinds, places, months, optional
+  // sign-in). Here: one tap on a starter or the button takes you there.
+  function addCard(){
+    return `<section class="qcard" style="margin-top:22px">
+      <div class="qk">${ENTRIES.length ? "Add yours" : "Locals only"}</div>
+      <div class="qp">${escapeHtml(ENTRIES.length ? CFG.ask(CITY.name) : CFG.vent(CITY.name))}</div>
+      <div class="qopts">${CFG.starters(CITY.name).map(s =>
+        `<a class="qopt" href="${addHref(s)}"><span>${escapeHtml(s)}</span></a>`).join("")}</div>
+      <a class="btn coral" href="${addHref("")}" style="display:flex;justify-content:center;margin-top:14px;text-decoration:none">Write your own</a>
+    </section>`;
   }
 
   function calendarBlock(){
@@ -487,192 +418,29 @@
     }
   }
 
-  // Empty article: the composer IS the page. A blank box asks people to
-  // invent a format; tappable sentence starters hand them one.
-  function addBlock(hero, contributors){
-    const eg = CFG.prompts[promptIx % CFG.prompts.length];
-    const left = Math.max(FOUNDING_SPOTS - (contributors || 0), 0);
-    // Lead with the itch locals already have (tourists), not our need for
-    // content. "Help build a guide" is our motive, not theirs.
-    const kicker = hero
-      ? (FROM_MT ? `For people who live in ${CITY.name}` : "Locals only")
-      : "Add to this article";
-    const heading = hero ? CFG.vent(CITY.name) : CFG.ask(CITY.name);
-    return `<section class="add ${hero ? "hero" : ""}" id="add">
-      <div class="kicker">${escapeHtml(kicker)}</div>
-      <h2>${escapeHtml(heading)}</h2>
-      ${hero ? `<p class="sub">Say it here and visitors will actually read it. One sentence is enough. You'll be one of ${escapeHtml(CITY.name)}'s first ${FOUNDING_SPOTS} founding locals.</p>
-      <div class="spots" aria-label="${left} of ${FOUNDING_SPOTS} founding spots open">${
-        Array.from({length: FOUNDING_SPOTS}, (_, i) => `<i class="${i < FOUNDING_SPOTS - left ? "on" : ""}"></i>`).join("")
-      }<span>${left} of ${FOUNDING_SPOTS} spots open</span></div>` : ""}
-      <div class="starters" id="starters">${CFG.starters(CITY.name).map(s =>
-        `<button type="button" data-s="${escapeHtml(s)}">${escapeHtml(s)}</button>`).join("")}</div>
-      <p class="eg">${escapeHtml(eg)}</p>
-      <div id="slot"></div>
-      <textarea id="take" maxlength="600" placeholder="One or two sentences is plenty…"></textarea>
-      <div class="row">
-        <span class="counter" id="counter">0 / 600</span>
-        <button class="swap" id="swap">Show another example</button>
-      </div>
-      <button class="btn coral" id="send">Add my take</button>
-      <p class="fine">We publish how a city works — timing, norms, geography, the things
-        locals just know. Not complaints about a specific business or its staff.</p>
-    </section>`;
-  }
-
-  function wire(){
-    const ta = $("#take"), counter = $("#counter");
-    ta.addEventListener("input", ()=>{
-      counter.textContent = `${ta.value.length} / 600`;
-      counter.classList.toggle("over", ta.value.length >= 600);
-    });
-    $("#swap").addEventListener("click", ()=>{
-      promptIx++;
-      $("#add").querySelector(".eg").textContent = CFG.prompts[promptIx % CFG.prompts.length];
-    });
-    $("#send").addEventListener("click", submit);
-    $("#starters").addEventListener("click", e=>{
-      const b = e.target.closest("button[data-s]"); if(!b) return;
-      ta.value = b.dataset.s;
-      ta.dispatchEvent(new Event("input"));
-      ta.focus();
-      const i = ta.value.indexOf("___");
-      if(i >= 0) ta.setSelectionRange(i, i + 3);   // typing replaces the first blank
-    });
-    ta.addEventListener("keyup", e=>{
-      // Tab-free blank hopping: after filling one blank, select the next.
-      if(e.key !== "Enter" || !e.ctrlKey) return;
-      const i = ta.value.indexOf("___"); if(i >= 0) ta.setSelectionRange(i, i + 3);
-    });
-
-    const areas = $("#areas");
-    if(areas) areas.addEventListener("click", e=>{
-      const b = e.target.closest("button[data-a]"); if(!b) return;
-      AREA = b.dataset.a; render();
-    });
-
-    $("#entries").addEventListener("click", e=>{
-      const b = e.target.closest("[data-vote]"); if(!b) return;
-      vote(b.dataset.id);
-    });
-  }
-
-  function vote(id){
-    const p = ENTRIES.find(x=>x.id===id); if(!p) return;
-    const next = (myVotes[id]||0) === 1 ? 0 : 1;
-    p.ups += next === 1 ? 1 : -1;
-    myVotes[id] = next;
-    sortEntries(); render();
-    persistVote(id, next);
-  }
-
-  const sortEntries = () => ENTRIES.sort((a,b)=>(b.ups-b.downs)-(a.ups-a.downs) || new Date(a.created_at)-new Date(b.created_at));
-  const slot = html => { const s = $("#slot"); if(s) s.innerHTML = html; };
-
-  async function submit(){
-    const ta = $("#take");
-    const text = (ta.value || "").trim();
-    if(text.length < 15){ toast("A few more words — one sentence is fine"); ta.focus(); return; }
-    const blank = text.indexOf("___");
-    if(blank >= 0){ toast("Fill in the blanks first"); ta.focus(); ta.setSelectionRange(blank, blank + 3); return; }
-
-    const nudge = businessNudge(text);
-    if(nudge && !ta.dataset.nudged){
-      ta.dataset.nudged = "1";
-      slot(`<div class="nudge"><b>Keep it about the city</b>${escapeHtml(nudge)}</div>`);
-      return;
-    }
-
-    // Finish on the city's post page: place, months, and optional sign-in live there.
-    location.href = `/${encodeURIComponent(SLUG)}/add/?kind=${encodeURIComponent(THEME)}&text=${encodeURIComponent(text)}`;
-  }
-
-  async function publish(text, btn){
-    if(btn){ btn.disabled = true; btn.textContent = "Adding…"; }
-    const title = text.length <= 140 ? text : text.slice(0,137).replace(/\s+\S*$/,"") + "…";
-    const body  = text.length <= 140 ? null : text;
-
-    try{
-      const { row } = await submitTake({
-        title, body, type: THEME,
-        city_id: CITY.id,
-        city_name: CITY.name,
-        place_id: AREA === "all" ? null : AREA
-      });
-
-      PROFILES[auth.me.id] = PROFILES[auth.me.id] || { id: auth.me.id, display_name: "You" };
-      ENTRIES.push(row);
-      sortEntries();
-      try{ sessionStorage.removeItem(DRAFT_KEY); }catch(e){}
-      render();
-      slot(`<div class="thanks">That's live in the article now. Got another?</div>`);
-      toast("Added — thanks");
-    }catch(e){
-      console.error(e);
-      if(btn){ btn.disabled = false; btn.textContent = "Add my take"; }
-      const blocked = moderationMessage(e);
-      if(blocked) slot(`<div class="reject">${escapeHtml(blocked)}</div>`);
-      else toast("Couldn't add that — try again");
-    }
-  }
-
-  async function resumeDraft(){
-    let d = null;
-    try{ d = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || "null"); }catch(e){}
-    if(!d || d.slug !== SLUG || d.theme !== THEME || !isSignedIn()) return;
-    await publish(d.text, null);
-  }
-
   (async function init(){
     if(!CFG){ fail("That article type doesn't exist."); return; }
     if(!SLUG){ fail("No city specified."); return; }
+    if(JUMP){ location.replace(addHref("")); return; }
 
-    const { data: city, error } = await sb.from("cities")
-      .select("id,name,state,slug").eq("slug", SLUG).maybeSingle();
-    if(error || !city){ fail("We're not covering that city yet."); return; }
-    CITY = city;
-    document.title = `TripVibz · ${CFG.title(city.name)}`;
+    CITY = await T2.loadCity(SLUG);
+    if(!CITY){ fail("We're not covering that city yet."); return; }
+    document.title = `TripVibz · ${CFG.title(CITY.name)}`;
+    const fab = $("#fab"); fab.href = addHref(""); fab.hidden = false;
 
     if(THEME === "worst_times"){
       const { data: evs } = await sb.from("city_events")
         .select("id,name,blurb,kind,severity,start_month,end_month")
-        .eq("city_id", city.id);
+        .eq("city_id", CITY.id);
       EVENTS = evs || [];
     }
 
-    const [{ data: rows }, { data: places }] = await Promise.all([
-      sb.from("posts")
-        .select("id,title,body,type,ups,downs,comment_count,created_at,author_id,place_id,city_match")
-        .eq("city_id", city.id).eq("type", THEME),
-      sb.from("places").select("id,name").eq("city_id", city.id).order("name")
-    ]);
-    ENTRIES = rows || [];
-    sortEntries();
-
-    // only offer area chips that actually have takes in this theme
-    const used = new Set(ENTRIES.map(e=>e.place_id).filter(Boolean));
-    PLACES = (places || []).filter(p => used.has(p.id));
-
-    const ids = [...new Set(ENTRIES.map(e=>e.author_id).filter(Boolean))];
-    if(ids.length){
-      const [{ data: profs }, { data: loc }] = await Promise.all([
-        sb.from("profiles").select("id,username,display_name").in("id", ids),
-        sb.from("contributor_local_status")
-          .select("author_id,verified_local").eq("city_id", city.id).in("author_id", ids)
-      ]);
-      (profs||[]).forEach(p=>PROFILES[p.id]=p);
-      (loc||[]).forEach(r=>{ if(r.verified_local) VERIFIED[r.author_id] = true; });
-    }
-
     await auth.ensure();
-    if(auth.me && ENTRIES.length){
-      const { data: v } = await sb.from("votes").select("post_id,value")
-        .eq("user_id", auth.me.id).in("post_id", ENTRIES.map(e=>e.id));
-      (v||[]).forEach(x=>{ myVotes[x.post_id] = x.value; });
-    }
-
+    await T2.finishClaim();
+    const { data: rows } = await sb.from("posts").select(T2.POST_COLS).eq("city_id", CITY.id).eq("type", THEME);
+    ENTRIES = rows || [];
+    CTX = await T2.hydrate(ENTRIES, CITY.id);
     render();
-    await resumeDraft();
   })();
 })();
 </script>
