@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,follow">
+<title>Add a take · TripVibz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://nkxorlktzbgwqnfwmuus.supabase.co" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/site.css">
+<link rel="stylesheet" href="/assets/v2.css">
+<script src="/assets/analytics.js"></script>
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="/"><span class="dot"></span>TripVibz</a>
+    <div class="nav-right"><div id="auth-slot"></div></div>
+  </div>
+</header>
+<main class="v2" id="root"><div class="state"><b>Loading…</b></div></main>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/tv.js"></script>
+<script src="/assets/v2.js"></script>
+<script>
+(function(){
+  "use strict";
+  const { sb, $, escapeHtml: esc, auth, submitTake, moderationMessage, toast } = window.TV;
+  const T2 = window.TV2;
+  const SLUG = window.TV.parseRoute().city;
+  const qs = new URLSearchParams(location.search);
+  const DRAFT_KEY = "tv_v2_draft";
+
+  let CITY = null, PLACES = [], MY_TENURE = null, QS = [];
+  const S = { kind: "what_not_to_do", text: "", place: "", customPlace: "", months: [], tenure: null, err: "", busy: false };
+  try { const k = qs.get("kind"); if (T2.KIND[k]) S.kind = k; const t = qs.get("text"); if (t) S.text = t.slice(0, 400); } catch (e) {}
+
+  const signedIn = () => !!(auth.me && !auth.me.is_anonymous);
+  const placeValue = () => (S.place === "__custom" ? S.customPlace.trim() : S.place) || "";
+
+  /* ---------------- compose ---------------- */
+  function compose(){
+    const K = T2.KIND[S.kind];
+    const needTenure = !MY_TENURE;
+    const tenureLabel = S.tenure || MY_TENURE;
+    const badge = tenureLabel ? T2.tenureBadge(tenureLabel) : "Local";
+    $("#root").innerHTML = `
+      <div class="row-between" style="min-height:44px;margin-top:6px">
+        <a class="back" href="/${CITY.slug}/">← ${esc(CITY.name)}</a>
+      </div>
+      <h1 style="font-size:24px">What do tourists get wrong about ${esc(CITY.name)}?</h1>
+
+      <div class="sect"><h2>What kind of take?</h2>
+        <div class="kinds">${Object.keys(T2.KIND).map(k => `<button class="kind" data-kind="${k}" aria-pressed="${S.kind===k}"><b>${esc(T2.KIND[k].label)}</b><span>${esc(T2.KIND[k].sub)}</span></button>`).join("")}</div>
+      </div>
+
+      <div class="sect"><label class="h" for="take">Say it in one sentence</label>
+        <div class="wrapchips" style="margin-bottom:8px">${K.starters(CITY.name).map(s => `<button class="starter" data-starter="${esc(s)}">${esc(s)}</button>`).join("")}</div>
+        <textarea class="ta" id="take" maxlength="400" placeholder="Tap a starter, or just say it.">${esc(S.text)}</textarea>
+      </div>
+
+      <div class="sect"><h2>Where does it apply?</h2>
+        <div class="wrapchips">
+          ${PLACES.map(p => `<button class="chip" data-place="${esc(p)}" aria-pressed="${S.place===p}">${esc(p)}</button>`).join("")}
+          <button class="chip" data-place="Whole city" aria-pressed="${S.place==="Whole city"}">Whole city</button>
+          <button class="chip dashed" data-place="__custom" aria-pressed="${S.place==="__custom"}">+ Another spot</button>
+        </div>
+        ${S.place === "__custom" ? `<input class="inp" id="custom" maxlength="60" placeholder="e.g. Las Olas, the beach, the airport" value="${esc(S.customPlace)}" style="margin-top:8px;width:100%" aria-label="Place name">` : ""}
+      </div>
+
+      <div class="sect"><h2>When? <span style="font:500 13px 'Public Sans';color:#5f5a50">optional</span></h2>
+        <div class="sub">Tap the months it's true. Leave blank if it's year-round.</div>
+        <div class="months">${T2.MON.map((m,i) => `<button data-month="${i+1}" aria-pressed="${S.months.includes(i+1)}">${m}</button>`).join("")}</div>
+      </div>
+
+      ${needTenure ? `<div class="sect box"><h2 style="margin-bottom:4px">How long have you lived in ${esc(CITY.name)}?</h2>
+        <div class="sub" style="margin:0 0 10px">We ask once. It shows as a badge on your takes when you sign in.</div>
+        <div class="wrapchips">${Object.keys(T2.TENURE).map(t => `<button class="chip" data-tenure="${t}" aria-pressed="${S.tenure===t}">${esc(T2.TENURE[t])}</button>`).join("")}</div>
+      </div>` : ""}
+
+      <div class="sect"><div class="preview-k">How it will look</div>
+        <div class="take" style="padding-bottom:14px">
+          <div class="tags"><span class="tag2">${esc(K.label)}</span>${placeValue() ? `<span class="tag2">${T2.ICON.pin}${esc(placeValue())}</span>` : ""}${S.months.length ? `<span class="tag2">${esc(T2.monthsLabel(S.months))}</span>` : ""}</div>
+          <div class="tt" id="pv">${esc(S.text) || '<span style="color:#9a937f">Your take shows here.</span>'}</div>
+          <div class="who" style="margin-bottom:0"><b>You</b><span class="bdg local">${esc(badge)}</span></div>
+        </div>
+      </div>
+
+      <div id="slot">${S.err ? `<div class="err">${esc(S.err)}</div>` : ""}</div>
+
+      <div class="sect" style="display:flex;flex-direction:column;gap:10px">
+        ${signedIn() ? `
+          <button class="bigbtn" id="post-badge"><b>Post it</b><small>With your name and ${esc(badge)} badge</small></button>` : `
+          <button class="bigbtn" id="post-badge"><b>${T2_GOOGLE}Post with my Local badge</b><small>Your name · ${esc(badge)} · ranks higher · founding local</small></button>
+          <button class="bigbtn ghost" id="post-anon"><b>Post anonymously</b><small>No sign-in. Shows as “Unverified”.</small></button>`}
+      </div>`;
+    wireCompose();
+  }
+
+  const T2_GOOGLE = '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="9" fill="#fff"/><path d="M13.2 9.1c0-.3 0-.6-.1-.9H9v1.7h2.3a2 2 0 0 1-.9 1.3v1.1h1.4c.9-.8 1.4-1.9 1.4-3.2z" fill="#4285F4"/><path d="M9 13.4c1.2 0 2.1-.4 2.8-1l-1.4-1.1c-.4.3-.9.4-1.4.4-1.1 0-2.1-.8-2.4-1.8H5.1v1.1A4.3 4.3 0 0 0 9 13.4z" fill="#34A853"/><path d="M6.6 9.9a2.6 2.6 0 0 1 0-1.7V7.1H5.1a4.3 4.3 0 0 0 0 3.9l1.5-1.1z" fill="#FBBC05"/><path d="M9 6.3c.6 0 1.2.2 1.6.6l1.2-1.2A4.3 4.3 0 0 0 5.1 7.1l1.5 1.1C6.9 7.1 7.9 6.3 9 6.3z" fill="#EA4335"/></svg>';
+
+  function wireCompose(){
+    const root = $("#root");
+    root.querySelectorAll("[data-kind]").forEach(b => b.onclick = () => { S.kind = b.dataset.kind; compose(); });
+    root.querySelectorAll("[data-starter]").forEach(b => b.onclick = () => {
+      S.text = b.dataset.starter; compose();
+      const ta = $("#take"); ta.focus(); const i = ta.value.indexOf("___"); if (i >= 0) ta.setSelectionRange(i, i + 3);
+    });
+    const ta = $("#take");
+    ta.addEventListener("input", () => { S.text = ta.value; $("#pv").textContent = ta.value || "Your take shows here."; });
+    root.querySelectorAll("[data-place]").forEach(b => b.onclick = () => { S.place = S.place === b.dataset.place ? "" : b.dataset.place; compose(); if (S.place === "__custom") $("#custom").focus(); });
+    const cu = $("#custom"); if (cu) cu.addEventListener("input", () => { S.customPlace = cu.value; });
+    root.querySelectorAll("[data-month]").forEach(b => b.onclick = () => {
+      const m = Number(b.dataset.month); S.months = S.months.includes(m) ? S.months.filter(x => x !== m) : S.months.concat(m); compose();
+    });
+    root.querySelectorAll("[data-tenure]").forEach(b => b.onclick = () => { S.tenure = b.dataset.tenure; compose(); });
+    $("#post-badge").onclick = () => submit(true);
+    const an = $("#post-anon"); if (an) an.onclick = () => submit(false);
+  }
+
+  function validate(){
+    const t = (S.text || "").trim();
+    if (t.length < 15) return "A few more words. One full sentence is plenty.";
+    if (t.includes("___")) return "Fill in the blanks first.";
+    return "";
+  }
+
+  async function submit(withBadge){
+    if (S.busy) return;
+    S.err = validate(); if (S.err) { compose(); return; }
+    if (withBadge && !signedIn()) {
+      // Keep the draft, sign in, and publish it as verified after the reload.
+      try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ slug: SLUG, S })); } catch (e) {}
+      await T2.signInForBadge({ pending: true });
+      return;
+    }
+    await publish();
+  }
+
+  async function publish(){
+    S.busy = true;
+    const btns = document.querySelectorAll(".bigbtn"); btns.forEach(b => b.disabled = true);
+    const text = S.text.trim();
+    const title = text.length <= 160 ? text : text.slice(0, 157).replace(/\s+\S*$/, "") + "…";
+    try {
+      if (S.tenure) await T2.saveTenure(CITY.id, S.tenure);
+      const { row } = await submitTake({
+        title, body: text.length > 160 ? text : null, type: S.kind,
+        city_id: CITY.id, city_name: CITY.name,
+        place_label: placeValue() || null, months: S.months.slice().sort((a,b) => a-b)
+      });
+      try { sessionStorage.removeItem(DRAFT_KEY); } catch (e) {}
+      history.replaceState(null, "", `/${CITY.slug}/add/?posted=${row.id}`);
+      await posted(row.id);
+    } catch (err) {
+      console.error(err);
+      S.err = moderationMessage(err) || (/RATE_LIMITED/.test(String(err && err.message))
+        ? (signedIn() ? "That's your limit for today. Come back tomorrow." : "You've posted 3 today without signing in. Sign in to post more.")
+        : "That didn't post. Try again.");
+      S.busy = false; compose();
+    }
+  }
+
+  /* ---------------- after posting ---------------- */
+  async function posted(id){
+    const r = await sb.from("posts").select(T2.POST_COLS).eq("id", id).maybeSingle();
+    const p = r.data;
+    if (!p) { location.replace(`/${CITY.slug}/`); return; }
+    const ctx = await T2.hydrate([p], CITY.id);
+    const mine = auth.me && p.author_id === auth.me.id;
+    const verified = p.author_verified;
+    const rank = ctx.founders[p.author_id];
+    const left = Math.max(0, 10 - ctx.founderCount);
+    const nextQ = QS.find(x => !x.mine);
+    const url = `${location.origin}/${CITY.slug}/`;
+    const badge = verified ? T2.tenureBadge(ctx.tenure[p.author_id]) : (MY_TENURE || S.tenure ? T2.tenureBadge(MY_TENURE || S.tenure) : "Local");
+
+    $("#root").innerHTML = `
+      <div class="row-between" style="min-height:44px;margin-top:6px"><a class="back" href="/${CITY.slug}/">← ${esc(CITY.name)}</a></div>
+      <span class="live">${T2.ICON.check.replace("<svg", '<svg width="14" height="14"')}Your take is live</span>
+      <div style="margin-top:12px">${T2.takeHtml(p, ctx, { noBar: true })}</div>
+
+      ${mine && !verified ? `
+      <section class="dark" style="margin-top:18px">
+        <h2>Get updates on your takes</h2>
+        <div style="font-size:14px;color:#e9e3d7;margin-top:6px">Sign in and this take moves to your name.</div>
+        <ul>
+          <li>Your <b style="color:#fff">${esc(badge)}</b> badge instead of “Unverified”</li>
+          <li>Your takes rank higher in the feed</li>
+          <li>Claim a founding-local spot in ${esc(CITY.name)}${left ? ` (${left} left)` : ""}</li>
+          <li>Email updates when locals vote or reply (coming soon)</li>
+        </ul>
+        <button class="bigbtn" id="claim" style="background:#fff;color:#16130e"><b>${T2_GOOGLE}Continue with Google</b></button>
+        <div class="fine">Takes you already posted move to your name.</div>
+      </section>` : ""}
+
+      ${verified ? `
+      <section class="box" style="margin-top:18px">
+        <div class="row-between" style="font-weight:800;font-size:14.5px"><span>${esc(CITY.name)} founding locals</span><span>${ctx.founderCount} of 10</span></div>
+        <div class="spots" aria-hidden="true">${Array.from({length:10}, (_, i) => `<i class="${i < ctx.founderCount ? "on" : ""}"></i>`).join("")}</div>
+        <div style="font-size:13px;color:#5f5a50">${rank ? `You're founding local #${rank}. ` : ""}${left ? `${left} spot${left === 1 ? "" : "s"} left. Know a local who'd argue with you?` : "All 10 spots are taken."}</div>
+      </section>` : ""}
+
+      <section class="sect">
+        <h2 style="font-size:17px;margin-bottom:4px">Do your friends agree?</h2>
+        <div class="sub" style="margin:0 0 12px">Send your take as a card. Their votes show up on it.</div>
+        <div class="share-row">
+          <canvas id="card" aria-label="Share card preview" role="img"></canvas>
+          <div class="share-btns">
+            <button class="primary" id="share">Share</button>
+            <button id="sms">Text it to a friend</button>
+            <button id="copy">Copy link</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="sect">
+        ${nextQ ? `<a class="next-q" href="/${CITY.slug}/vote/?q=${nextQ.id}"><span><b>${QS.filter(x => !x.mine).length} quick question${QS.filter(x => !x.mine).length === 1 ? "" : "s"} about ${esc(CITY.name)}</b><span>One tap each.</span></span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16130e" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>`
+        : `<a class="next-q" href="/${CITY.slug}/"><span><b>See what other locals said</b><span>${esc(CITY.name)} feed</span></span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16130e" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>`}
+      </section>`;
+
+    const takeUrl = `${location.origin}${window.TV.routes.thread(p.id)}`;
+    const card = { city: CITY.name, text: p.title, place: T2.placeOf(p, ctx), badge: verified ? badge : "", ups: p.ups, downs: p.downs, url: url };
+    const canvas = $("#card"); await T2.drawShareCard(canvas, card);
+    $("#share").onclick = async () => { const r = await T2.shareCard(canvas, Object.assign({}, card, { url: takeUrl })); if (r === "downloaded") toast("Card saved. Post it to your story."); };
+    $("#sms").onclick = () => { location.href = `sms:?&body=${encodeURIComponent(`A ${CITY.name} local says: “${p.title}” True or nope? ${takeUrl}`)}`; };
+    $("#copy").onclick = async () => { try { await navigator.clipboard.writeText(takeUrl); toast("Link copied"); } catch (e) { prompt("Copy this link:", takeUrl); } };
+    const claim = $("#claim"); if (claim) claim.onclick = () => T2.signInForBadge({ pending: false });
+  }
+
+  /* ---------------- init ---------------- */
+  (async function init(){
+    CITY = SLUG && await T2.loadCity(SLUG);
+    if (!CITY) { $("#root").innerHTML = `<div class="state"><b>City not found</b><a href="/cities/">← All cities</a></div>`; return; }
+    document.title = `Add a take about ${CITY.name} · TripVibz`;
+    await auth.ensure();
+    await T2.finishClaim();
+    const [pl, tn, qq] = await Promise.all([
+      sb.from("places").select("name").eq("city_id", CITY.id).order("name"),
+      auth.me ? sb.from("city_tenure").select("tenure").eq("city_id", CITY.id).eq("user_id", auth.me.id).maybeSingle() : { data: null },
+      T2.loadQuestions(CITY.id)
+    ]);
+    PLACES = (pl.data || []).map(x => x.name).slice(0, 8);
+    MY_TENURE = tn.data ? tn.data.tenure : null;
+    QS = qq;
+
+    const postedId = qs.get("posted");
+    if (postedId) { await posted(postedId); return; }
+
+    // Returning from Google sign-in with a saved draft: publish it now.
+    let d = null; try { d = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || "null"); } catch (e) {}
+    if (d && d.slug === SLUG) {
+      Object.assign(S, d.S, { err: "", busy: false });
+      if (signedIn()) { compose(); await publish(); return; }
+    }
+    compose();
+  })();
+})();
+</script>
+</body>
+</html>

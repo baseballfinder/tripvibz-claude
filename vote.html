@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,follow">
+<title>Locals, settle this · TripVibz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://nkxorlktzbgwqnfwmuus.supabase.co" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/site.css">
+<link rel="stylesheet" href="/assets/v2.css">
+<script src="/assets/analytics.js"></script>
+<style>
+  body{background:#16130e;color:#fff}
+  .vote-wrap{max-width:560px;margin:0 auto;padding:10px 20px 40px;min-height:100vh;display:flex;flex-direction:column}
+  .vote-wrap a.back{color:#fff}
+  .vote-wrap h1{font-weight:900;font-size:clamp(26px,7vw,32px);line-height:1.12;margin:10px 0 8px;color:#fff}
+  .vote-wrap .lede{margin:0 0 22px;color:#c9c2b4;font-size:14.5px}
+  .verdict{margin-top:18px;font-family:"Archivo";font-weight:800;font-size:18px}
+  .vnote{font-size:13px;color:#c9c2b4;margin-top:4px}
+  .why{display:block;margin-top:22px;font-weight:700;font-size:14.5px}
+  .why span{color:#c9c2b4;font-weight:500}
+  .vote-wrap textarea{margin-top:8px;width:100%;min-height:92px;border-radius:14px;border:1.5px solid #4a443a;background:#221f19;color:#fff;padding:12px 14px;font:16px/1.45 "Public Sans",sans-serif;resize:vertical}
+  .vote-wrap textarea:focus{outline:2px solid #ff9b80;outline-offset:1px}
+  .vbtns{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+  .vbtns button,.vbtns a{display:flex;align-items:center;justify-content:center;min-height:54px;border-radius:999px;font:800 16px "Archivo",sans-serif;text-decoration:none;cursor:pointer}
+  .vbtns .p{border:none;background:#e8492a;color:#16130e}
+  .vbtns .s{border:1.5px solid #4a443a;background:transparent;color:#fff;font:700 15px "Public Sans",sans-serif}
+  .vbtns .g{border:none;background:#fff;color:#16130e}
+  .vote-wrap .err{margin-top:12px}
+</style>
+</head>
+<body>
+<main class="vote-wrap" id="root"><div class="state"><b>Loading…</b></div></main>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/tv.js"></script>
+<script src="/assets/v2.js"></script>
+<script>
+(function(){
+  "use strict";
+  const { sb, $, escapeHtml: esc, auth, submitTake, moderationMessage } = window.TV;
+  const T2 = window.TV2;
+  const SLUG = window.TV.parseRoute().city;
+  const qs = new URLSearchParams(location.search);
+  let CITY = null, QS = [], Q = null, ERR = "";
+
+  function subjectOf(prompt){ const i = prompt.indexOf(":"); return i > 0 ? prompt.slice(0, i) : ""; }
+
+  function render(){
+    const idx = QS.indexOf(Q), voted = !!Q.mine;
+    const total = T2.qTotal(Q);
+    const nextQ = QS.find(x => !x.mine && x !== Q);
+    let verdict = "";
+    if (voted) {
+      const share = total ? Math.round(100 * (Q.counts[Q.mine] || 0) / total) : 100;
+      verdict = total <= 1 ? "You're the first to answer. Tell visitors why."
+        : share >= 50 ? `${share}% of locals agree with you.`
+        : `Only ${share}% picked that. Tell them why.`;
+    }
+    $("#root").innerHTML = `
+      <div class="row-between" style="min-height:44px">
+        <a class="back" href="/${CITY.slug}/">← ${esc(CITY.name)}</a>
+        <span style="font-size:12.5px;color:#c9c2b4;font-weight:600">Question ${idx + 1} of ${QS.length}</span>
+      </div>
+      <div class="kicker" style="color:#ff9b80;margin-top:22px">Locals, settle this</div>
+      <h1>${esc(Q.prompt)}</h1>
+      <p class="lede">Visitors planning a trip see what locals picked.</p>
+      <div class="qopts" id="opts">${T2.qOptionsHtml(Q, false)}</div>
+      ${voted ? `
+        <div class="verdict">${esc(verdict)}</div>
+        <div class="vnote">${total} vote${total === 1 ? "" : "s"} so far</div>
+        <label class="why" for="why">Why? <span>(optional, one sentence)</span></label>
+        <textarea id="why" maxlength="400" placeholder="${esc((Q.options.find(o => o.id === Q.mine) || {}).label || "")} because…"></textarea>
+        <div id="slot">${ERR ? `<div class="err">${esc(ERR)}</div>` : ""}</div>
+        <div class="vbtns">
+          <button class="p" id="post">Post my take</button>
+          ${nextQ ? `<a class="s" href="/${CITY.slug}/vote/?q=${nextQ.id}">Skip · next question</a>` : `<a class="s" href="/${CITY.slug}/">See what locals said</a>`}
+        </div>` : ""}`;
+    $("#opts").addEventListener("click", async e => {
+      const b = e.target.closest("[data-opt]"); if (!b) return;
+      await T2.answer(Q, b.dataset.opt); ERR = ""; render();
+    });
+    const post = $("#post");
+    if (post) post.addEventListener("click", async () => {
+      const why = ($("#why").value || "").trim();
+      if (why.length < 8) { $("#why").focus(); window.TV.toast("A few words on why. One sentence is fine."); return; }
+      const opt = (Q.options.find(o => o.id === Q.mine) || {}).label || "";
+      const subj = subjectOf(Q.prompt);
+      const lead = subj ? `${subj}: ${opt.toLowerCase()}.` : `${opt}.`;
+      let text = `${lead} ${why}`.replace(/\s+/g, " ").trim();
+      const title = text.length <= 160 ? text : text.slice(0, 157).replace(/\s+\S*$/, "") + "…";
+      post.disabled = true; post.textContent = "Posting…";
+      try {
+        const { row } = await submitTake({
+          title, body: subj ? null : `On: ${Q.prompt}`, type: "what_not_to_do",
+          city_id: CITY.id, city_name: CITY.name, place_label: Q.place_label || null
+        });
+        location.href = `/${CITY.slug}/add/?posted=${row && row.id ? row.id : ""}`;
+      } catch (err) {
+        console.error(err);
+        ERR = moderationMessage(err) || (/RATE_LIMITED/.test(String(err && err.message)) ? "You've posted a few today. Sign in to post more." : "That didn't post. Try again.");
+        render();
+      }
+    });
+  }
+
+  (async function init(){
+    CITY = SLUG && await T2.loadCity(SLUG);
+    if (!CITY) { $("#root").innerHTML = `<div class="state"><b>City not found</b><a href="/cities/">← All cities</a></div>`; return; }
+    await auth.ensure();
+    await T2.finishClaim();
+    QS = await T2.loadQuestions(CITY.id);
+    if (!QS.length) { location.replace(`/${CITY.slug}/`); return; }
+    Q = QS.find(x => x.id === qs.get("q")) || QS.find(x => !x.mine) || QS[0];
+    document.title = `${Q.prompt} · TripVibz`;
+    const a = qs.get("a");
+    // One-tap from email: the link itself is the vote.
+    if (a && Q.options.some(o => o.id === a)) {
+      await T2.answer(Q, a);
+      history.replaceState(null, "", `/${CITY.slug}/vote/?q=${Q.id}`);
+    }
+    render();
+  })();
+})();
+</script>
+</body>
+</html>
