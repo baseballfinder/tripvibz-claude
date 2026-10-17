@@ -36,7 +36,9 @@ try {
 
 const SRC = ".";
 const OUT = "dist";
-const SITE = process.env.SITE_URL || "https://tripvibz.com";
+// www is the host Cloudflare actually serves; the apex redirects to it.
+// Canonicals must name the served host or Google indexes a redirect.
+const SITE = (process.env.SITE_URL || "https://www.tripvibz.com").replace(/\/$/, "");
 
 const SUPABASE_URL = "https://nkxorlktzbgwqnfwmuus.supabase.co";
 const SUPABASE_KEY = "sb_publishable_5UOevsS8KmWWGrQYNWsabg_0sVOIPmB";
@@ -45,7 +47,9 @@ const SUPABASE_KEY = "sb_publishable_5UOevsS8KmWWGrQYNWsabg_0sVOIPmB";
 // so copying it into the output would upload the handler as a static asset.
 const SKIP = new Set([
   "dist", "node_modules", ".git", "supabase", ".github", "functions",
-  "build.mjs", "package.json", "package-lock.json"
+  "build.mjs", "package.json", "package-lock.json",
+  // Maintenance scripts and docs are not site content; never publish them.
+  "scripts", "README.md"
 ]);
 
 const THEMES = {
@@ -119,8 +123,9 @@ async function loadContent() {
 const MONTHS = ["January","February","March","April","May","June","July",
                 "August","September","October","November","December"];
 
-function head({ title, desc, canonical, image }) {
+function head({ title, desc, canonical, image, noindex }) {
   return `<title>${esc(title)}</title>
+${noindex ? `<meta name="robots" content="noindex,follow" />` : ""}
 <meta name="description" content="${esc(desc)}" />
 <link rel="canonical" href="${esc(canonical)}" />
 <meta property="og:type" content="article" />
@@ -158,9 +163,9 @@ function injectInto(html, id, content) {
 // Replace the shell's <title> and inject metadata + pre-rendered body.
 // The shell's own description is stripped FIRST, so it can't delete the one
 // we then inject (that ordering bug shipped pages with no description).
-function render(template, { title, desc, canonical, image, body, mount = "root", jsonLd }) {
+function render(template, { title, desc, canonical, image, body, mount = "root", jsonLd, noindex }) {
   let out = template.replace(/<meta name="description"[^>]*>\s*/g, "");
-  const headOut = head({ title, desc, canonical, image });
+  const headOut = head({ title, desc, canonical, image, noindex });
   out = out.replace(/<title>[\s\S]*?<\/title>/, () => headOut);
   if (jsonLd) out = out.replace(/<\/head>/, () => jsonLd + "</head>");
   if (body) out = injectInto(out, mount, body);
@@ -304,8 +309,9 @@ function articleBody(city, theme, takes, events) {
     ? `<ol class="entries">${list.map(p => `<li class="entry"><div class="t">${esc(p.title)}</div>${
         p.body ? `<div class="more">${esc(p.body)}</div>` : ""
       }<div class="foot"><span class="who">${p.ups} cosign${p.ups === 1 ? "" : "s"}</span></div></li>`).join("")}</ol>`
-    : `<div class="empty-article"><b>Nobody's written this one yet</b>
-       <p>${esc(city.name)} needs locals. One sentence is genuinely enough.</p></div>`;
+    : `<div class="empty-article"><b>Be one of ${esc(city.name)}'s first 10 founding locals</b>
+       <p>Live in ${esc(city.name)}? Tell visitors one thing they get wrong. One sentence is enough.</p>
+       <a class="btn coral" href="/${esc(city.slug)}/${t.slug}/?add=1">Add my take</a></div>`;
 
   const cal = theme === "worst_times" && events.length
     ? `<section class="cal"><h2>${esc(city.name)} month by month</h2>${
@@ -507,26 +513,33 @@ for (const city of cities) {
     image: photo(city.slug),
     body: cityBody(city, counts),
     mount: "city",
-    jsonLd: cityLd(city, `${SITE}/${city.slug}/`)
+    jsonLd: cityLd(city, `${SITE}/${city.slug}/`),
+    // Empty pages stay reachable for people (links, email, social) but out of
+    // Google until there is something real on them. Thin pages drag the
+    // whole site's quality down.
+    noindex: !cityPosts.length
   }), null));
-  pages.push({ path: `/${city.slug}/`, lastmod: newest(cityPosts), priority: "0.8" });
+  if (cityPosts.length) pages.push({ path: `/${city.slug}/`, lastmod: newest(cityPosts), priority: "0.8" });
   cityCount++;
 
   for (const theme of Object.keys(THEMES)) {
     const takes = cityPosts.filter(p => p.type === theme);
     const t = THEMES[theme];
+    // The worst-times calendar is real content on its own.
+    const hasContent = takes.length > 0 || (theme === "worst_times" && cityEvents.length > 0);
     await emit(`${city.slug}/${t.slug}/index.html`, await minifyHtml(render(articleTpl, {
       title: `${t.title(city.name)} (${new Date().getFullYear()}) — by locals`,
       desc: t.desc(city.name),
       canonical: `${SITE}/${city.slug}/${t.slug}/`,
       image: photo(city.slug),
       body: articleBody(city, theme, takes, cityEvents),
-      jsonLd: articleLd(city, theme, takes, `${SITE}/${city.slug}/${t.slug}/`, t, photo(city.slug))
+      jsonLd: articleLd(city, theme, takes, `${SITE}/${city.slug}/${t.slug}/`, t, photo(city.slug)),
+      noindex: !hasContent
     }), null));
-    pages.push({
+    if (hasContent) pages.push({
       path: `/${city.slug}/${t.slug}/`,
       lastmod: newest(takes.length ? takes : cityPosts),
-      priority: takes.length ? "0.9" : "0.5"
+      priority: takes.length ? "0.9" : "0.6"
     });
     articleCount++;
   }
