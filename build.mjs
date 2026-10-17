@@ -39,7 +39,11 @@ const SRC = ".";
 const OUT = "dist";
 // www is the host Cloudflare actually serves; the apex redirects to it.
 // Canonicals must name the served host or Google indexes a redirect.
-const SITE = (process.env.SITE_URL || "https://www.tripvibz.com").replace(/\/$/, "");
+// The apex (tripvibz.com) does not serve this site (it 404s), so a SITE_URL
+// pointing at it would send Facebook's crawler and Google to a dead host via
+// og:url, og:image and canonicals. Force www for the apex.
+const SITE = (process.env.SITE_URL || "https://www.tripvibz.com").replace(/\/$/, "")
+  .replace(/^https?:\/\/tripvibz\.com$/, "https://www.tripvibz.com");
 
 const SUPABASE_URL = "https://nkxorlktzbgwqnfwmuus.supabase.co";
 const SUPABASE_KEY = "sb_publishable_5UOevsS8KmWWGrQYNWsabg_0sVOIPmB";
