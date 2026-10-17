@@ -129,3 +129,5 @@
 @media (prefers-reduced-motion: reduce){.qopt .fill{transition:none}}
 
 .city-hero{display:block;width:100%;height:auto;aspect-ratio:16/10;max-height:260px;object-fit:cover;border-radius:16px;margin:4px 0 14px;background:#efe9dd}
+
+.photo-credit{display:block;margin:-8px 0 10px;font-size:11px;color:var(--muted);text-decoration:none;text-align:right}
