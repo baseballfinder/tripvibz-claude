@@ -23,12 +23,8 @@ OUT = os.path.join(os.path.dirname(__file__), "..", "assets", "og")
 W, H = 1200, 630
 CORAL, INK, PAPER = (255, 86, 48), (22, 20, 15), (251, 250, 247)
 
-# The most argument-starting question per city. Missing = first by sort.
-HOOK = {
-    "nashville": "Party wagons and pedal taverns: part of the fun, or the worst part of downtown?",
-    "knoxville": "UT home game weekend: come for it, or stay away?",
-    "asheville": "Biltmore: worth the ticket price?",
-}
+# The lead question (lowest sort) is the hook; order lives in scripts/questions/spec.py.
+HOOK = {}
 
 
 def get(path):

@@ -1,0 +1,55 @@
+# Bing search demand for every TripVibz city question (scripts/questions/spec.py).
+#
+# MANUAL TRIGGER ONLY. Writes CSVs to data/keywords/<date>/<run_id>/ on the
+# branch it runs on; never touches the database or the live site.
+#
+# One-time setup: add the Bing Webmaster Tools API key as the repo secret
+# BING_WM_API_KEY (bing.com/webmasters > Settings > API Access; the same key
+# Miami Take's "bing keywords" workflow uses).
+
+name: Question keywords
+
+on:
+  workflow_dispatch:
+    inputs:
+      related:
+        description: "Also pull related searches for each phrasing (1/0). Slower; useful when writing new questions."
+        required: false
+        default: "0"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: question-keywords
+  cancel-in-progress: false
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Seeds from spec.py
+        run: python3 scripts/questions/research.py seeds
+      - name: Pull Bing demand
+        env:
+          BING_WM_API_KEY: ${{ secrets.BING_WM_API_KEY }}
+          BING_SEEDS: data/keywords/seeds.csv
+          BING_MONTHS: "12"
+          BING_RELATED: ${{ github.event.inputs.related || '0' }}
+          BING_OUT_DIR: data/keywords/run
+        run: python3 scripts/keywords/bing_keywords.py
+      - name: Commit results
+        run: |
+          set -e
+          DEST="data/keywords/$(date -u +%F)/${{ github.run_id }}"
+          mkdir -p "$DEST" && cp -r data/keywords/run/. "$DEST"/ && rm -rf data/keywords/run
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$DEST" data/keywords/seeds.csv
+          git commit -m "Question keywords $(date -u +%F) (run ${{ github.run_id }})" || echo "nothing to commit"
+          git push origin HEAD:${{ github.ref_name }}
