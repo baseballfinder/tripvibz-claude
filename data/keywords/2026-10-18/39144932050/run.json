@@ -1,0 +1,18 @@
+{
+ "run_date": "2026-10-18",
+ "key_name_used": "BING_WM_API_KEY",
+ "key_lengths_seen": {
+  "BING_WM_API_KEY": 32
+ },
+ "country": "us",
+ "language": "en-US",
+ "window": "2025-10-01..2026-09-30",
+ "seeds": 223,
+ "calls": 669,
+ "seeds_with_stats": 114,
+ "stats_rows": 2265,
+ "window_rows": 223,
+ "related_rows": 13071,
+ "errors": [],
+ "out_dir": "warehouse/bing/39144932050"
+}

@@ -1,81 +1,81 @@
 {
   "asheville": {
-    "prompt": "Biltmore: worth the ticket price?"
+    "prompt": "Biltmore Estate: worth the ticket price?"
   },
   "austin": {
-    "prompt": "Sixth Street on a Saturday night: worth it, or skip it?"
+    "prompt": "SXSW 2027: come for it, or stay away?"
   },
   "charleston": {
-    "prompt": "Rainbow Row: worth the stop, or just a photo?"
+    "prompt": "Folly Beach or Sullivan's Island?"
   },
   "chicago": {
-    "prompt": "Deep dish: worth it, or a tourist thing?"
+    "prompt": "Navy Pier: worth it, or skip it?"
   },
   "daytona-beach": {
-    "prompt": "Driving on the beach: fun, or a bad idea?"
+    "prompt": "Daytona 500 2027: worth going without race tickets?"
   },
   "denver": {
-    "prompt": "Red Rocks: worth it without a concert?"
+    "prompt": "Red Rocks Amphitheatre: worth it without a concert?"
   },
   "fort-lauderdale": {
-    "prompt": "Las Olas on a Saturday night: worth it, or skip it?"
+    "prompt": "Fort Lauderdale Beach, or drive to a quieter one?"
   },
   "fort-myers": {
-    "prompt": "Sanibel for a beach day: worth the drive?"
+    "prompt": "Sanibel Island for a beach day: worth the drive?"
   },
   "honolulu": {
-    "prompt": "Waikiki: worth staying, or base yourself elsewhere?"
+    "prompt": "Waikiki Beach: worth staying there, or base yourself elsewhere?"
   },
   "key-biscayne": {
-    "prompt": "Crossing the Rickenbacker on a Sunday afternoon: fine, or avoid?"
+    "prompt": "Bill Baggs Cape Florida or Crandon Park for a beach day?"
   },
   "key-west": {
-    "prompt": "Duval Street at night: worth it, or skip it?"
+    "prompt": "Fantasy Fest 2026: come for it, or stay away?"
   },
   "knoxville": {
-    "prompt": "UT home game weekend: come for it, or stay away?"
+    "prompt": "Neyland Stadium on game day: come for it, or stay away?"
   },
   "las-vegas": {
-    "prompt": "Stay on the Strip or Downtown?"
+    "prompt": "Red Rock Canyon: worth leaving the Strip for?"
   },
   "miami": {
-    "prompt": "First trip to Miami: stay in South Beach or somewhere else?"
+    "prompt": "Little Havana: real local spot, or tourist trap now?"
   },
   "miami-beach": {
-    "prompt": "Ocean Drive for dinner: worth it, or skip it?"
+    "prompt": "South Beach: worth the hype, or overrated?"
   },
   "naples": {
-    "prompt": "Fifth Avenue South: worth an evening?"
+    "prompt": "Naples Pier at sunset: worth the crowd?"
   },
   "nashville": {
     "prompt": "Party wagons and pedal taverns: part of the fun, or the worst part of downtown?"
   },
   "new-orleans": {
-    "prompt": "Bourbon Street: worth it, or skip it?"
+    "prompt": "Mardi Gras 2027: come for it, or stay away?"
   },
   "new-york": {
     "prompt": "Times Square: worth seeing, or avoid it?"
   },
   "orlando": {
-    "prompt": "Disney or Universal for a first trip?"
+    "prompt": "Disney World or Universal Orlando for a first trip?"
   },
   "san-diego": {
-    "prompt": "Gaslamp Quarter at night: worth it, or skip it?"
+    "prompt": "San Diego Comic-Con 2027: come for it, or stay away?"
   },
   "san-francisco": {
-    "prompt": "Fisherman's Wharf: worth it, or skip it?"
+    "prompt": "Alcatraz: worth booking?"
   },
   "sarasota": {
-    "prompt": "Siesta Key on a Saturday: worth it?"
+    "prompt": "Siesta Key Beach on a Saturday: worth it?"
   },
   "savannah": {
-    "prompt": "St. Patrick's Day in Savannah: come for it, or stay away?"
+    "prompt": "Tybee Island for a beach day: worth the drive?"
   },
   "seattle": {
-    "prompt": "Pike Place Market: worth it, or a tourist trap?"
+    "prompt": "Space Needle: worth the ticket?"
   },
   "st-augustine": {
-    "prompt": "St. George Street: worth it, or a tourist trap?"
+    "prompt": "Castillo de San Marcos: worth the stop?"
   },
   "tampa": {
     "prompt": "Clearwater Beach on a weekend: worth the traffic?"

@@ -1,0 +1,155 @@
+{
+ "method": "GetKeywordStats",
+ "keyword": "las olas boulevard",
+ "payload": {
+  "d": [
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 25,
+    "Date": "/Date(1777075200000)/",
+    "Impressions": 25,
+    "Query": "las olas boulevard"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 35,
+    "Date": "/Date(1777680000000)/",
+    "Impressions": 35,
+    "Query": "las olas boulevard"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 23,
+    "Date": "/Date(1778284800000)/",
+    "Impressions": 23,
+    "Query": "las olas boulevard"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 18,
+    "Date": "/Date(1778889600000)/",
+    "Impressions": 18,
+    "Query": "las olas boulevard"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 25,
+    "Date": "/Date(1779494400000)/",
+    "Impressions": 25,
+    "Query": "las olas boulevard"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 26,
+    "Date": "/Date(1780099200000)/",
+    "Impressions": 26,
+    "Query": "las olas boulevard"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 18,
+    "Date": "/Date(1780704000000)/",
+    "Impressions": 18,
+    "Query": "las olas boulevard"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 24,
+    "Date": "/Date(1781308800000)/",
+    "Impressions": 24,
+    "Query": "las olas boulevard"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 29,
+    "Date": "/Date(1781913600000)/",
+    "Impressions": 29,
+    "Query": "las olas boulevard"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 23,
+    "Date": "/Date(1782518400000)/",
+    "Impressions": 23,
+    "Query": "las olas boulevard"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 34,
+    "Date": "/Date(1783123200000)/",
+    "Impressions": 34,
+    "Query": "las olas boulevard"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 29,
+    "Date": "/Date(1783728000000)/",
+    "Impressions": 29,
+    "Query": "las olas boulevard"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 18,
+    "Date": "/Date(1784332800000)/",
+    "Impressions": 18,
+    "Query": "las olas boulevard"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 35,
+    "Date": "/Date(1784937600000)/",
+    "Impressions": 18,
+    "Query": "las olas boulevard"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 25,
+    "Date": "/Date(1785542400000)/",
+    "Impressions": 25,
+    "Query": "las olas boulevard"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 23,
+    "Date": "/Date(1786147200000)/",
+    "Impressions": 23,
+    "Query": "las olas boulevard"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 17,
+    "Date": "/Date(1786752000000)/",
+    "Impressions": 17,
+    "Query": "las olas boulevard"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 20,
+    "Date": "/Date(1787961600000)/",
+    "Impressions": 20,
+    "Query": "las olas boulevard"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 12,
+    "Date": "/Date(1788566400000)/",
+    "Impressions": 0,
+    "Query": "las olas boulevard"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 16,
+    "Date": "/Date(1789171200000)/",
+    "Impressions": 16,
+    "Query": "las olas boulevard"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 31,
+    "Date": "/Date(1789776000000)/",
+    "Impressions": 31,
+    "Query": "las olas boulevard"
+   }
+  ]
+ }
+}
