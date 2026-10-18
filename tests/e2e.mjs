@@ -26,6 +26,7 @@ async function serve() {
   const root = "dist";
   const srv = createServer(async (req, res) => {
     let p = decodeURIComponent(new URL(req.url, "http://x").pathname);
+    if (/^\/t\/[0-9a-f-]{36}$/i.test(p)) p = "/thread.html";   // Cloudflare serves /t/<id> via functions/t/[id].js
     let f = join(root, p);
     try { if ((await stat(f)).isDirectory()) f = join(f, "index.html"); }
     catch { if (!extname(f)) f += ".html"; }
@@ -212,7 +213,7 @@ await test("Feed voting: True/Nope toggles", async () => {
 await test("Thread: split bar, replies, typed reply", async () => {
   const posts = await api("posts?select=id&limit=1");
   if (!posts.length) return;
-  await go(`/thread.html?id=${posts[0].id}`);
+  await go(`/t/${posts[0].id}`);
   assert(await page.locator(".rbar").count() === 1, "split bar missing");
   await page.click('[data-kind="disagree"]');
   await page.fill("#reply", "TEST it is fine before 6pm");

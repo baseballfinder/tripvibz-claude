@@ -73,6 +73,21 @@ await test("Share cards: each city with questions has a 1200x630 card and og tag
   }
 });
 
+await test("Share cards for every page type exist and are wired up", async () => {
+  const want = [["index.html", "home.jpg"], ["cities/index.html", "cities.jpg"]];
+  for (const c of cities) {
+    want.push([`${c.slug}/add/index.html`, `${c.slug}-add.jpg`]);
+    for (const t of ["what-not-to-do", "worst-times-to-visit", "what-locals-do"]) want.push([`${c.slug}/${t}/index.html`, `${c.slug}-${t}.jpg`]);
+    assert(await exists(join("dist", "assets", "og", `${c.slug}-take.jpg`)), `${c.slug}-take.jpg missing (shared takes use it)`);
+  }
+  for (const [page, card] of want) {
+    const h = await readFile(join("dist", page), "utf8");
+    assert(h.includes(`https://www.tripvibz.com/assets/og/${card}`), `${page}: og:image is not ${card}`);
+    assert(await exists(join("dist", "assets", "og", card)), `${card} missing`);
+  }
+  assert(await exists("functions/t/[id].js"), "shared-take preview function missing");
+});
+
 await test("Questions: every city has 5 active, numbered 1-5, with 2-4 short options", async () => {
   for (const c of cities) {
     const mine = qs.filter(q => q.city_id === c.id).sort((a, b) => a.sort - b.sort);

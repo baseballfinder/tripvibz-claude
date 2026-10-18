@@ -52,7 +52,7 @@
              (add ? "?add=1" : "");
     },
     place:   function (id) { return "/place.html?id=" + encodeURIComponent(id); },
-    thread:  function (id) { return "/thread.html?id=" + encodeURIComponent(id); }
+    thread:  function (id) { return "/t/" + encodeURIComponent(id); }
   };
 
   // Reads /{city}/{theme}/ from the path, falling back to query params so the
