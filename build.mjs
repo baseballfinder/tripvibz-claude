@@ -191,6 +191,7 @@ const PHOTO_BY_SLUG = {};
 // previews the title is the question itself, aimed at locals.
 let OG_CARDS = {};
 try { OG_CARDS = JSON.parse(await readFile("assets/og/cards.json", "utf8")); } catch {}
+const ogCard = (file, title, desc) => ({ card: true, image: `${SITE}/assets/og/${file}`, title, desc });
 const shareCard = city => {
   const c = OG_CARDS[city.slug];
   if (!c) return null;
@@ -534,7 +535,9 @@ await emit("index.html", await minifyHtml(render(indexTpl, {
   title: "TripVibz — what locals know that guidebooks don't",
   desc: "Locals tell visitors what to avoid, when not to come, and what the guidebooks get wrong. One sentence at a time.",
   canonical: `${SITE}/`,
-  image: photo("key-west"),
+  image: `${SITE}/assets/og/home.jpg`,
+  og: ogCard("home.jpg", "What do tourists get wrong about your city? Locals vote.",
+    `${cities.length} cities and counting. One-tap questions like “Navy Pier: worth it, or skip it?” See what locals say before you book.`),
   body: cityGrid(cities, countsBySlug),
   mount: "needs",
   jsonLd: homeLd()
@@ -545,6 +548,9 @@ await emit("cities/index.html", await minifyHtml(render(placesTpl, {
   title: "Every city on TripVibz — local guides by residents",
   desc: "Browse cities where locals have written what visitors get wrong, when not to visit, and what residents actually do.",
   canonical: `${SITE}/cities/`,
+  image: `${SITE}/assets/og/cities.jpg`,
+  og: ogCard("cities.jpg", "Pick your city: what do tourists get wrong there?",
+    `Locals in ${cities.length} cities vote on what visitors get wrong. Don't see yours? One tap to ask for it.`),
   body: cityList(cities, countsBySlug),
   mount: "live-grid"
 }), null));
@@ -583,7 +589,9 @@ for (const city of cities) {
   await emit(`${city.slug}/add/index.html`, await minifyHtml(render(addTpl, {
     title: `What do tourists get wrong about ${city.name}? · TripVibz`,
     desc: `Tell visitors one thing they get wrong about ${city.name}. One sentence is enough.`,
-    canonical: `${SITE}/${city.slug}/`, image: photo(city.slug), noindex: true
+    canonical: `${SITE}/${city.slug}/`, image: `${SITE}/assets/og/${city.slug}-add.jpg`, noindex: true,
+    og: ogCard(`${city.slug}-add.jpg`, `${city.name} locals: what do tourists get wrong?`,
+      "Say it in one sentence. Locals vote it True or Nope. The first 10 signed-in locals become founding locals.")
   }), null));
 
   for (const theme of Object.keys(THEMES)) {
@@ -595,7 +603,11 @@ for (const city of cities) {
       title: `${t.title(city.name)} (${new Date().getFullYear()}) — by locals`,
       desc: t.desc(city.name),
       canonical: `${SITE}/${city.slug}/${t.slug}/`,
-      image: photo(city.slug),
+      image: `${SITE}/assets/og/${city.slug}-${t.slug}.jpg`,
+      og: ogCard(`${city.slug}-${t.slug}.jpg`, `${t.title(city.name)}, according to locals`,
+        takes.length
+          ? `“${[...takes].sort((a, b) => (b.ups - b.downs) - (a.ups - a.downs))[0].title}” and ${takes.length > 1 ? `${takes.length - 1} more` : "more"} from locals. True or nope?`
+          : t.desc(city.name)),
       body: articleBody(city, theme, takes, cityEvents),
       jsonLd: articleLd(city, theme, takes, `${SITE}/${city.slug}/${t.slug}/`, t, photo(city.slug)),
       noindex: !hasContent

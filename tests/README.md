@@ -27,7 +27,7 @@ preview instead of the local build: `BASE=https://<branch>.tripvibz.pages.dev no
 | Threads and replies | Split bar, typed "I disagree" reply sent | e2e |
 | JavaScript health | No errors on any page visited | e2e |
 | City pages exist | Page, vote page and add page for every city in the database | static |
-| Facebook previews | Each city's og:image is its 1200×630 question card on www, card file exists | e2e + static |
+| Facebook previews | Every page type points at its own 1200×630 card on www (home, cities, city question, topic pages, post page), the shared-take card exists for every city, and the /t/<id> preview function is present | e2e + static |
 | Questions | 5 active per city numbered 1–5, 2–4 options each, labels short enough for buttons, database matches `scripts/questions/spec.py` | static |
 | Domain | No links to `https://tripvibz.com` (no www), sitemap and robots on www | static |
 | Assets | Every `/assets/...` file a page references exists | static |

@@ -31,7 +31,8 @@
   "use strict";
   const { sb, $, escapeHtml: esc, auth, toast, moderationMessage, timeAgo } = window.TV;
   const T2 = window.TV2;
-  const PID = new URLSearchParams(location.search).get("id");
+  // Shared links are /t/<id> (functions/t/[id].js adds the link preview); /thread.html?id= still works.
+  const PID = new URLSearchParams(location.search).get("id") || (location.pathname.match(/^\/t\/([0-9a-f-]{36})/i) || [])[1] || null;
   const KINDS = { agree: "Agree", context: "Adds context", disagree: "Disagree" };
   const ASK = { agree: "Agree, and…", context: "Add context", disagree: "I disagree" };
   const PH = { agree: "Add to it…", context: "What should visitors also know?", disagree: "Why is it wrong?" };
