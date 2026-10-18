@@ -12,6 +12,10 @@ name: Question keywords
 on:
   workflow_dispatch:
     inputs:
+      missing_only:
+        description: "Only phrasings with no Bing data yet (1/0). Use after a run was cut short by Bing's daily limit."
+        required: false
+        default: "0"
       related:
         description: "Also pull related searches for each phrasing (1/0). Slower; useful when writing new questions."
         required: false
@@ -34,7 +38,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Seeds from spec.py
-        run: python3 scripts/questions/research.py seeds
+        run: python3 scripts/questions/research.py seeds ${{ github.event.inputs.missing_only == '1' && '--missing' || '' }}
       - name: Pull Bing demand
         env:
           BING_WM_API_KEY: ${{ secrets.BING_WM_API_KEY }}

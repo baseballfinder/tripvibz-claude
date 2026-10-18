@@ -1,0 +1,43 @@
+# Runs the TripVibz test plan (tests/README.md) on every pull request and on
+# every merge to main. Read-only against the live database: the end-to-end
+# tests intercept every write, so nothing is posted, voted or requested.
+
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          pip install --quiet pyyaml pillow
+      - name: Build the site
+        run: node build.mjs
+      - name: Static checks (pages, links, share cards, questions, logo)
+        run: node tests/static.mjs
+      - name: End-to-end (every feature in a real browser, writes intercepted)
+        run: node tests/e2e.mjs

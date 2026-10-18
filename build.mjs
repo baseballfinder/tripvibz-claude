@@ -54,7 +54,7 @@ const SKIP = new Set([
   "dist", "node_modules", ".git", "supabase", ".github", "functions",
   "build.mjs", "package.json", "package-lock.json",
   // Maintenance scripts and docs are not site content; never publish them.
-  "scripts", "data", "README.md", "vote.html", "add.html"
+  "scripts", "data", "tests", "README.md", "vote.html", "add.html"
 ]);
 
 const THEMES = {
