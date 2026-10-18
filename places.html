@@ -37,6 +37,23 @@
   .city-foot .dotsep{color:var(--line);margin:0 6px}
   .empty{grid-column:1/-1;padding:30px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:var(--radius);background:#fff}
   footer{margin-top:30px;padding:24px 0}
+  /* city requests */
+  .req{background:var(--ink);color:#fff;border-radius:18px;padding:20px;margin:30px 0 10px;scroll-margin-top:80px}
+  .req .k{font-family:"Archivo";font-weight:700;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#ff9b80}
+  .req h2{font-family:"Archivo";font-weight:900;font-size:22px;line-height:1.2;margin:8px 0 4px;color:#fff}
+  .req .sub{color:#cfc8b8;font-size:14px;margin:0 0 14px;line-height:1.5}
+  .req input{width:100%;border:2px solid #4a443a;border-radius:12px;padding:12px 14px;font:inherit;font-size:16px;background:#221f19;color:#fff}
+  .req input:focus{outline:2px solid var(--coral);outline-offset:1px}
+  .req ul{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+  .req li{display:flex;align-items:center;gap:12px;background:#221f19;border:1px solid #3a352c;border-radius:12px;padding:10px 12px}
+  .req .nm{flex:1;min-width:0}
+  .req .nm b{display:block;font-size:15.5px}
+  .req .meter{height:5px;border-radius:3px;background:#3a352c;margin-top:7px;overflow:hidden}
+  .req .meter i{display:block;height:100%;background:var(--coral)}
+  .req .cnt{font-size:12px;color:#b8b2a4;margin-top:4px}
+  .req button{flex:none;min-height:44px;padding:0 16px;border-radius:999px;border:none;background:var(--coral);color:#fff;font:800 14px "Archivo",sans-serif;cursor:pointer}
+  .req button[disabled]{background:#3a352c;color:#cfc8b8;cursor:default}
+  .req .none{color:#b8b2a4;font-size:14px;padding:6px 2px}
 </style>
 </head>
 <body>
@@ -67,6 +84,14 @@
     <div class="section-label" id="soon-label" hidden>Coming soon</div>
     <div class="grid" id="soon-grid"></div>
   </div>
+  <section class="req" id="request" aria-labelledby="req-h">
+    <div class="k">Don't see your city?</div>
+    <h2 id="req-h">Ask for it</h2>
+    <p class="sub">Any of the 100 largest US cities. We open a city when <b id="open-at">5</b> people ask. The first 10 locals to post there become its founding locals.</p>
+    <label for="req-q" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Find a city to request</label>
+    <input id="req-q" type="search" placeholder="Type a city…" autocomplete="off">
+    <ul id="req-list"></ul>
+  </section>
 </main>
 
 <footer><div class="wrap"><span class="tagline">Take the city, don't let the city take you.</span> · TripVibz</div></footer>
@@ -76,7 +101,7 @@
 <script>
 (function(){
   "use strict";
-  const { sb, $, escapeHtml, routes } = window.TV;
+  const { sb, $, escapeHtml, routes, auth, toast } = window.TV;
 
   let CITIES=[];
 
@@ -137,6 +162,67 @@
       console.error(e);
       $("#live-grid").innerHTML = `<div class="empty">Couldn't load cities from the database.</div>`;
     }
+  })();
+  // ---------------- city requests ----------------
+  const OPEN_AT = 5;
+  let CANDS = [], MINE = new Set();
+  $("#open-at").textContent = OPEN_AT;
+
+  function reqRow(c){
+    const asked = MINE.has(c.slug);
+    const pct = Math.min(100, Math.round(100 * c.requests / OPEN_AT));
+    return `<li>
+      <div class="nm"><b>${escapeHtml(c.name)}, ${escapeHtml(c.state)}</b>
+        <div class="meter" aria-hidden="true"><i style="width:${pct}%"></i></div>
+        <div class="cnt">${c.requests ? `${c.requests} of ${OPEN_AT} asks` : "No asks yet"}</div></div>
+      <button data-ask="${escapeHtml(c.slug)}" ${asked ? "disabled" : ""}>${asked ? "Asked" : "Ask for it"}</button>
+    </li>`;
+  }
+  function renderReq(q){
+    q = (q || "").trim().toLowerCase();
+    const list = q
+      ? CANDS.filter(c => c.name.toLowerCase().includes(q) || c.state.toLowerCase() === q)
+      : CANDS.slice().sort((a,b) => b.requests - a.requests || a.pop_rank - b.pop_rank);
+    $("#req-list").innerHTML = list.length ? list.slice(0, 6).map(reqRow).join("")
+      : `<li class="none" style="background:none;border:none">Not in the 100 largest US cities, or it's already open above.</li>`;
+  }
+  async function ask(slug){
+    const c = CANDS.find(x => x.slug === slug); if (!c) return;
+    await auth.ensure();
+    const { error } = await sb.from("city_requests").insert({ city_slug: slug });
+    if (error && error.code !== "23505") {
+      toast(/RATE_LIMITED/.test(error.message) ? "That's plenty of asks for today" : "That didn't go through. Try again.");
+      return;
+    }
+    if (!error) c.requests++;
+    MINE.add(slug);
+    renderReq($("#req-q").value);
+    const url = `https://www.tripvibz.com/cities/?ask=${encodeURIComponent(slug)}#request`;
+    const left = Math.max(OPEN_AT - c.requests, 0);
+    const text = left ? `Help get ${c.name} on TripVibz. ${left} more ask${left === 1 ? "" : "s"} and it opens.` : `${c.name} has enough asks to open on TripVibz.`;
+    if (navigator.share) { try { await navigator.share({ title: "TripVibz", text, url }); return; } catch (e) {} }
+    try { await navigator.clipboard.writeText(text + " " + url); toast("Asked. Link copied, send it to a friend"); } catch (e) { toast("Asked"); }
+  }
+  $("#req-q").addEventListener("input", e => renderReq(e.target.value));
+  $("#req-list").addEventListener("click", e => { const b = e.target.closest("[data-ask]"); if (b && !b.disabled) ask(b.dataset.ask); });
+  // Searching the live grid also searches what can be requested.
+  $("#search").addEventListener("input", e => {
+    const v = e.target.value;
+    if (v && !CITIES.some(c => c.name.toLowerCase().includes(v.trim().toLowerCase()))) { $("#req-q").value = v; renderReq(v); }
+  });
+
+  (async function loadReq(){
+    const { data } = await sb.from("city_request_counts").select("slug,name,state,pop_rank,requests");
+    CANDS = data || [];
+    await auth.ensure();
+    if (auth.me) {
+      const { data: mine } = await sb.from("city_requests").select("city_slug").eq("user_id", auth.me.id);
+      (mine || []).forEach(r => MINE.add(r.city_slug));
+    }
+    const pre = new URLSearchParams(location.search).get("ask");
+    const c = pre && CANDS.find(x => x.slug === pre);
+    if (c) { $("#req-q").value = c.name; renderReq(c.name); $("#request").scrollIntoView({ block: "start" }); }
+    else renderReq("");
   })();
 })();
 </script>
