@@ -1,0 +1,66 @@
+# City requests: email James (via a GitHub issue that @mentions him) when a
+# requested city reaches 5 asks, and open the city when he labels the issue
+# "approved". Logic lives in scripts/city_requests_bot.py.
+#
+# Uses the SUPABASE_DB_URL secret already set for the nightly backup.
+
+name: City requests
+
+on:
+  schedule:
+    - cron: "23 * * * *"   # hourly
+  workflow_dispatch: {}
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: city-requests
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    if: github.event_name != 'issues'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install --quiet "psycopg[binary]==3.2.3"
+      - name: Open an issue for each city that reached 5 asks
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/city_requests_bot.py notify
+
+  open:
+    if: github.event_name == 'issues' && github.event.label.name == 'approved' && contains(github.event.issue.labels.*.name, 'city-request')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - run: pip install --quiet "psycopg[binary]==3.2.3" "pillow==11.0.0"
+      - name: Add the city and its starter questions
+        id: city
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: python3 scripts/city_requests_bot.py open
+      - name: Build its share card and deploy
+        if: steps.city.outputs.slug != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 scripts/og_cards.py "${{ steps.city.outputs.slug }}"
+          git config user.name "tripvibz-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/og
+          git commit -m "Open ${{ steps.city.outputs.name }}: share card" || echo "no card change"
+          git push origin main
+          gh issue comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "${{ steps.city.outputs.name }} is open. Live in about a minute: https://www.tripvibz.com/${{ steps.city.outputs.slug }}/ — these are starter questions; ask Claude for sharper local ones anytime."
+          gh issue close ${{ github.event.issue.number }} --repo ${{ github.repository }}
