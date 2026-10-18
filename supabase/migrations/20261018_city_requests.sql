@@ -10,8 +10,12 @@ create table if not exists public.city_candidates (
   lat         double precision not null,
   lng         double precision not null,
   population  integer not null,
-  pop_rank    smallint not null
+  pop_rank    smallint not null,
+  notified_at timestamptz,   -- set when the 5-ask GitHub issue was opened
+  opened_at   timestamptz    -- set when James approved and the city went live
 );
+alter table public.city_candidates add column if not exists notified_at timestamptz;
+alter table public.city_candidates add column if not exists opened_at timestamptz;
 alter table public.city_candidates enable row level security;
 drop policy if exists city_candidates_read on public.city_candidates;
 create policy city_candidates_read on public.city_candidates for select using (true);
