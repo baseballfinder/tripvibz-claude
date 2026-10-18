@@ -23,3 +23,6 @@ content.fixture.json
 # The resize script (scripts/) is tracked; the images it reads/writes are not.
 city-photos-src/
 city-photos-out/
+
+# Python bytecode
+__pycache__/
