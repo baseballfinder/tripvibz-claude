@@ -74,6 +74,10 @@
           <button class="yes" data-vote="1" aria-pressed="${v === 1}">True · ${POST.ups}</button>
           <button class="no" data-vote="-1" aria-pressed="${v === -1}">Nope · ${POST.downs}</button>
         </div>
+        <div class="share-cta">
+          <p><b>${v ? "You voted. Do your friends agree?" : "Do your friends agree?"}</b>Send it to someone who knows ${esc(CITY.name)}.</p>
+          <button id="share-take">${T2.ICON.share}Share</button>
+        </div>
       </div>
 
       <div class="row-between" style="margin:20px 0 10px">
@@ -103,6 +107,7 @@
     root.querySelectorAll("[data-reply]").forEach(b => b.onclick = () => { REPLY_TO = b.dataset.reply; render(); $("#reply").focus(); });
     const cr = $("#cancel-reply"); if (cr) cr.onclick = () => { REPLY_TO = ""; render(); };
     const si = $("#signin"); if (si) si.onclick = e => { e.preventDefault(); T2.signInForBadge(); };
+    $("#share-take").onclick = () => T2.share(T2.takeShare(POST, CITY.slug === "cities" ? "" : CITY.name));
     $("#send").onclick = send;
     $("#reply").addEventListener("keydown", e => { if (e.key === "Enter") send(); });
   }

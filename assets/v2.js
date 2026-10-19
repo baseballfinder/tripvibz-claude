@@ -53,13 +53,15 @@
     pin: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M12 21s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>',
     check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>',
     x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
-    chat: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>'
+    chat: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>',
+    share: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>'
   };
 
   /* ---------- data ---------- */
 
   async function loadCity(slug) {
     var r = await sb.from("cities").select("id,name,state,slug,lat,lng,photo").eq("slug", slug).maybeSingle();
+    if (r.data) window.__tvCityName = r.data.name;
     return r.data || null;
   }
 
@@ -141,6 +143,7 @@
         '<button class="tvb yes" data-vote="1" data-id="' + p.id + '" aria-pressed="' + (v === 1) + '">' + ICON.check + "True · " + p.ups + "</button>" +
         '<button class="tvb no" data-vote="-1" data-id="' + p.id + '" aria-pressed="' + (v === -1) + '">' + ICON.x + "Nope · " + p.downs + "</button>" +
         '<a class="replies-link" href="' + href + '">' + ICON.chat + p.comment_count + "</a>" +
+        '<button class="tv-share" data-share-take="' + p.id + '" aria-label="Share this take">' + ICON.share + "</button>" +
       "</div>") +
     "</article>";
   }
@@ -292,6 +295,89 @@
     return "none";
   }
 
+  /* ---------- sharing ---------- */
+
+  var SITE = "https://www.tripvibz.com";
+  function track(name, params) { try { if (window.gtag) window.gtag("event", name, params || {}); } catch (e) {} }
+
+  function takeShare(p, cityName) {
+    return {
+      url: SITE + "/t/" + p.id,
+      text: (cityName ? "A " + cityName + " local says: " : "A local says: ") + "\u201c" + p.title + "\u201d True or nope?",
+      kind: "take", id: p.id
+    };
+  }
+  function questionShare(q, city, pickedLabel) {
+    return {
+      url: SITE + "/" + city.slug + "/vote/?q=" + q.id,
+      text: city.name + " locals, settle this: " + q.prompt + (pickedLabel ? " I said \u201c" + pickedLabel + ".\u201d You?" : ""),
+      kind: "question", id: q.id
+    };
+  }
+
+  // One tap on phones (the system share sheet: Messages, WhatsApp, Instagram, Facebook…);
+  // a small menu on desktop, where there is no share sheet.
+  async function share(d) {
+    track("share_open", { kind: d.kind, id: d.id });
+    if (navigator.share && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      try { await navigator.share({ text: d.text, url: d.url }); track("share_done", { kind: d.kind, method: "native" }); } catch (e) {}
+      return;
+    }
+    shareSheet(d);
+  }
+
+  function shareLinks(d) {
+    var u = encodeURIComponent(d.url), t = encodeURIComponent(d.text), both = encodeURIComponent(d.text + " " + d.url);
+    return [
+      ["copy", "Copy link", null],
+      ["sms", "Text message", "sms:?&body=" + both],
+      ["whatsapp", "WhatsApp", "https://wa.me/?text=" + both],
+      ["facebook", "Facebook", "https://www.facebook.com/sharer/sharer.php?u=" + u],
+      ["x", "X", "https://twitter.com/intent/tweet?text=" + t + "&url=" + u],
+      ["email", "Email", "mailto:?subject=" + encodeURIComponent("True or nope?") + "&body=" + both]
+    ];
+  }
+
+  function shareSheet(d) {
+    var old = document.getElementById("sharesheet"); if (old) old.remove();
+    var wrap = document.createElement("div");
+    wrap.id = "sharesheet"; wrap.className = "sheet-wrap";
+    wrap.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-h">' +
+      '<div class="sheet-h" id="sheet-h">Do your friends agree?</div>' +
+      '<div class="sheet-q">' + esc(d.text) + "</div>" +
+      '<div class="sheet-grid">' + shareLinks(d).map(function (l) {
+        return l[2]
+          ? '<a class="sheet-b" data-m="' + l[0] + '" href="' + l[2] + '" target="_blank" rel="noopener">' + l[1] + "</a>"
+          : '<button class="sheet-b" data-m="' + l[0] + '">' + l[1] + "</button>";
+      }).join("") + "</div>" +
+      '<button class="sheet-x" aria-label="Close">Close</button></div>';
+    document.body.appendChild(wrap);
+    function close() { wrap.remove(); document.removeEventListener("keydown", onKey); }
+    function onKey(e) { if (e.key === "Escape") close(); }
+    document.addEventListener("keydown", onKey);
+    wrap.addEventListener("click", async function (e) {
+      if (e.target === wrap || e.target.closest(".sheet-x")) return close();
+      var b = e.target.closest("[data-m]"); if (!b) return;
+      track("share_done", { kind: d.kind, method: b.dataset.m });
+      if (b.dataset.m === "copy") {
+        e.preventDefault();
+        try { await navigator.clipboard.writeText(d.text + " " + d.url); TV.toast("Link copied. Paste it anywhere."); }
+        catch (err) { TV.toast(d.url); }
+      }
+      close();
+    });
+    var first = wrap.querySelector(".sheet-b"); if (first) first.focus();
+  }
+
+  // Any take card on any page: the share button finds its take and city.
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-share-take]"); if (!b) return;
+    e.preventDefault();
+    var card = b.closest(".take");
+    var title = card ? (card.querySelector(".tt") || {}).textContent : "";
+    share(takeShare({ id: b.dataset.shareTake, title: (title || "").trim() }, b.dataset.city || window.__tvCityName || ""));
+  });
+
   window.TV2 = {
     KIND: KIND, TENURE: TENURE, MON: MON, ICON: ICON, POST_COLS: POST_COLS,
     tenureBadge: tenureBadge, monthsLabel: monthsLabel, shortName: shortName,
@@ -299,6 +385,7 @@
     takeHtml: takeHtml, castVote: castVote,
     loadQuestions: loadQuestions, qTotal: qTotal, answer: answer, qOptionsHtml: qOptionsHtml,
     prepareClaim: prepareClaim, finishClaim: finishClaim, signInForBadge: signInForBadge, saveTenure: saveTenure,
-    drawShareCard: drawShareCard, shareCard: shareCard, ago: ago
+    drawShareCard: drawShareCard, shareCard: shareCard, ago: ago,
+    share: share, takeShare: takeShare, questionShare: questionShare, shareLinks: shareLinks, track: track
   };
 })();

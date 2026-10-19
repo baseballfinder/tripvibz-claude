@@ -79,11 +79,14 @@
         <div class="vbtns">
           <button class="p" id="post">Post my take</button>
           ${nextQ ? `<a class="s" href="/${CITY.slug}/vote/?q=${nextQ.id}">Skip · next question</a>` : `<a class="s" href="/${CITY.slug}/">See what locals said</a>`}
-        </div>` : ""}`;
+        </div>
+        <button class="vshare" id="share-q">${T2.ICON.share}Ask your friends what they'd pick</button>` : ""}`;
     $("#opts").addEventListener("click", async e => {
       const b = e.target.closest("[data-opt]"); if (!b) return;
       await T2.answer(Q, b.dataset.opt); ERR = ""; render();
     });
+    const sq = $("#share-q");
+    if (sq) sq.onclick = () => T2.share(T2.questionShare(Q, CITY, (Q.options.find(o => o.id === Q.mine) || {}).label));
     const post = $("#post");
     if (post) post.addEventListener("click", async () => {
       const why = ($("#why").value || "").trim();
