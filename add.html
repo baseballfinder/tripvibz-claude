@@ -55,12 +55,12 @@
       <h1 style="font-size:24px">What do tourists get wrong about ${esc(CITY.name)}?</h1>
 
       <div class="sect"><h2>What kind of take?</h2>
-        <div class="kinds">${Object.keys(T2.KIND).map(k => `<button class="kind" data-kind="${k}" aria-pressed="${S.kind===k}"><b>${esc(T2.KIND[k].label)}</b><span>${esc(T2.KIND[k].sub)}</span></button>`).join("")}</div>
+        <div class="kinds">${Object.keys(T2.KIND).filter(k => !T2.KIND[k].answerOnly).map(k => `<button class="kind" data-kind="${k}" aria-pressed="${S.kind===k}"><b>${esc(T2.KIND[k].label)}</b><span>${esc(T2.KIND[k].sub)}</span></button>`).join("")}</div>
       </div>
 
       <div class="sect"><label class="h" for="take">Say it in one sentence</label>
         <div class="wrapchips" style="margin-bottom:8px">${K.starters(CITY.name).map(s => `<button class="starter" data-starter="${esc(s)}">${esc(s)}</button>`).join("")}</div>
-        <textarea class="ta" id="take" maxlength="400" placeholder="Tap a starter, or just say it.">${esc(S.text)}</textarea>
+        <textarea class="ta" id="take" autocapitalize="sentences" autocorrect="on" spellcheck="true" maxlength="400" placeholder="Tap a starter, or just say it.">${esc(S.text)}</textarea>
       </div>
 
       <div class="sect"><h2>Where does it apply?</h2>

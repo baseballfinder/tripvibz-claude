@@ -111,10 +111,34 @@ await test("Questions in the database match scripts/questions/spec.py", async ()
   }
 });
 
+await test("Auto-correct tidies typed takes and replies", async () => {
+  const src = await readFile("assets/tv.js", "utf8");
+  const code = src.slice(src.indexOf("// --- tidy:start ---"), src.indexOf("// --- tidy:end ---"));
+  const tidy = new Function(code + "; return tidyText;")();
+  const cases = [
+    ["dont bother the traffic in miami is mad max", "Don't bother the traffic in miami is mad max."],
+    ["i think its great.  im going back", "I think its great. I'm going back."],
+    ["Alot of tourists , wierd restaraunts!!!", "A lot of tourists, weird restaurants!"],
+    ["Worth it. Get there by 7.30am", "Worth it. Get there by 7.30am."],
+    ["Great coffee. The $1,000 suite is not worth it?", "Great coffee. The $1,000 suite is not worth it?"],
+  ];
+  for (const [a, b] of cases) assert(tidy(a) === b, `"${a}" -> "${tidy(a)}", wanted "${b}"`);
+});
+
+await test("Question answers get the right label (Do this / Don't do this / It depends / When to go)", async () => {
+  const src = await readFile("assets/v2.js", "utf8");
+  const code = src.slice(src.indexOf("var TIMING_Q"), src.indexOf('return "hidden_gem";') + 24);
+  const kind = new Function(code + "; return answerKind;")();
+  const cases = [["Best time to visit Miami?", "Winter", "worst_times"], ["Visiting Miami without a car?", "Doable", "hidden_gem"],
+    ["Wynwood Walls: worth it?", "Worth it", "hidden_gem"], ["Wynwood Walls: worth it?", "Tourist trap", "what_not_to_do"],
+    ["Neyland Stadium on game day?", "Only if you have tickets", "take"], ["Old City at night?", "Depends on the night", "take"]];
+  for (const [q, o, want] of cases) assert(kind(q, o) === want, `"${q}" / "${o}" -> ${kind(q, o)}, wanted ${want}`);
+});
+
 await test("Old UI is gone (no Cosign / Add to this article)", async () => {
   for (const f of pages) {
     const h = await readFile(f, "utf8");
-    assert(!/Cosign|Add to this article|Add my take/.test(h), `${f} still has old UI text`);
+    assert(!/Cosign|Add to this article|Add my take|Back to feed/.test(h), `${f} still has old UI text`);
   }
 });
 

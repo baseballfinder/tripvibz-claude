@@ -24,6 +24,7 @@ preview instead of the local build: `BASE=https://<branch>.tripvibz.pages.dev no
 | Sign in with Google (Local badge) | Badge button opens the sign-in box | e2e |
 | Topic pages | Headline, 3 tabs, starters open the add page, old Cosign UI gone, 12-month calendar on Worst times | e2e |
 | True / Nope on takes | Toggle on, vote sent | e2e |
+| Sharing | Share button on every take card, share menu (copy, text, WhatsApp, Facebook, X, email) all carry the take's www /t/ link, thread "Do your friends agree?" share, "Ask your friends" after voting on a question | e2e |
 | Threads and replies | Split bar, typed "I disagree" reply sent | e2e |
 | JavaScript health | No errors on any page visited | e2e |
 | City pages exist | Page, vote page and add page for every city in the database | static |
@@ -32,7 +33,7 @@ preview instead of the local build: `BASE=https://<branch>.tripvibz.pages.dev no
 | Domain | No links to `https://tripvibz.com` (no www), sitemap and robots on www | static |
 | Assets | Every `/assets/...` file a page references exists | static |
 | Logo | favicon.ico, SVG favicon, app icons, manifest, logo files | static |
-| Old UI | No "Cosign", "Add to this article" or "Add my take" anywhere | static |
+| Old UI | No "Cosign", "Add to this article", "Add my take" or "Back to feed" anywhere; no old add button on city pages | static |
 | Private files | `data/`, `scripts/`, `tests/` are not published | static |
 | Tooling | Python scripts compile, workflow files parse | static |
 
@@ -42,6 +43,8 @@ preview instead of the local build: `BASE=https://<branch>.tripvibz.pages.dev no
   After a sign-in change: sign in on the preview link and post one take with the Local badge.
 - **Facebook's actual preview.** After a share-card change, paste a city link into
   developers.facebook.com/tools/debug and click Scrape Again.
+- **Phone share sheet.** On phones the Share button opens the system share sheet instead of the menu;
+  the tests run as a desktop browser. After a sharing change, tap Share on a take on your phone.
 - **Email (Kit) and the city-request issue.** Run Actions → City requests → Run workflow
   and confirm no error; an issue only appears when a city has 5 asks.
 - **Nightly backup.** Check Actions → Nightly database backup shows green.

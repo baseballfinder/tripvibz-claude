@@ -135,7 +135,7 @@ await test("Cities page: grid, search, request-a-city", async () => {
 });
 
 for (const slug of ["nashville", "knoxville", "miami"]) {
-  await test(`City feed (${slug}): hero photo, lead question, sections, add button`, async () => {
+  await test(`City feed (${slug}): hero photo, lead question, sections, no old add button`, async () => {
     await go(`/${slug}/`);
     assert(/What locals say about/.test(await page.textContent("h1")), "headline missing");
     const w = await page.evaluate(() => { const i = document.querySelector(".city-hero"); return i ? i.naturalWidth : 0; });
@@ -143,7 +143,7 @@ for (const slug of ["nashville", "knoxville", "miami"]) {
     assert((await page.textContent(".qcard .qp")).trim() === lead(slug).prompt, "lead question is not the first active question");
     assert(await page.locator(".qcard a.qopt").count() >= 2, "question options missing");
     assert(await page.locator("[data-sec]").count() === 4, "section chips missing");
-    assert((await page.getAttribute("#fab", "href")) === `/${slug}/add/`, "add button link wrong");
+    assert(await page.locator(".fab").count() === 0, "old \"What do tourists get wrong\" button is back");
   });
 }
 
@@ -162,6 +162,10 @@ await test("Vote: one tap records the vote and shows results + why box", async (
   await go(href);
   assert(writes.some(w => w.table === "question_votes"), "vote was not sent");
   assert(await page.locator("#why").count() === 1, "why box missing");
+  await page.click("#share-q");
+  const fb = await page.getAttribute('#sharesheet [data-m="facebook"]', "href");
+  assert(fb && decodeURIComponent(fb).includes("https://www.tripvibz.com/nashville/vote/?q="), "question share link wrong");
+  await page.click("#sharesheet .sheet-x");
 });
 
 await test("Post a take anonymously: kinds, starter, place, months, preview, posted page", async () => {
@@ -210,11 +214,37 @@ await test("Feed voting: True/Nope toggles", async () => {
   assert(writes.some(w => w.table === "votes"), "vote was not sent");
 });
 
+await test("Share a take: button on every card opens the share menu with the take's link", async () => {
+  const posts = await api("posts?select=id,city_id&type=in.(what_not_to_do,worst_times,hidden_gem)&limit=1");
+  if (!posts.length) return;
+  const c = cities.find(x => x.id === posts[0].city_id);
+  await go(`/${c.slug}/`);
+  const n = await page.locator(".take").count();
+  assert(await page.locator(".take .tv-share").count() === n, "a take card has no share button");
+  const id = await page.getAttribute(".take .tv-share >> nth=0", "data-share-take");
+  await page.evaluate(() => { window.__copied = ""; navigator.clipboard.writeText = async t => { window.__copied = t; }; });
+  await page.click(".take .tv-share >> nth=0");
+  assert(await page.isVisible("#sharesheet"), "share menu did not open");
+  assert(new RegExp(`A ${c.name} local says`).test(await page.textContent("#sharesheet .sheet-q")), "share text missing city");
+  for (const m of ["sms", "whatsapp", "facebook", "x", "email"]) {
+    const h = await page.getAttribute(`#sharesheet [data-m="${m}"]`, "href");
+    assert(h && decodeURIComponent(h).includes(`https://www.tripvibz.com/t/${id}`), `${m} link missing the take URL`);
+  }
+  await page.click('#sharesheet [data-m="copy"]');
+  assert((await page.evaluate(() => window.__copied)).includes(`/t/${id}`), "copy link did not copy the take URL");
+  assert(await page.locator("#sharesheet").count() === 0, "share menu did not close");
+});
+
 await test("Thread: split bar, replies, typed reply", async () => {
   const posts = await api("posts?select=id&limit=1");
   if (!posts.length) return;
   await go(`/t/${posts[0].id}`);
   assert(await page.locator(".rbar").count() === 1, "split bar missing");
+  await page.click("#share-take");
+  const fb = await page.getAttribute('#sharesheet [data-m="facebook"]', "href");
+  assert(fb && decodeURIComponent(fb).includes(`/t/${posts[0].id}`), "thread share link wrong");
+  await page.keyboard.press("Escape");
+  assert(await page.locator("#sharesheet").count() === 0, "Escape did not close the share menu");
   await page.click('[data-kind="disagree"]');
   await page.fill("#reply", "TEST it is fine before 6pm");
   await page.click("#send");
