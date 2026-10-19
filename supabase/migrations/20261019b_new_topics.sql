@@ -9,8 +9,10 @@ alter table public.posts add column if not exists question_id uuid
 create index if not exists posts_author_city_q on public.posts (author_id, city_id, question_id);
 
 -- 2. Status is never chosen by the person posting: new topics wait, everything else is live.
+--    (Not security definer on purpose: current_user must be the caller, so the
+--    website runs as anon/authenticated and the review bot as postgres.)
 create or replace function public.posts_set_status() returns trigger
-language plpgsql security definer set search_path = public as $$
+language plpgsql set search_path = public as $$
 begin
   if current_user in ('postgres', 'supabase_admin', 'service_role') then return new; end if;
   new.status := case when new.topic is not null then 'pending'::moderation_status
@@ -23,7 +25,7 @@ create trigger trg_posts_set_status before insert on public.posts
 
 -- ...and can't be changed by them afterwards (the review bot connects as postgres).
 create or replace function public.posts_lock_status() returns trigger
-language plpgsql security definer set search_path = public as $$
+language plpgsql set search_path = public as $$
 begin
   if new.status is distinct from old.status and not public.is_admin()
      and current_user not in ('postgres', 'supabase_admin', 'service_role') then
