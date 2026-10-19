@@ -135,6 +135,18 @@ await test("Question answers get the right label (Do this / Don't do this / It d
   for (const [q, o, want] of cases) assert(kind(q, o) === want, `"${q}" / "${o}" -> ${kind(q, o)}, wanted ${want}`);
 });
 
+await test("Sign-in: privacy + terms pages, TikTok bridge, providers off until set up", async () => {
+  for (const p of ["privacy/index.html", "terms/index.html"]) assert(await exists(join("dist", p)), `dist/${p} missing (Meta and TikTok require it)`);
+  const tv = await readFile("assets/tv.js", "utf8");
+  assert(/var SIGNIN = \{ facebook: false, tiktok: false \}/.test(tv) || /var SIGNIN = \{[^}]*\}/.test(tv), "SIGNIN switches missing");
+  for (const f of ["functions/api/auth/tiktok/start.js", "functions/api/auth/tiktok/callback.js", "functions/api/auth/tiktok/_shared.js"]) {
+    const src = await readFile(f, "utf8");
+    await import("esbuild").then(e => e.transform(src, { loader: "js", format: "esm" }));   // syntax check
+  }
+  const cb = await readFile("functions/api/auth/tiktok/callback.js", "utf8");
+  assert(cb.includes('cookie(request, "tt_state")'), "TikTok callback must check state");
+});
+
 await test("Old UI is gone (no Cosign / Add to this article)", async () => {
   for (const f of pages) {
     const h = await readFile(f, "utf8");
@@ -160,7 +172,7 @@ await test("Research data and scripts are not published", async () => {
 
 await test("Python tools compile; workflows parse", async () => {
   execFileSync("python3", ["-m", "py_compile", "scripts/questions/research.py", "scripts/questions/spec.py",
-    "scripts/city_requests_bot.py", "scripts/og_cards.py", "scripts/keywords/bing_keywords.py"]);
+    "scripts/city_requests_bot.py", "scripts/take_review_bot.py", "scripts/og_cards.py", "scripts/keywords/bing_keywords.py"]);
   execFileSync("python3", ["-c", "import yaml,glob;[yaml.safe_load(open(f)) for f in glob.glob('.github/workflows/*.yml')]"]);
 });
 

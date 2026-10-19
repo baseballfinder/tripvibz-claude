@@ -1,0 +1,50 @@
+# New-topic takes wait for review. Hourly: each new one gets a Bing search check
+# and a GitHub issue that @mentions James. Labeling the issue "approved" puts
+# the take live; "rejected" keeps it hidden. Logic: scripts/take_review_bot.py
+
+name: Take reviews
+
+on:
+  schedule:
+    - cron: "41 * * * *"   # hourly
+  workflow_dispatch: {}
+  issues:
+    types: [labeled]
+
+permissions:
+  issues: write
+  contents: read
+
+concurrency:
+  group: take-reviews
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    if: github.event_name != 'issues'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install --quiet "psycopg[binary]==3.2.3"
+      - name: Open a review issue for each new topic
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BING_WM_API_KEY: ${{ secrets.BING_WM_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/take_review_bot.py notify
+
+  decide:
+    if: github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'take-review') && (github.event.label.name == 'approved' || github.event.label.name == 'rejected')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install --quiet "psycopg[binary]==3.2.3"
+      - name: Approve or reject the take
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          LABEL: ${{ github.event.label.name }}
+        run: python3 scripts/take_review_bot.py decide

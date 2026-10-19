@@ -103,7 +103,17 @@
     return ctx;
   }
 
-  var POST_COLS = "id,title,body,type,ups,downs,comment_count,created_at,author_id,author_verified,place_id,place_label,months,city_id";
+  var POST_COLS = "id,title,body,type,ups,downs,comment_count,created_at,author_id,author_verified,place_id,place_label,months,city_id,status";
+  var POST_COLS_X = POST_COLS + ",topic,question_id";
+
+  // A city's takes. Asks for topic/question_id too, and quietly drops them if
+  // the database hasn't been migrated yet, so the feed never comes up empty.
+  async function loadPosts(cityId, types) {
+    var q = function (cols) { var x = sb.from("posts").select(cols).eq("city_id", cityId); return types ? x.in("type", types) : x; };
+    var r = await q(POST_COLS_X);
+    if (r.error) r = await q(POST_COLS);
+    return r.data || [];
+  }
 
   function placeOf(p, ctx) { return p.place_label || (p.place_id && ctx.places[p.place_id]) || ""; }
   function isSplit(p) { var t = p.ups + p.downs; return t >= 10 && Math.min(p.ups, p.downs) / t >= 0.35; }
@@ -143,12 +153,14 @@
     var pct = p.ups + p.downs ? Math.round(100 * p.ups / (p.ups + p.downs)) : 0;
     var place = placeOf(p, ctx), when = monthsLabel(p.months);
     var href = TV.routes.thread(p.id);
-    return '<article class="take" data-id="' + p.id + '">' +
+    return '<article class="take' + (p.status === "pending" ? " is-pending" : "") + '" data-id="' + p.id + '">' +
       '<div class="tags">' +
         (KIND[p.type] ? '<span class="tag2">' + esc(KIND[p.type].label) + "</span>" : "") +
         (place ? '<span class="tag2">' + ICON.pin + esc(place) + "</span>" : "") +
         (when ? '<span class="tag2">' + esc(when) + "</span>" : "") +
         (isSplit(p) ? '<span class="tag2 split">Locals are split</span>' : "") +
+        (p.topic ? '<span class="tag2">On: ' + esc(p.topic) + "</span>" : "") +
+        (p.status === "pending" ? '<span class="tag2 pending">Waiting for review · only you can see it</span>' : "") +
       "</div>" +
       (opts.noLink ? '<h1 class="tt" style="font-size:23px">' + esc(p.title) + "</h1>" : '<a class="tt" href="' + href + '">' + esc(p.title) + "</a>") +
       (p.body ? '<div class="more">' + esc(p.body) + "</div>" : "") +
@@ -400,7 +412,7 @@
     takeHtml: takeHtml, castVote: castVote,
     loadQuestions: loadQuestions, qTotal: qTotal, answer: answer, qOptionsHtml: qOptionsHtml,
     prepareClaim: prepareClaim, finishClaim: finishClaim, signInForBadge: signInForBadge, saveTenure: saveTenure,
-    drawShareCard: drawShareCard, shareCard: shareCard, ago: ago, answerKind: answerKind,
+    drawShareCard: drawShareCard, shareCard: shareCard, ago: ago, answerKind: answerKind, loadPosts: loadPosts, POST_COLS_X: POST_COLS_X,
     share: share, takeShare: takeShare, questionShare: questionShare, shareLinks: shareLinks, track: track
   };
 })();
