@@ -110,7 +110,15 @@
 
   /* ---------- login modal (injected so pages don't duplicate markup) ---------- */
 
-  var FACEBOOK_LOGIN = false;
+  /* Sign-in options. Google is live. Each other one turns on once its setup is
+     done (see README → "Sign-in providers"); until then ?preview=signin shows
+     the buttons for review. Instagram has no sign-in for websites: people with
+     Instagram sign in with the Facebook (Meta) account it's linked to. */
+  var SIGNIN = { facebook: false, tiktok: false };
+  var SIGNIN_PREVIEW = /[?&]preview=signin\b/.test(location.search);
+  var FACEBOOK_LOGIN = SIGNIN.facebook || SIGNIN_PREVIEW;
+  var TIKTOK_LOGIN = SIGNIN.tiktok || SIGNIN_PREVIEW;
+  var TIKTOK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#fff" d="M16.6 5.82A4.3 4.3 0 0 1 15.54 3h-3.09v12.4a2.6 2.6 0 0 1-2.6 2.5 2.6 2.6 0 0 1-2.6-2.6 2.6 2.6 0 0 1 3.37-2.48V9.66a5.73 5.73 0 0 0-.77-.05A5.68 5.68 0 0 0 4.17 15.3 5.68 5.68 0 0 0 9.85 21a5.68 5.68 0 0 0 5.68-5.69V9.01a7.33 7.33 0 0 0 4.3 1.38V7.3a4.3 4.3 0 0 1-3.23-1.48z"/></svg>';
 
   /* Google Identity Services ("Sign in with Google" button).
      The redirect flow sends people through nkxorlktzbgwqnfwmuus.supabase.co,
@@ -198,7 +206,9 @@
       '<button class="modal-alt" data-login-alt hidden>Trouble signing in? Use the other way</button>' +
       // Facebook login is off until Meta app review is done; an unapproved
       // app fails for everyone who isn't a listed tester.
-      (FACEBOOK_LOGIN ? '<button class="oauth facebook" data-provider="facebook">' + FACEBOOK_SVG + "Continue with Facebook</button>" : "") +
+      (FACEBOOK_LOGIN ? '<button class="oauth facebook" data-provider="facebook">' + FACEBOOK_SVG + "Continue with Facebook</button>" +
+        '<div class="modal-note">On Instagram? Use the Facebook account it\'s linked to.</div>' : "") +
+      (TIKTOK_LOGIN ? '<button class="oauth tiktok" data-tiktok>' + TIKTOK_SVG + "Continue with TikTok</button>" : "") +
       '<button class="modal-close" data-modal-close>Maybe later</button>' +
       '<div class="modal-fine">We only use your name and photo to set up your profile. You can keep browsing and voting without an account.</div>' +
       "</div>";
@@ -206,6 +216,10 @@
 
     wrap.querySelectorAll(".oauth[data-provider]").forEach(function (b) {
       b.addEventListener("click", function () { auth.login(b.dataset.provider); });
+    });
+    var tt = wrap.querySelector("[data-tiktok]");
+    if (tt) tt.addEventListener("click", function () {
+      location.href = "/api/auth/tiktok/start?next=" + encodeURIComponent(location.pathname + location.search);
     });
     wrap.querySelector("[data-modal-close]").addEventListener("click", closeLogin);
     var redirectBtn = wrap.querySelector(".oauth.google");
@@ -223,11 +237,27 @@
     var pending = !!(opts && opts.pending);
     m.querySelector("[data-login-title]").textContent = pending ? "Almost there" : "Join TripVibz";
     m.querySelector("[data-login-text]").textContent = pending
-      ? "Your take is saved. Sign in with Google and we'll post it right away."
+      ? "Your take is saved. Sign in and we'll post it right away."
       : "Save your cosigns, post takes, and review places.";
     m.hidden = false;
   }
   function closeLogin() { var m = $("#loginmodal"); if (m) m.hidden = true; }
+
+  // Back from /api/auth/tiktok/callback: exchange the one-time token in the
+  // URL hash for a session, then tidy the address bar.
+  var SIGNIN_MSG = { tiktok_off: "TikTok sign-in isn't switched on yet.",
+    tiktok_failed: "TikTok sign-in didn't work. Try again, or use Google.", tiktok_cancelled: "" };
+  async function finishTikTok() {
+    var m = location.hash.match(/(?:^#|&)tt=([^&]+)/);
+    var flag = (location.search.match(/[?&]signin=([\w]+)/) || [])[1];
+    if (!m && !flag) return;
+    var clean = location.pathname + location.search.replace(/([?&])signin=[\w]+&?/, "$1").replace(/[?&]$/, "");
+    history.replaceState(null, "", clean);
+    if (flag && SIGNIN_MSG[flag]) setTimeout(function () { toast(SIGNIN_MSG[flag]); }, 400);
+    if (!m) return;
+    var out = await sb.auth.verifyOtp({ token_hash: decodeURIComponent(m[1]), type: "magiclink" });
+    if (out.error) { console.error(out.error); setTimeout(function () { toast(SIGNIN_MSG.tiktok_failed); }, 400); }
+  }
 
   /* ---------- auth ----------
      Pages can set:
@@ -243,6 +273,7 @@
 
     async ensure() {
       try {
+        await finishTikTok();
         var res = await sb.auth.getSession();
         var session = res.data.session;
         if (session) {
@@ -442,7 +473,20 @@
       place_label: fields.place_label || null,
       months: fields.months && fields.months.length ? fields.months : null
     };
+    if (fields.topic) payload.topic = tidyText(fields.topic).replace(/\.$/, "");
+    if (fields.question_id) payload.question_id = fields.question_id;
+    try { return await sendTake(payload); }
+    catch (e) {
+      // Database not migrated yet (no topic / question_id columns): answers still post.
+      if (!payload.topic && payload.question_id && /question_id/.test(String(e && (e.message || e.details)))) {
+        delete payload.question_id;
+        return await sendTake(payload);
+      }
+      throw e;
+    }
+  }
 
+  async function sendTake(payload) {
     var token = null;
     try {
       var sess = await sb.auth.getSession();
@@ -479,6 +523,8 @@
       place_id: payload.place_id,
       place_label: payload.place_label,
       months: payload.months,
+      topic: payload.topic,
+      question_id: payload.question_id,
       author_id: auth.me && auth.me.id
     }).select("id,title,body,type,ups,downs,comment_count,created_at,author_id,author_verified,place_id,place_label,months,city_match").single();
 

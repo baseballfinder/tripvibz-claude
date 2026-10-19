@@ -45,7 +45,7 @@ export async function onRequestPost(context) {
     return json({ error: "bad_json" }, 400);
   }
 
-  const { title, body, type, city_id, place_id, city_name, place_label, months } = payload || {};
+  const { title, body, type, city_id, place_id, city_name, place_label, months, topic, question_id } = payload || {};
   if (!title || !type || !city_id) {
     return json({ error: "missing_fields" }, 400);
   }
@@ -78,6 +78,8 @@ export async function onRequestPost(context) {
       place_id: place_id || null,
       place_label: typeof place_label === "string" && place_label.trim() ? place_label.trim().slice(0, 60) : null,
       months: Array.isArray(months) && months.length ? months.filter(m => Number.isInteger(m) && m >= 1 && m <= 12) : null,
+      ...(typeof topic === "string" && topic.trim() ? { topic: topic.trim().slice(0, 120) } : {}),
+      ...(typeof question_id === "string" && /^[0-9a-f-]{36}$/i.test(question_id) ? { question_id } : {}),
       submitted_city,
       submitted_region,
       submitted_country,

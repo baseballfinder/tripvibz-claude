@@ -100,7 +100,7 @@
       try {
         const { row } = await submitTake({
           title, body: subj ? null : `On: ${Q.prompt}`, type: T2.answerKind(Q.prompt, opt),
-          city_id: CITY.id, city_name: CITY.name, place_label: Q.place_label || null
+          city_id: CITY.id, city_name: CITY.name, place_label: Q.place_label || null, question_id: Q.id
         });
         location.href = `/${CITY.slug}/add/?posted=${row && row.id ? row.id : ""}`;
       } catch (err) {

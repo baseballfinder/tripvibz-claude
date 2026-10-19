@@ -148,3 +148,19 @@
 .city-hero{display:block;width:100%;height:auto;aspect-ratio:16/10;max-height:260px;object-fit:cover;border-radius:16px;margin:4px 0 14px;background:#efe9dd}
 
 .photo-credit{display:block;margin:-8px 0 10px;font-size:11px;color:var(--muted);text-decoration:none;text-align:right}
+/* waiting-for-review takes */
+.tag2.pending{background:#fff3cd;color:#7a5600}
+.take.is-pending{border-style:dashed;border-color:#e6c76a}
+/* new topic composer */
+.nt{margin:18px 0 6px;padding:16px;border-radius:16px;background:#fff;border:1.5px dashed #d9d1c2}
+.nt h2{font:800 17px "Archivo",sans-serif;margin:0 0 4px;color:var(--ink)}
+.nt p{margin:0 0 12px;font-size:14px;line-height:1.4;color:var(--muted)}
+.nt label{display:block;font-size:13px;font-weight:800;margin:10px 0 6px;color:#3f3a31}
+.nt input,.nt textarea{width:100%;box-sizing:border-box;border:1.5px solid #d9d1c2;border-radius:12px;padding:11px 12px;font:16px/1.4 "Public Sans",sans-serif;background:var(--paper,#faf8f4);color:var(--ink)}
+.nt textarea{min-height:84px;resize:vertical}
+.nt input:focus,.nt textarea:focus{outline:2px solid var(--ink);outline-offset:1px;background:#fff}
+.nt .chips{padding:0;flex-wrap:wrap;overflow:visible}
+.nt-send{display:flex;align-items:center;justify-content:center;width:100%;margin-top:12px;min-height:48px;border-radius:12px;border:0;background:#c4391b;color:#fff;font:800 15px "Public Sans",sans-serif;cursor:pointer}
+.nt-send[disabled]{opacity:.6}
+.nt-done{font-size:14.5px;line-height:1.45;color:#3f3a31}
+.nt-done b{display:block;font:800 17px "Archivo",sans-serif;color:var(--ink);margin-bottom:4px}

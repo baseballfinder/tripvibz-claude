@@ -95,7 +95,7 @@
       <div class="sect" style="display:flex;flex-direction:column;gap:10px">
         ${signedIn() ? `
           <button class="bigbtn" id="post-badge"><b>Post it</b><small>With your name and ${esc(badge)} badge</small></button>` : `
-          <button class="bigbtn" id="post-badge"><b>${T2_GOOGLE}Post with my Local badge</b><small>Your name · ${esc(badge)} · ranks higher · founding local</small></button>
+          <button class="bigbtn" id="post-badge"><b>Post with my Local badge</b><small>Your name · ${esc(badge)} · ranks higher · founding local</small></button>
           <button class="bigbtn ghost" id="post-anon"><b>Post anonymously</b><small>No sign-in. Shows as “Unverified”.</small></button>`}
       </div>`;
     wireCompose();
@@ -194,7 +194,7 @@
           <li>Claim a founding-local spot in ${esc(CITY.name)}${left ? ` (${left} left)` : ""}</li>
           <li>Email updates when locals vote or reply (coming soon)</li>
         </ul>
-        <button class="bigbtn" id="claim" style="background:#fff;color:#16130e"><b>${T2_GOOGLE}Continue with Google</b></button>
+        <button class="bigbtn" id="claim" style="background:#fff;color:#16130e"><b>Sign in</b></button>
         <div class="fine">Takes you already posted move to your name.</div>
       </section>` : ""}
 
