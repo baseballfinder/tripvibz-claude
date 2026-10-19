@@ -1,0 +1,183 @@
+{
+ "method": "GetKeywordStats",
+ "keyword": "biltmore estate",
+ "payload": {
+  "d": [
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 2748,
+    "Date": "/Date(1777075200000)/",
+    "Impressions": 2253,
+    "Query": "biltmore estate"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 2540,
+    "Date": "/Date(1777680000000)/",
+    "Impressions": 2062,
+    "Query": "biltmore estate"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 2613,
+    "Date": "/Date(1778284800000)/",
+    "Impressions": 2107,
+    "Query": "biltmore estate"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 2600,
+    "Date": "/Date(1778889600000)/",
+    "Impressions": 2049,
+    "Query": "biltmore estate"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 2493,
+    "Date": "/Date(1779494400000)/",
+    "Impressions": 2006,
+    "Query": "biltmore estate"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 2394,
+    "Date": "/Date(1780099200000)/",
+    "Impressions": 1876,
+    "Query": "biltmore estate"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 2527,
+    "Date": "/Date(1780704000000)/",
+    "Impressions": 2037,
+    "Query": "biltmore estate"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 2708,
+    "Date": "/Date(1781308800000)/",
+    "Impressions": 2225,
+    "Query": "biltmore estate"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 2458,
+    "Date": "/Date(1781913600000)/",
+    "Impressions": 1974,
+    "Query": "biltmore estate"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 2633,
+    "Date": "/Date(1782518400000)/",
+    "Impressions": 2085,
+    "Query": "biltmore estate"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 2510,
+    "Date": "/Date(1783123200000)/",
+    "Impressions": 1997,
+    "Query": "biltmore estate"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 2756,
+    "Date": "/Date(1783728000000)/",
+    "Impressions": 2120,
+    "Query": "biltmore estate"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 2939,
+    "Date": "/Date(1784332800000)/",
+    "Impressions": 2189,
+    "Query": "biltmore estate"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 2961,
+    "Date": "/Date(1784937600000)/",
+    "Impressions": 2249,
+    "Query": "biltmore estate"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 2940,
+    "Date": "/Date(1785542400000)/",
+    "Impressions": 2270,
+    "Query": "biltmore estate"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 2998,
+    "Date": "/Date(1786147200000)/",
+    "Impressions": 2290,
+    "Query": "biltmore estate"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 2957,
+    "Date": "/Date(1786752000000)/",
+    "Impressions": 2262,
+    "Query": "biltmore estate"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 3029,
+    "Date": "/Date(1787961600000)/",
+    "Impressions": 2231,
+    "Query": "biltmore estate"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 3292,
+    "Date": "/Date(1788566400000)/",
+    "Impressions": 2511,
+    "Query": "biltmore estate"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 2914,
+    "Date": "/Date(1789171200000)/",
+    "Impressions": 2250,
+    "Query": "biltmore estate"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 3974,
+    "Date": "/Date(1789776000000)/",
+    "Impressions": 3032,
+    "Query": "biltmore estate"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 3475,
+    "Date": "/Date(1790380800000)/",
+    "Impressions": 2632,
+    "Query": "biltmore estate"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 3691,
+    "Date": "/Date(1790985600000)/",
+    "Impressions": 2809,
+    "Query": "biltmore estate"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 3790,
+    "Date": "/Date(1791590400000)/",
+    "Impressions": 2777,
+    "Query": "biltmore estate"
+   },
+   {
+    "__type": "KeywordStats:#Microsoft.Bing.Webmaster.Api",
+    "BroadImpressions": 3964,
+    "Date": "/Date(1792195200000)/",
+    "Impressions": 2945,
+    "Query": "biltmore estate"
+   }
+  ]
+ }
+}
