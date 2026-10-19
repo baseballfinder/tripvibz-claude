@@ -17,7 +17,8 @@
   var TYPE_LABEL = {
     what_not_to_do: "What not to do",
     worst_times: "Worst times",
-    hidden_gem: "Hidden gem",
+    hidden_gem: "Do this",
+    take: "It depends",
     question: "Question",
     review: "Review",
     guide: "Guide",
@@ -393,10 +394,47 @@
      or a static preview). The take still posts — it just carries no locality
      signal, which is fine because the signal never gates anything. */
 
+  // --- tidy:start --- Light auto-correct for what people type: capital letters,
+  // apostrophes (dont -> don't, im -> I'm), stray spaces, common misspellings,
+  // a period at the end. Never rewrites meaning. Unit-tested in tests/static.mjs.
+  var TIDY_WORDS = {
+    dont: "don't", cant: "can't", wont: "won't", didnt: "didn't", doesnt: "doesn't", isnt: "isn't",
+    arent: "aren't", wasnt: "wasn't", werent: "weren't", shouldnt: "shouldn't", wouldnt: "wouldn't",
+    couldnt: "couldn't", havent: "haven't", hasnt: "hasn't", thats: "that's", theres: "there's",
+    whats: "what's", youre: "you're", theyre: "they're", im: "I'm", ive: "I've", youll: "you'll",
+    alot: "a lot", definately: "definitely", definatly: "definitely", recieve: "receive", seperate: "separate",
+    untill: "until", tommorow: "tomorrow", tomorow: "tomorrow", wierd: "weird", beleive: "believe",
+    occured: "occurred", accomodation: "accommodation", accomodations: "accommodations",
+    restaraunt: "restaurant", resturant: "restaurant", restraunt: "restaurant", restaraunts: "restaurants", resturants: "restaurants",
+    beatiful: "beautiful", beautifull: "beautiful", neccessary: "necessary", necessary: "necessary",
+    truely: "truly", basicly: "basically", experiance: "experience", reccomend: "recommend",
+    recomend: "recommend", reccommend: "recommend", absolutly: "absolutely", probaly: "probably",
+    tourits: "tourists", turists: "tourists", vaction: "vacation", vacaction: "vacation"
+  };
+  function tidyText(s) {
+    if (!s) return s;
+    s = String(s).replace(/\s+/g, " ").trim();
+    s = s.replace(/\s+([,.!?;:])/g, "$1")                  // "word ," -> "word,"
+         .replace(/([a-z]),(?=[a-z])/gi, "$1, ")            // "this,that" -> "this, that"
+         .replace(/([!?])\1+/g, "$1")                       // "!!!" -> "!"
+         .replace(/\b[a-z']+\b/gi, function (w) {
+           var k = w.toLowerCase().replace(/'/g, "");
+           if (w === "i") return "I";
+           if (/^i'(m|ve|ll|d)$/i.test(w)) return "I'" + w.slice(2).toLowerCase();
+           var fix = w.indexOf("'") < 0 && TIDY_WORDS[k];
+           if (!fix) return w;
+           return w[0] === w[0].toUpperCase() && w[0] !== w[0].toLowerCase() ? fix[0].toUpperCase() + fix.slice(1) : fix;
+         });
+    s = s.replace(/(^|[.!?]\s+)([a-z])/g, function (m, a, b) { return a + b.toUpperCase(); });
+    if (/[a-z0-9)"”]$/i.test(s)) s += ".";
+    return s;
+  }
+  // --- tidy:end ---
+
   async function submitTake(fields) {
     var payload = {
-      title: fields.title,
-      body: fields.body || null,
+      title: tidyText(fields.title),
+      body: fields.body ? tidyText(fields.body) : null,
       type: fields.type,
       city_id: fields.city_id,
       city_name: fields.city_name || null,
@@ -456,7 +494,7 @@
     return !!(auth.me && !auth.me.is_anonymous);
   }
 
-  window.TV = {
+  window.TV = { tidy: tidyText,
     sb: sb,
     persistVote: persistVote,
     routes: routes,

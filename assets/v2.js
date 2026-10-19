@@ -10,11 +10,26 @@
   var KIND = {
     what_not_to_do: { label: "Don’t do this", sub: "A mistake visitors make",
       starters: function (c) { return ["Never ___ in " + c + ", because ___.", "Skip ___. Locals ___ instead.", "Visitors always ___. Don’t."]; } },
-    worst_times: { label: "Bad timing", sub: "When not to come",
+    worst_times: { label: "When to go", sub: "Best and worst times to come",
       starters: function (c) { return ["Avoid " + c + " in ___, because ___.", "___ is the worst week. Come ___ instead.", "Don’t go to ___ on ___."]; } },
-    hidden_gem: { label: "Locals’ move", sub: "What we do instead",
-      starters: function (c) { return ["Locals go to ___ for ___.", "Instead of ___, try ___.", "Nobody visiting knows about ___."]; } }
+    hidden_gem: { label: "Do this", sub: "What locals recommend",
+      starters: function (c) { return ["Locals go to ___ for ___.", "Instead of ___, try ___.", "Nobody visiting knows about ___."]; } },
+    // "It depends" answers to questions (Only on weekdays, Depends on the night…). Not offered on the add page.
+    take: { label: "It depends", sub: "Worth it, with a catch", answerOnly: true,
+      starters: function (c) { return ["Only if ___.", "Worth it, but ___.", "Go on ___, not ___."]; } }
   };
+
+  // Which kind a question answer is, so its card says "Do this", "Don't do this",
+  // "It depends" or "When to go" instead of always "Don't do this".
+  var TIMING_Q = /^(best|worst) time|^when (should|to)|month|season/i;
+  var DONT = /^(skip|avoid|stay away|bad idea|a mistake|not worth|over(priced|hyped|rated|blown|done)|tourist trap|too crowded|the worst part|just avoid|real problem|a tourist thing|neither|better (beaches|views)|go somewhere|go to (a different|another)|wait|just a photo|just look|once is enough|one block is enough|no, )/i;
+  var DEPENDS = /^(only|depends|go on a weekday|weekdays only|weeknights only|mornings only|better in the daytime|just (one night|a day|for a day|the parade|walk|for)|plan around|do it once|fun once|worth seeing once|quick stop|part of a longer|go at sunrise|leave before|calle ocho only|once, then|rent one for|drive one way)/i;
+  function answerKind(prompt, label) {
+    if (TIMING_Q.test(prompt || "")) return "worst_times";
+    if (DONT.test(label || "")) return "what_not_to_do";
+    if (DEPENDS.test(label || "")) return "take";
+    return "hidden_gem";
+  }
 
   var TENURE = {
     "lt1": "Under 1 year", "1-5": "1–5 years", "5-10": "5–10 years", "10+": "10+ years",
@@ -385,7 +400,7 @@
     takeHtml: takeHtml, castVote: castVote,
     loadQuestions: loadQuestions, qTotal: qTotal, answer: answer, qOptionsHtml: qOptionsHtml,
     prepareClaim: prepareClaim, finishClaim: finishClaim, signInForBadge: signInForBadge, saveTenure: saveTenure,
-    drawShareCard: drawShareCard, shareCard: shareCard, ago: ago,
+    drawShareCard: drawShareCard, shareCard: shareCard, ago: ago, answerKind: answerKind,
     share: share, takeShare: takeShare, questionShare: questionShare, shareLinks: shareLinks, track: track
   };
 })();

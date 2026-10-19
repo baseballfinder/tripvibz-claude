@@ -135,7 +135,7 @@ await test("Cities page: grid, search, request-a-city", async () => {
 });
 
 for (const slug of ["nashville", "knoxville", "miami"]) {
-  await test(`City feed (${slug}): hero photo, lead question, sections, add button`, async () => {
+  await test(`City feed (${slug}): hero photo, lead question, sections, no old add button`, async () => {
     await go(`/${slug}/`);
     assert(/What locals say about/.test(await page.textContent("h1")), "headline missing");
     const w = await page.evaluate(() => { const i = document.querySelector(".city-hero"); return i ? i.naturalWidth : 0; });
@@ -143,7 +143,7 @@ for (const slug of ["nashville", "knoxville", "miami"]) {
     assert((await page.textContent(".qcard .qp")).trim() === lead(slug).prompt, "lead question is not the first active question");
     assert(await page.locator(".qcard a.qopt").count() >= 2, "question options missing");
     assert(await page.locator("[data-sec]").count() === 4, "section chips missing");
-    assert((await page.getAttribute("#fab", "href")) === `/${slug}/add/`, "add button link wrong");
+    assert(await page.locator(".fab").count() === 0, "old \"What do tourists get wrong\" button is back");
   });
 }
 

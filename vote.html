@@ -74,7 +74,7 @@
         <div class="verdict">${esc(verdict)}</div>
         <div class="vnote">${total} vote${total === 1 ? "" : "s"} so far</div>
         <label class="why" for="why">Why? <span>(optional, one sentence)</span></label>
-        <textarea id="why" maxlength="400" placeholder="${esc((Q.options.find(o => o.id === Q.mine) || {}).label || "")} because…"></textarea>
+        <textarea id="why" autocapitalize="sentences" autocorrect="on" spellcheck="true" maxlength="400" placeholder="${esc((Q.options.find(o => o.id === Q.mine) || {}).label || "")} because…"></textarea>
         <div id="slot">${ERR ? `<div class="err">${esc(ERR)}</div>` : ""}</div>
         <div class="vbtns">
           <button class="p" id="post">Post my take</button>
@@ -89,7 +89,7 @@
     if (sq) sq.onclick = () => T2.share(T2.questionShare(Q, CITY, (Q.options.find(o => o.id === Q.mine) || {}).label));
     const post = $("#post");
     if (post) post.addEventListener("click", async () => {
-      const why = ($("#why").value || "").trim();
+      const why = window.TV.tidy(($("#why").value || "").trim());
       if (why.length < 8) { $("#why").focus(); window.TV.toast("A few words on why. One sentence is fine."); return; }
       const opt = (Q.options.find(o => o.id === Q.mine) || {}).label || "";
       const subj = subjectOf(Q.prompt);
@@ -99,7 +99,7 @@
       post.disabled = true; post.textContent = "Posting…";
       try {
         const { row } = await submitTake({
-          title, body: subj ? null : `On: ${Q.prompt}`, type: "what_not_to_do",
+          title, body: subj ? null : `On: ${Q.prompt}`, type: T2.answerKind(Q.prompt, opt),
           city_id: CITY.id, city_name: CITY.name, place_label: Q.place_label || null
         });
         location.href = `/${CITY.slug}/add/?posted=${row && row.id ? row.id : ""}`;
