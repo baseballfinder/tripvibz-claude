@@ -56,4 +56,14 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add "$DEST" data/keywords/seeds.csv
           git commit -m "Question keywords $(date -u +%F) (run ${{ github.run_id }})" || echo "nothing to commit"
-          git push origin HEAD:${{ github.ref_name }}
+          # main only accepts pull requests (ruleset), so results go to their own branch.
+          BR="${{ github.ref_name }}"; [ "$BR" = "main" ] && BR="data/keywords-${{ github.run_id }}"
+          git push origin HEAD:refs/heads/$BR
+          echo "Results on branch $BR" >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep results as a download too
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: question-keywords-${{ github.run_id }}
+          path: data/keywords/
+          if-no-files-found: ignore
