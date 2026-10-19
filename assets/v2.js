@@ -103,7 +103,17 @@
     return ctx;
   }
 
-  var POST_COLS = "id,title,body,type,ups,downs,comment_count,created_at,author_id,author_verified,place_id,place_label,months,city_id";
+  var POST_COLS = "id,title,body,type,ups,downs,comment_count,created_at,author_id,author_verified,place_id,place_label,months,city_id,status";
+  var POST_COLS_X = POST_COLS + ",topic,question_id";
+
+  // A city's takes. Asks for topic/question_id too, and quietly drops them if
+  // the database hasn't been migrated yet, so the feed never comes up empty.
+  async function loadPosts(cityId, types) {
+    var q = function (cols) { var x = sb.from("posts").select(cols).eq("city_id", cityId); return types ? x.in("type", types) : x; };
+    var r = await q(POST_COLS_X);
+    if (r.error) r = await q(POST_COLS);
+    return r.data || [];
+  }
 
   function placeOf(p, ctx) { return p.place_label || (p.place_id && ctx.places[p.place_id]) || ""; }
   function isSplit(p) { var t = p.ups + p.downs; return t >= 10 && Math.min(p.ups, p.downs) / t >= 0.35; }
@@ -143,12 +153,14 @@
     var pct = p.ups + p.downs ? Math.round(100 * p.ups / (p.ups + p.downs)) : 0;
     var place = placeOf(p, ctx), when = monthsLabel(p.months);
     var href = TV.routes.thread(p.id);
-    return '<article class="take" data-id="' + p.id + '">' +
+    return '<article class="take' + (p.status === "pending" ? " is-pending" : "") + '" data-id="' + p.id + '">' +
       '<div class="tags">' +
         (KIND[p.type] ? '<span class="tag2">' + esc(KIND[p.type].label) + "</span>" : "") +
         (place ? '<span class="tag2">' + ICON.pin + esc(place) + "</span>" : "") +
         (when ? '<span class="tag2">' + esc(when) + "</span>" : "") +
         (isSplit(p) ? '<span class="tag2 split">Locals are split</span>' : "") +
+        (p.topic ? '<span class="tag2">On: ' + esc(p.topic) + "</span>" : "") +
+        (p.status === "pending" ? '<span class="tag2 pending">Waiting for review · only you can see it</span>' : "") +
       "</div>" +
       (opts.noLink ? '<h1 class="tt" style="font-size:23px">' + esc(p.title) + "</h1>" : '<a class="tt" href="' + href + '">' + esc(p.title) + "</a>") +
       (p.body ? '<div class="more">' + esc(p.body) + "</div>" : "") +
@@ -393,6 +405,61 @@
     share(takeShare({ id: b.dataset.shareTake, title: (title || "").trim() }, b.dataset.city || window.__tvCityName || ""));
   });
 
+  /* ---------- gift cards (Tremendous) ----------
+     50 cents a take, paid as one gift card once someone has answered every
+     question for a city with a take. DRAFT: off for everyone until REWARDS.on
+     is true; ?preview=rewards shows it (for the rest of the visit) for review. */
+
+  var REWARDS = { on: false, cents: 50 };
+  function rewardsOn() {
+    if (REWARDS.on) return true;
+    var asked = /[?&]preview=rewards\b/.test(location.search);
+    try {
+      if (asked) sessionStorage.setItem("tv_rewards_preview", "1");
+      return asked || sessionStorage.getItem("tv_rewards_preview") === "1";
+    } catch (e) { return asked; }
+  }
+  function money(cents) { return "$" + (cents / 100).toFixed(2); }
+
+  // Which of this city's questions this person has answered with a take.
+  async function rewardProgress(cityId, qs) {
+    var me = TV.auth.me, done = {};
+    if (me) {
+      var r = await sb.from("posts").select("question_id").eq("city_id", cityId).eq("author_id", me.id);
+      (r.data || []).forEach(function (p) { if (p.question_id) done[p.question_id] = true; });
+    }
+    var answered = qs.filter(function (q) { return done[q.id]; }).length;
+    return {
+      total: qs.length, answered: answered, done: done,
+      earned: answered * REWARDS.cents, prize: qs.length * REWARDS.cents,
+      next: qs.find(function (q) { return !done[q.id]; }) || null,
+      signedIn: !!(me && !me.is_anonymous)
+    };
+  }
+
+  function rewardCardHtml(city, pr) {
+    var dots = "";
+    for (var i = 0; i < pr.total; i++) dots += '<i class="' + (i < pr.answered ? "on" : "") + '"></i>';
+    var finished = pr.answered >= pr.total;
+    var cta = finished ? "" : '<a class="rw-go" href="/' + city.slug + "/vote/" + (pr.next ? "?q=" + pr.next.id : "") + '">' +
+      (pr.answered ? "Next question" : "Start") + " →</a>";
+    return '<section class="rw" aria-label="Gift card">' +
+      '<div class="rw-top"><span class="rw-amt">' + money(pr.prize) + '</span><span class="rw-tag">Gift card</span></div>' +
+      '<div class="rw-h">' + (finished
+        ? "You answered every " + esc(city.name) + " question."
+        : "Answer all " + pr.total + " " + esc(city.name) + " questions, get a " + money(pr.prize) + " gift card.") + "</div>" +
+      '<div class="rw-p">' + (finished
+        ? (pr.signedIn ? "Your card is on its way after a quick check. It arrives by email from Tremendous, our gift card partner."
+                       : "Sign in with Google so we know where to send your card.")
+        : REWARDS.cents + "¢ for every take: pick an answer and say why in a sentence. Paid as one card when you finish the city.") + "</div>" +
+      '<div class="rw-row"><div class="rw-dots" aria-label="' + pr.answered + " of " + pr.total + ' answered">' + dots + "</div>" +
+      '<span class="rw-n">' + pr.answered + " of " + pr.total + " · " + money(pr.earned) + "</span>" + cta + "</div>" +
+      (!pr.signedIn && !finished ? '<div class="rw-fine">Sign in with Google before you finish so we can email your card.</div>' : "") +
+      '<details class="rw-fine"><summary>How it works</summary>One card per person per city. Takes have to be real and about the city; we check them before sending. ' +
+      "Cards come from Tremendous, and you choose where to spend yours from their list of gift cards.</details>" +
+      "</section>";
+  }
+
   window.TV2 = {
     KIND: KIND, TENURE: TENURE, MON: MON, ICON: ICON, POST_COLS: POST_COLS,
     tenureBadge: tenureBadge, monthsLabel: monthsLabel, shortName: shortName,
@@ -400,7 +467,8 @@
     takeHtml: takeHtml, castVote: castVote,
     loadQuestions: loadQuestions, qTotal: qTotal, answer: answer, qOptionsHtml: qOptionsHtml,
     prepareClaim: prepareClaim, finishClaim: finishClaim, signInForBadge: signInForBadge, saveTenure: saveTenure,
-    drawShareCard: drawShareCard, shareCard: shareCard, ago: ago, answerKind: answerKind,
+    drawShareCard: drawShareCard, shareCard: shareCard, ago: ago, answerKind: answerKind, loadPosts: loadPosts, POST_COLS_X: POST_COLS_X,
+    REWARDS: REWARDS, rewardsOn: rewardsOn, rewardProgress: rewardProgress, rewardCardHtml: rewardCardHtml, money: money,
     share: share, takeShare: takeShare, questionShare: questionShare, shareLinks: shareLinks, track: track
   };
 })();

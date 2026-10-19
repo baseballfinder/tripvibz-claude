@@ -44,7 +44,47 @@
   };
 
   const SECTIONS = [["all","Everything"],["what_not_to_do","What not to do"],["worst_times","Worst times"],["hidden_gem","What locals do"]];
-  let CITY = null, POSTS = [], CTX = null, QS = [], SECTION = "all", SORT = "top";
+  let CITY = null, POSTS = [], CTX = null, QS = [], SECTION = "all", SORT = "top", RW = null;
+  const NT = { kind: "what_not_to_do", topic: "", text: "", busy: false, sent: false, err: "" };
+  const NT_KINDS = [["what_not_to_do","Don’t do this"],["hidden_gem","Do this"],["take","It depends"],["worst_times","When to go"]];
+
+  // A take on something we didn't ask about. Waits for review before anyone else sees it.
+  function topicBox(){
+    if (NT.sent) return `<section class="nt" id="nt"><div class="nt-done"><b>Thanks, it's in.</b>New topics get a quick check before they go live, usually within a day. It's in the feed now marked "Waiting for review" (only you can see it).</div></section>`;
+    return `<section class="nt" id="nt" aria-labelledby="nt-h">
+      <h2 id="nt-h">Something we didn't ask about?</h2>
+      <p>Tell visitors what they get wrong in ${esc(CITY.name)}. New topics get a quick check before they go live.</p>
+      <label for="nt-topic">What's it about?</label>
+      <input id="nt-topic" maxlength="80" autocapitalize="sentences" autocorrect="on" spellcheck="true" placeholder="e.g. Parking downtown, ${esc(CITY.name)} in August" value="${esc(NT.topic)}">
+      <label>Your take is…</label>
+      <div class="chips" role="group" aria-label="Kind of take">${NT_KINDS.map(([k,l]) => `<button class="chip" data-ntk="${k}" aria-pressed="${NT.kind===k}">${l}</button>`).join("")}</div>
+      <label for="nt-text">Your take</label>
+      <textarea id="nt-text" maxlength="400" autocapitalize="sentences" autocorrect="on" spellcheck="true" placeholder="One or two sentences. What should visitors know?">${esc(NT.text)}</textarea>
+      ${NT.err ? `<div class="err" style="margin-top:8px">${esc(NT.err)}</div>` : ""}
+      <button class="nt-send" id="nt-send" ${NT.busy ? "disabled" : ""}>${NT.busy ? "Sending…" : "Send for review"}</button>
+    </section>`;
+  }
+
+  async function sendTopic(){
+    NT.topic = ($("#nt-topic").value || "").trim(); NT.text = ($("#nt-text").value || "").trim();
+    if (NT.topic.length < 3) { NT.err = "Say what it's about in a few words."; render(); $("#nt-topic").focus(); return; }
+    if (NT.text.length < 12) { NT.err = "Add a sentence or two so visitors know why."; render(); $("#nt-text").focus(); return; }
+    NT.err = ""; NT.busy = true; render();
+    try {
+      if (!auth.me) await auth.ensure();
+      const text = window.TV.tidy(NT.text);
+      const title = text.length <= 160 ? text : text.slice(0, 157).replace(/\s+\S*$/, "") + "…";
+      const { row } = await window.TV.submitTake({ title, body: text.length > 160 ? text : null, type: NT.kind,
+        city_id: CITY.id, city_name: CITY.name, topic: NT.topic });
+      if (row) POSTS.unshift(Object.assign({ ups: 0, downs: 0, comment_count: 0, status: "pending", topic: NT.topic }, row));
+      NT.sent = true; NT.busy = false; render();
+      T2.track("topic_submitted", { city: CITY.slug });
+    } catch (e) {
+      console.error(e); NT.busy = false;
+      NT.err = window.TV.moderationMessage(e) || (/RATE_LIMITED/.test(String(e && e.message)) ? "You've posted a few today. Sign in to post more." : "That didn't send. Try again.");
+      render();
+    }
+  }
 
   try { const s = new URLSearchParams(location.search).get("s"); if (s && SECTIONS.some(x => x[0] === s)) SECTION = s; } catch (e) {}
 
@@ -78,6 +118,7 @@
       <h1>What locals say about ${esc(CITY.name)}</h1>
       ${POSTS.length || votes ? `<div class="stats"><span>${POSTS.length} take${POSTS.length === 1 ? "" : "s"}</span><span>${locals} local${locals === 1 ? "" : "s"}</span><span>${votes} vote${votes === 1 ? "" : "s"}</span></div>` : ""}
       <div style="height:14px"></div>
+      ${RW ? T2.rewardCardHtml(CITY, RW) : ""}
       ${questionCard()}
       <nav class="chips" aria-label="Sections">${SECTIONS.map(([id,l]) => `<button class="chip" data-sec="${id}" aria-pressed="${SECTION===id}">${l}</button>`).join("")}</nav>
       <div class="row-between" style="margin:2px 0 12px">
@@ -85,13 +126,18 @@
         <span style="font-size:12.5px;color:var(--muted);font-weight:600">${CTX.founderCount}/10 founding locals</span>
       </div>
       <div class="feed" id="feed">${list.length ? list.map(p => T2.takeHtml(p, CTX)).join("") :
-        `<div class="empty2"><b>No takes here yet</b>Live in ${esc(CITY.name)}? Tell visitors what they get wrong. One sentence is enough, and the first 10 signed-in locals are its founding locals.</div>`}</div>`;
+        `<div class="empty2"><b>No takes here yet</b>Live in ${esc(CITY.name)}? Answer a question above, or start a topic of your own below.</div>`}</div>
+      ${topicBox()}`;
     wire();
   }
 
   function wire(){
     $("#city").querySelectorAll("[data-sec]").forEach(b => b.addEventListener("click", () => { SECTION = b.dataset.sec; render(); }));
     $("#city").querySelectorAll("[data-sort]").forEach(b => b.addEventListener("click", () => { SORT = b.dataset.sort; render(); }));
+    $("#city").querySelectorAll("[data-ntk]").forEach(b => b.addEventListener("click", () => {
+      NT.topic = $("#nt-topic").value; NT.text = $("#nt-text").value; NT.kind = b.dataset.ntk; render();
+    }));
+    const ns = $("#nt-send"); if (ns) ns.addEventListener("click", sendTopic);
     $("#feed").addEventListener("click", async e => {
       const b = e.target.closest("[data-vote]"); if (!b) return;
       const p = POSTS.find(x => x.id === b.dataset.id); if (!p) return;
@@ -107,9 +153,9 @@
     document.title = `What locals say about ${CITY.name} · TripVibz`;
     await auth.ensure();
     await T2.finishClaim();
-    const r = await sb.from("posts").select(T2.POST_COLS).eq("city_id", CITY.id).in("type", ["what_not_to_do","worst_times","hidden_gem","take"]);
-    POSTS = r.data || [];
+    POSTS = await T2.loadPosts(CITY.id, ["what_not_to_do","worst_times","hidden_gem","take"]);
     [CTX, QS] = await Promise.all([T2.hydrate(POSTS, CITY.id), T2.loadQuestions(CITY.id)]);
+    if (T2.rewardsOn() && QS.length) RW = await T2.rewardProgress(CITY.id, QS);
     render();
   })();
 })();

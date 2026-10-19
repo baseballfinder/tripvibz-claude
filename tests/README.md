@@ -25,6 +25,8 @@ preview instead of the local build: `BASE=https://<branch>.tripvibz.pages.dev no
 | Topic pages | Headline, 3 tabs, starters open the add page, old Cosign UI gone, 12-month calendar on Worst times | e2e |
 | True / Nope on takes | Toggle on, vote sent | e2e |
 | Sharing | Share button on every take card, share menu (copy, text, WhatsApp, Facebook, X, email) all carry the take's www /t/ link, thread "Do your friends agree?" share, "Ask your friends" after voting on a question | e2e |
+| New topics (review queue) | City page "Something we didn't ask about?" box sends the take with its topic and shows the thank-you state | e2e |
+| Gift cards (draft) | Hidden unless ?preview=rewards; preview shows the right amount; code stays off and Tremendous stays in sandbox until launched | e2e + static |
 | Threads and replies | Split bar, typed "I disagree" reply sent | e2e |
 | JavaScript health | No errors on any page visited | e2e |
 | City pages exist | Page, vote page and add page for every city in the database | static |

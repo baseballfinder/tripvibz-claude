@@ -442,7 +442,20 @@
       place_label: fields.place_label || null,
       months: fields.months && fields.months.length ? fields.months : null
     };
+    if (fields.topic) payload.topic = tidyText(fields.topic).replace(/\.$/, "");
+    if (fields.question_id) payload.question_id = fields.question_id;
+    try { return await sendTake(payload); }
+    catch (e) {
+      // Database not migrated yet (no topic / question_id columns): answers still post.
+      if (!payload.topic && payload.question_id && /question_id/.test(String(e && (e.message || e.details)))) {
+        delete payload.question_id;
+        return await sendTake(payload);
+      }
+      throw e;
+    }
+  }
 
+  async function sendTake(payload) {
     var token = null;
     try {
       var sess = await sb.auth.getSession();
@@ -479,6 +492,8 @@
       place_id: payload.place_id,
       place_label: payload.place_label,
       months: payload.months,
+      topic: payload.topic,
+      question_id: payload.question_id,
       author_id: auth.me && auth.me.id
     }).select("id,title,body,type,ups,downs,comment_count,created_at,author_id,author_verified,place_id,place_label,months,city_match").single();
 

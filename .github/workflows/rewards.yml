@@ -1,0 +1,57 @@
+# Gift cards (Tremendous). DRAFT: does nothing until the repo variable
+# REWARDS_ON is "1". Sandbox (fake money) until TREMENDOUS_LIVE is "1".
+# Hourly: anyone who just answered every question in a city gets an issue for
+# James; label it "pay" to send the card, "reject" to skip. Logic: scripts/rewards_bot.py
+
+name: Gift cards
+
+on:
+  schedule:
+    - cron: "53 * * * *"   # hourly
+  workflow_dispatch: {}
+  issues:
+    types: [labeled]
+
+permissions:
+  issues: write
+  contents: read
+
+concurrency:
+  group: rewards
+  cancel-in-progress: false
+
+env:
+  REWARDS_ON: ${{ vars.REWARDS_ON }}
+  TREMENDOUS_LIVE: ${{ vars.TREMENDOUS_LIVE }}
+  TREMENDOUS_CAMPAIGN_ID: ${{ vars.TREMENDOUS_CAMPAIGN_ID }}
+  TREMENDOUS_PRODUCTS: ${{ vars.TREMENDOUS_PRODUCTS }}
+  TREMENDOUS_FUNDING_SOURCE_ID: ${{ vars.TREMENDOUS_FUNDING_SOURCE_ID }}
+
+jobs:
+  notify:
+    if: github.event_name != 'issues'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install --quiet "psycopg[binary]==3.2.3"
+      - name: Open an issue for each finished city
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/rewards_bot.py notify
+
+  decide:
+    if: github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'gift-card') && (github.event.label.name == 'pay' || github.event.label.name == 'reject')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install --quiet "psycopg[binary]==3.2.3"
+      - name: Send or skip the card
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          TREMENDOUS_API_KEY: ${{ secrets.TREMENDOUS_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: python3 scripts/rewards_bot.py ${{ github.event.label.name }}
