@@ -138,7 +138,7 @@ await test("Question answers get the right label (Do this / Don't do this / It d
 await test("Old UI is gone (no Cosign / Add to this article)", async () => {
   for (const f of pages) {
     const h = await readFile(f, "utf8");
-    assert(!/Cosign|Add to this article|Add my take/.test(h), `${f} still has old UI text`);
+    assert(!/Cosign|Add to this article|Add my take|Back to feed/.test(h), `${f} still has old UI text`);
   }
 });
 

@@ -33,7 +33,7 @@ preview instead of the local build: `BASE=https://<branch>.tripvibz.pages.dev no
 | Domain | No links to `https://tripvibz.com` (no www), sitemap and robots on www | static |
 | Assets | Every `/assets/...` file a page references exists | static |
 | Logo | favicon.ico, SVG favicon, app icons, manifest, logo files | static |
-| Old UI | No "Cosign", "Add to this article" or "Add my take" anywhere | static |
+| Old UI | No "Cosign", "Add to this article", "Add my take" or "Back to feed" anywhere; no old add button on city pages | static |
 | Private files | `data/`, `scripts/`, `tests/` are not published | static |
 | Tooling | Python scripts compile, workflow files parse | static |
 
