@@ -2,7 +2,7 @@
 -- cities_with_counts only counted takes attached to a mapped place (posts.place_id),
 -- but takes from questions and the add page carry city_id + a free-text place label.
 -- Count takes by city instead. Column list and order unchanged.
-create or replace view public.cities_with_counts as
+create or replace view public.cities_with_counts with (security_invoker = true) as
 select c.id, c.name, c.state, c.slug, c.lat, c.lng, c.blurb, c.sort,
        coalesce(pc.place_count, 0::bigint) as place_count,
        coalesce(tc.take_count, 0::bigint) as take_count,
