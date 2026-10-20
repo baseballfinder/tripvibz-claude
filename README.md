@@ -65,3 +65,9 @@ Facebook account it's linked to; the sign-in box says so.
 3. Set `tiktok: true` in `assets/tv.js` (pull request).
 
 TikTok accounts get a placeholder email (`tt-…@tiktok.users.tripvibz.com`, never mailed) because TikTok shares no email address.
+
+## Phone notifications
+
+James gets a push notification (free ntfy app) when someone lands on a page from a search engine (Google, Bing, DuckDuckGo, Yahoo, Ecosia, Brave, Perplexity, ChatGPT; once per visit, bots skipped) and when anyone posts a take (new topics are flagged "needs review"). Code: `functions/api/_notify.js`, `functions/api/hit.js`, `functions/api/take.js`, and the beacon in `assets/analytics.js`.
+
+Setup: install ntfy (App Store / Google Play), subscribe to the private topic, and set `NTFY_TOPIC` to that name in Cloudflare → Pages → tripvibz → Settings → Variables and Secrets (Production). Delete the variable to stop the notifications. Google hides the searched words from sites, so a Google notification shows the page but not the query; Bing and DuckDuckGo sometimes include it.
