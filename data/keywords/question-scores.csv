@@ -1,58 +1,58 @@
 city,position,question,top search,Bing searches/month,top hashtag,Instagram posts,demand
-asheville,1,Biltmore Estate: worth the ticket price?,,,#biltmore,415821,Moderate (search not pulled yet)
-asheville,2,Blue Ridge Parkway in the fall: worth the traffic?,,,#blueridgeparkway,742049,Strong (search not pulled yet)
+asheville,1,Biltmore Estate: worth the ticket price?,biltmore estate,8461,#biltmore,415821,Strong
+asheville,2,Blue Ridge Parkway in the fall: worth the traffic?,blue ridge parkway,4038,#blueridgeparkway,742049,Strong
 asheville,3,River Arts District or downtown: where should visitors spend the afternoon?,river arts district asheville,81,#downtownasheville,129783,Moderate
 asheville,4,"Asheville breweries: do the South Slope crawl, or pick one good spot?",asheville breweries,28,#ashevillebeer,31297,Weak
 asheville,5,Best time to visit Asheville?,best time to visit asheville,0,#asheville,3184501,Strong
 austin,1,"SXSW 2027: come for it, or stay away?",sxsw,796,#sxsw,2337483,Strong
-austin,2,Rainey Street or 6th Street for a night out?,,,#6thstreet,297994,Moderate (search not pulled yet)
-austin,3,Franklin Barbecue: worth the line?,franklin barbecue,117,#franklinbbq,25195,Moderate
-austin,4,"Barton Springs Pool: worth it, or overhyped?",,,#bartonsprings,125506,Moderate (search not pulled yet)
+austin,2,Rainey Street or 6th Street for a night out?,rainey street austin,130,#6thstreet,297994,Moderate
+austin,3,Franklin Barbecue: worth the line?,franklin bbq,277,#franklinbbq,25195,Moderate
+austin,4,"Barton Springs Pool: worth it, or overhyped?",barton springs,680,#bartonsprings,125506,Strong
 austin,5,Best time to visit Austin?,best time to visit austin,0,#austintx,4966263,Strong
 charleston,1,Folly Beach or Sullivan's Island?,folly beach,1201,#follybeach,530315,Strong
-charleston,2,"Rainbow Row: worth the stop, or just a photo?",,,#rainbowrow,78042,Moderate (search not pulled yet)
-charleston,3,Charleston plantation tours: which one do locals send visitors to?,,,#magnoliaplantation,52629,Moderate (search not pulled yet)
-charleston,4,"Downtown Charleston: drive in, or park and walk?",,,#downtowncharleston,240561,Moderate (search not pulled yet)
+charleston,2,"Rainbow Row: worth the stop, or just a photo?",rainbow row charleston sc,208,#rainbowrow,78042,Moderate
+charleston,3,Charleston plantation tours: which one do locals send visitors to?,magnolia plantation,427,#magnoliaplantation,52629,Moderate
+charleston,4,"Downtown Charleston: drive in, or park and walk?",downtown charleston,11,#downtowncharleston,240561,Moderate
 charleston,5,Best time to visit Charleston?,best time to visit charleston,0,#charlestonsc,3078022,Strong
-chicago,1,"Navy Pier: worth it, or skip it?",navy pier,4353,#navypier,614682,Strong
+chicago,1,"Navy Pier: worth it, or skip it?",navy pier chicago,36317,#navypier,614682,Strong
 chicago,2,"Chicago deep dish pizza: worth it, or a tourist thing?",best deep dish pizza in chicago,969,#deepdish,442176,Strong
 chicago,3,Chicago architecture boat tour: worth it?,chicago architecture boat tour,894,#chicagoarchitecture,369459,Strong
 chicago,4,"Chicago in winter: worth visiting, or wait for summer?",chicago in winter,0,#chicagowinter,133461,Moderate
 chicago,5,Best time to visit Chicago?,best time to visit chicago,100,#chicago,61183470,Strong
 daytona-beach,1,Daytona 500 2027: worth going without race tickets?,daytona 500,1667,#daytona500,310627,Strong
-daytona-beach,2,Daytona Beach or New Smyrna Beach?,new smyrna beach,1591,#daytonabeach,1641566,Strong
-daytona-beach,3,"Daytona Bike Week 2027: come for it, or stay away?",daytona bike week,67,#bikeweek,402132,Moderate
-daytona-beach,4,"Driving on Daytona Beach: fun, or a bad idea?",,,#daytonabeach,1641566,Strong (search not pulled yet)
+daytona-beach,2,Daytona Beach or New Smyrna Beach?,daytona beach,2543,#daytonabeach,1641566,Strong
+daytona-beach,3,"Daytona Bike Week 2027: come for it, or stay away?",daytona bike week 2027,171,#bikeweek,402132,Moderate
+daytona-beach,4,"Driving on Daytona Beach: fun, or a bad idea?",driving on daytona beach,0,#daytonabeach,1641566,Strong
 daytona-beach,5,Best time to visit Daytona Beach?,best time to visit daytona beach,0,#daytonabeach,1641566,Strong
 denver,1,Red Rocks Amphitheatre: worth it without a concert?,red rocks amphitheatre,15204,#redrocks,1787831,Strong
 denver,2,"Driving I-70 to the mountains on a weekend: fine, or avoid?",i 70 traffic,0,#i70,50205,Moderate
-denver,3,"Altitude in Denver: real problem for visitors, or overblown?",,,#milehighcity,4152924,Strong (search not pulled yet)
-denver,4,"Stay in Denver, or base yourself in the mountains?",where to stay in denver,0,#denver,17033649,Strong
+denver,3,"Altitude in Denver: real problem for visitors, or overblown?",altitude sickness symptoms,193,#milehighcity,4152924,Strong
+denver,4,"Stay in Denver, or base yourself in the mountains?",denver hotels,697,#denver,17033649,Strong
 denver,5,Best time to visit Denver?,best time to visit denver,0,#denver,17033649,Strong
 fort-lauderdale,1,"Fort Lauderdale Beach, or drive to a quieter one?",fort lauderdale beach,295,#fortlauderdalebeach,665912,Strong
 fort-lauderdale,2,"Las Olas on a Saturday night: worth it, or skip it?",las olas fort lauderdale,223,#lasolas,512936,Strong
-fort-lauderdale,3,Fort Lauderdale Water Taxi: worth it for visitors?,fort lauderdale water taxi,132,#fortlauderdale,6295631,Strong
+fort-lauderdale,3,Fort Lauderdale Water Taxi: worth it for visitors?,water taxi fort lauderdale,138,#fortlauderdale,6295631,Strong
 fort-lauderdale,4,"Visiting Fort Lauderdale for a weekend: rent a car, or skip it?",fort lauderdale car rental,3,#fortlauderdale,6295631,Strong
 fort-lauderdale,5,Best time to visit Fort Lauderdale?,best time to visit fort lauderdale,0,#fortlauderdale,6295631,Strong
 fort-myers,1,Sanibel Island for a beach day: worth the drive?,sanibel island,1943,#sanibel,503993,Strong
 fort-myers,2,"Fort Myers Beach on a weekend: go, or avoid?",fort myers beach,684,#fortmyersbeach,442041,Strong
-fort-myers,3,"Fort Myers in snowbird season: worth visiting, or wait?",,,#fortmyers,1835967,Strong (search not pulled yet)
+fort-myers,3,"Fort Myers in snowbird season: worth visiting, or wait?",fort myers in winter,0,#fortmyers,1835967,Strong
 fort-myers,4,Downtown Fort Myers River District: worth an evening?,downtown fort myers,54,#downtownfortmyers,73003,Moderate
 fort-myers,5,Best time to visit Fort Myers?,best time to visit fort myers,0,#fortmyers,1835967,Strong
 honolulu,1,"Waikiki Beach: worth staying there, or base yourself elsewhere?",waikiki,1394,#waikiki,4643271,Strong
-honolulu,2,Pearl Harbor: worth the half day?,pearl harbor tickets,664,#pearlharbor,510358,Strong
+honolulu,2,Pearl Harbor: worth the half day?,pearl harbor tours,996,#pearlharbor,510358,Strong
 honolulu,3,Diamond Head hike: worth the reservation?,diamond head hike,385,#diamondhead,835402,Strong
 honolulu,4,"Renting a car on Oahu: needed, or skip it?",oahu car rental,0,#oahu,8487527,Strong
 honolulu,5,"Best time to visit Hawaii, Oahu locals?",best time to visit hawaii,627,#hawaii,43955753,Strong
 key-biscayne,1,Bill Baggs Cape Florida or Crandon Park for a beach day?,bill baggs cape florida state park,196,#crandonpark,28631,Moderate
 key-biscayne,2,"Crossing the Rickenbacker Causeway on a Sunday: fine, or avoid?",rickenbacker causeway,147,#rickenbacker,256683,Moderate
-key-biscayne,3,Key Biscayne for a beach day: worth the drive from Miami?,key biscayne beach,8,#keybiscayne,898598,Strong
+key-biscayne,3,Key Biscayne for a beach day: worth the drive from Miami?,key biscayne,516,#keybiscayne,898598,Strong
 key-biscayne,4,"Biking Key Biscayne: best way to see it, or overrated?",key biscayne bike rental,0,#keybiscayne,898598,Strong
 key-biscayne,5,Best time to visit Key Biscayne?,best time to visit key biscayne,0,#keybiscayne,898598,Strong
-key-west,1,"Fantasy Fest 2026: come for it, or stay away?",fantasy fest key west,75,#fantasyfest,88455,Moderate
-key-west,2,"Duval Street at night: worth it, or skip it?",duval street,41,#duvalstreet,86722,Moderate
+key-west,1,"Fantasy Fest 2026: come for it, or stay away?",fantasy fest 2026,306,#fantasyfest,88455,Moderate
+key-west,2,"Duval Street at night: worth it, or skip it?",duval street key west,171,#duvalstreet,86722,Moderate
 key-west,3,"Miami to Key West: drive down, or fly in?",flights to key west,887,#keywest,4143888,Strong
-key-west,4,Mallory Square sunset: worth the crowd?,mallory square sunset,0,#mallorysquare,56219,Moderate
+key-west,4,Mallory Square sunset: worth the crowd?,mallory square,139,#mallorysquare,56219,Moderate
 key-west,5,Best time to visit Key West?,best time to visit key west,30,#keywest,4143888,Strong
 knoxville,1,"Neyland Stadium on game day: come for it, or stay away?",neyland stadium,959,#vols,394275,Strong
 knoxville,2,"Visiting the Smokies: stay in Knoxville, or closer to the park?",knoxville to gatlinburg,34,#smokymountains,1207308,Strong
@@ -60,77 +60,77 @@ knoxville,3,"Market Square on a Saturday: worth it, or skip it?",market square k
 knoxville,4,Old City at night: worth the trip downtown?,old city knoxville,0,#oldcityknoxville,37627,Weak
 knoxville,5,Best time to visit Knoxville?,best time to visit knoxville,0,#knoxville,2533856,Strong
 las-vegas,1,Red Rock Canyon: worth leaving the Strip for?,red rock canyon,1189,#redrockcanyon,559564,Strong
-las-vegas,2,Stay on the Strip or Downtown?,where to stay in las vegas,3,#lasvegasstrip,3587444,Strong
+las-vegas,2,Stay on the Strip or Downtown?,downtown las vegas hotels,85,#lasvegasstrip,3587444,Strong
 las-vegas,3,Fremont Street Experience: worth it?,fremont street experience,454,#fremontstreet,444263,Moderate
 las-vegas,4,"Getting around the Strip: walk it, monorail, or rideshare?",las vegas monorail,875,#lasvegasmonorail,1435,Strong
 las-vegas,5,Best time to visit Las Vegas?,best time to visit las vegas,43,#lasvegas,45330277,Strong
 miami,1,"Little Havana: real local spot, or tourist trap now?",little havana,387,#littlehavana,413556,Moderate
 miami,2,Wynwood Walls: worth the trip for visitors?,wynwood walls,246,#wynwood,3996635,Strong
-miami,3,First trip to Miami: stay in South Beach or somewhere else?,where to stay in miami,25,#southbeach,8236484,Strong
+miami,3,First trip to Miami: stay in South Beach or somewhere else?,south beach hotels,131,#southbeach,8236484,Strong
 miami,4,"Visiting Miami without a car: doable, or a mistake?",do you need a car in miami,0,#miami,96411772,Strong
 miami,5,Best time to visit Miami?,best time to visit miami,29,#miami,96411772,Strong
-miami-beach,1,"South Beach: worth the hype, or overrated?",,,#southbeach,8236484,Strong (search not pulled yet)
-miami-beach,2,Miami Beach or Fort Lauderdale for a beach weekend?,,,#miamibeach,17198401,Strong (search not pulled yet)
-miami-beach,3,"Ocean Drive at night: worth the walk, or a tourist trap?",,,#oceandrive,1033648,Strong (search not pulled yet)
+miami-beach,1,"South Beach: worth the hype, or overrated?",south beach,551,#southbeach,8236484,Strong
+miami-beach,2,Miami Beach or Fort Lauderdale for a beach weekend?,miami beach,1635,#miamibeach,17198401,Strong
+miami-beach,3,"Ocean Drive at night: worth the walk, or a tourist trap?",ocean drive miami,62,#oceandrive,1033648,Strong
 miami-beach,4,"Lincoln Road: worth it, or skip it?",lincoln road,72,#lincolnroad,224424,Moderate
-miami-beach,5,Best time to visit Miami Beach?,,,#miamibeach,17198401,Strong (search not pulled yet)
-naples,1,Naples Pier at sunset: worth the crowd?,naples pier,110,#naplespier,85708,Moderate
+miami-beach,5,Best time to visit Miami Beach?,best time to visit miami beach,0,#miamibeach,17198401,Strong
+naples,1,Naples Pier at sunset: worth the crowd?,naples pier webcam,786,#naplespier,85708,Strong
 naples,2,Fifth Avenue South: worth an evening?,fifth avenue south naples,0,#5thavenuesouth,35156,Weak
-naples,3,"Naples in season: worth it, or wait?",,,#naplesflorida,1989258,Strong (search not pulled yet)
+naples,3,"Naples in season: worth it, or wait?",naples florida in winter,0,#naplesflorida,1989258,Strong
 naples,4,"Naples beach parking: worth the hunt, or pay for a spot?",naples beach parking,0,#naplesbeach,163780,Moderate
-naples,5,Best time to visit Naples?,best time to visit naples florida,0,#naplesflorida,1989258,Strong
-nashville,1,"Party wagons and pedal taverns: part of the fun, or the worst part of downtown?",nashville party wagon,0,#nashvillebachelorette,81821,Moderate
+naples,5,Best time to visit Naples?,best time to visit florida,104,#naplesflorida,1989258,Strong
+nashville,1,"Party wagons and pedal taverns: part of the fun, or the worst part of downtown?",pedal tavern nashville,53,#nashvillebachelorette,81821,Moderate
 nashville,2,"Lower Broadway on a Saturday night: worth it, or skip it?",broadway nashville,317,#honkytonk,505426,Strong
 nashville,3,"First trip to Nashville: stay downtown, or somewhere else?",where to stay in nashville,82,#eastnashville,756349,Strong
-nashville,4,Nashville hot chicken: worth the wait in line?,hot chicken nashville,5,#hotchicken,337597,Moderate
+nashville,4,Nashville hot chicken: worth the wait in line?,nashville hot chicken,478,#hotchicken,337597,Moderate
 nashville,5,Best time to visit Nashville?,best time to visit nashville,62,#nashville,19509045,Strong
-new-orleans,1,"Mardi Gras 2027: come for it, or stay away?",,,#mardigras,3498876,Strong (search not pulled yet)
+new-orleans,1,"Mardi Gras 2027: come for it, or stay away?",mardi gras 2027,3904,#mardigras,3498876,Strong
 new-orleans,2,"Bourbon Street: worth it, or skip it?",bourbon street,782,#bourbonstreet,797130,Strong
 new-orleans,3,Café du Monde: worth the line?,cafe du monde,1302,#beignets,631180,Strong
-new-orleans,4,"Stay in the French Quarter, or somewhere else?",where to stay in new orleans,42,#frenchquarter,1501973,Strong
+new-orleans,4,"Stay in the French Quarter, or somewhere else?",new orleans hotels french quarter,220,#frenchquarter,1501973,Strong
 new-orleans,5,Best time to visit New Orleans?,best time to visit new orleans,149,#neworleans,13917460,Strong
 new-york,1,"Times Square: worth seeing, or avoid it?",times square,2424,#timessquare,5366550,Strong
-new-york,2,"Statue of Liberty tickets, or the free Staten Island Ferry?",staten island ferry,1208,#statueofliberty,2464229,Strong
-new-york,3,"Stay in Manhattan, or Brooklyn?",where to stay in nyc,0,#brooklyn,34966341,Strong
+new-york,2,"Statue of Liberty tickets, or the free Staten Island Ferry?",statue of liberty tickets,1682,#statueofliberty,2464229,Strong
+new-york,3,"Stay in Manhattan, or Brooklyn?",brooklyn hotels,188,#brooklyn,34966341,Strong
 new-york,4,Rockefeller Center Christmas tree: worth the crowd?,rockefeller center christmas tree,51,#rockefellercenter,1193300,Strong
-new-york,5,Best time to visit New York?,best time to visit nyc,6,#nyc,154659361,Strong
-orlando,1,Disney World or Universal Orlando for a first trip?,,,#waltdisneyworld,11721743,Strong (search not pulled yet)
-orlando,2,Epic Universe: worth the hype?,,,#epicuniverse,322562,Moderate (search not pulled yet)
-orlando,3,Kennedy Space Center: worth the drive from Orlando?,,,#kennedyspacecenter,321041,Moderate (search not pulled yet)
-orlando,4,"International Drive: fun, or a tourist trap?",international drive orlando,109,#internationaldrive,132473,Moderate
-orlando,5,Best time to visit Disney World?,best time to visit orlando,2,#disneyworld,20023006,Strong
-san-diego,1,"San Diego Comic-Con 2027: come for it, or stay away?",,,#comiccon,5727820,Strong (search not pulled yet)
+new-york,5,Best time to visit New York?,best time to visit new york,101,#nyc,154659361,Strong
+orlando,1,Disney World or Universal Orlando for a first trip?,universal orlando,37954,#waltdisneyworld,11721743,Strong
+orlando,2,Epic Universe: worth the hype?,epic universe,5007,#epicuniverse,322562,Strong
+orlando,3,Kennedy Space Center: worth the drive from Orlando?,kennedy space center,5224,#kennedyspacecenter,321041,Strong
+orlando,4,"International Drive: fun, or a tourist trap?",icon park orlando,369,#internationaldrive,132473,Moderate
+orlando,5,Best time to visit Disney World?,best time to go to disney world,56,#disneyworld,20023006,Strong
+san-diego,1,"San Diego Comic-Con 2027: come for it, or stay away?",san diego comic con,2301,#comiccon,5727820,Strong
 san-diego,2,La Jolla Cove: worth the crowd?,la jolla cove,1055,#lajolla,2656296,Strong
-san-diego,3,"Gaslamp Quarter at night: worth it, or skip it?",gaslamp quarter,125,#gaslamp,411886,Moderate
+san-diego,3,"Gaslamp Quarter at night: worth it, or skip it?",gaslamp quarter san diego,163,#gaslamp,411886,Moderate
 san-diego,4,San Diego Trolley: good enough to skip the rental car?,san diego trolley,351,#sandiegotrolley,4776,Moderate
-san-diego,5,Best time to visit San Diego?,,,#sandiego,36674172,Strong (search not pulled yet)
-san-francisco,1,Alcatraz: worth booking?,alcatraz tickets,697,#alcatraz,1271903,Strong
-san-francisco,2,"Fisherman's Wharf: worth it, or skip it?",,,#fishermanswharf,544465,Strong (search not pulled yet)
-san-francisco,3,San Francisco cable cars: worth the line?,,,#cablecar,1162395,Strong (search not pulled yet)
-san-francisco,4,"Driving in San Francisco: fine, or a mistake?",driving in san francisco,0,#sanfrancisco,35308588,Strong
-san-francisco,5,"Summer in San Francisco: pack shorts, or a jacket?",,,#karlthefog,129553,Moderate (search not pulled yet)
-sarasota,1,Siesta Key Beach on a Saturday: worth it?,siesta key beach,1793,#siestakey,964483,Strong
+san-diego,5,Best time to visit San Diego?,best time to visit san diego,31,#sandiego,36674172,Strong
+san-francisco,1,Alcatraz: worth booking?,alcatraz tours,1686,#alcatraz,1271903,Strong
+san-francisco,2,"Fisherman's Wharf: worth it, or skip it?",fisherman's wharf,1098,#fishermanswharf,544465,Strong
+san-francisco,3,San Francisco cable cars: worth the line?,cable car,358,#cablecar,1162395,Strong
+san-francisco,4,"Driving in San Francisco: fine, or a mistake?",san francisco parking,9,#sanfrancisco,35308588,Strong
+san-francisco,5,"Summer in San Francisco: pack shorts, or a jacket?",san francisco weather,3155,#karlthefog,129553,Strong
+sarasota,1,Siesta Key Beach on a Saturday: worth it?,siesta key,2082,#siestakey,964483,Strong
 sarasota,2,"St. Armands Circle: worth it, or overpriced?",st armands circle,238,#starmandscircle,51103,Moderate
-sarasota,3,Siesta Key or Lido Key for a first visit?,siesta key vs lido key,0,#lidokey,87050,Moderate
-sarasota,4,"Sarasota in snowbird season: plan around the traffic, or no big deal?",sarasota traffic,0,#sarasota,3220968,Strong
+sarasota,3,Siesta Key or Lido Key for a first visit?,lido key,96,#lidokey,87050,Moderate
+sarasota,4,"Sarasota in snowbird season: plan around the traffic, or no big deal?",sarasota in winter,0,#sarasota,3220968,Strong
 sarasota,5,Best time to visit Sarasota?,best time to visit sarasota,0,#sarasota,3220968,Strong
 savannah,1,Tybee Island for a beach day: worth the drive?,tybee island,3389,#tybeeisland,488099,Strong
 savannah,2,"River Street: worth it, or a tourist trap?",river street savannah,0,#riverstreet,99718,Moderate
 savannah,3,"Savannah ghost tours: fun, or overdone?",savannah ghost tours,127,#hauntedsavannah,8926,Moderate
-savannah,4,"St. Patrick's Day 2027 in Savannah: come for it, or stay away?",st patricks day savannah,0,#savannahstpatricksday,4853,Weak
+savannah,4,"St. Patrick's Day 2027 in Savannah: come for it, or stay away?",st patricks day 2027,258,#savannahstpatricksday,4853,Moderate
 savannah,5,Best time to visit Savannah?,best time to visit savannah,0,#savannah,4267915,Strong
-seattle,1,Space Needle: worth the ticket?,space needle tickets,775,#spaceneedle,1167426,Strong
+seattle,1,Space Needle: worth the ticket?,space needle,3332,#spaceneedle,1167426,Strong
 seattle,2,"Pike Place Market: worth it, or a tourist trap?",pike place market,1522,#pikeplacemarket,787864,Strong
-seattle,3,Seattle in the rainy season: worth visiting?,seattle in winter,0,#seattlerain,21845,Weak
-seattle,4,"Visiting Seattle without a car: doable, or a mistake?",seattle without a car,0,#seattle,26386481,Strong
+seattle,3,Seattle in the rainy season: worth visiting?,seattle weather,19602,#seattlerain,21845,Strong
+seattle,4,"Visiting Seattle without a car: doable, or a mistake?",seattle light rail,582,#seattle,26386481,Strong
 seattle,5,Best time to visit Seattle?,best time to visit seattle,68,#seattle,26386481,Strong
-st-augustine,1,Castillo de San Marcos: worth the stop?,,,#castillodesanmarcos,44513,Weak (search not pulled yet)
-st-augustine,2,"Fountain of Youth: worth it, or a tourist trap?",,,#fountainofyouth,392557,Moderate (search not pulled yet)
-st-augustine,3,"St. Augustine ghost tours: fun, or overdone?",,,#staugustinelighthouse,25723,Weak (search not pulled yet)
-st-augustine,4,"Nights of Lights 2026: magical, or too crowded?",nights of lights st augustine,0,#nightsoflights,37945,Weak
-st-augustine,5,Best time to visit St. Augustine?,best time to visit st augustine,0,#staugustine,2035800,Strong
+st-augustine,1,Castillo de San Marcos: worth the stop?,castillo de san marcos,427,#castillodesanmarcos,44513,Moderate
+st-augustine,2,"Fountain of Youth: worth it, or a tourist trap?",fountain of youth,731,#fountainofyouth,392557,Strong
+st-augustine,3,"St. Augustine ghost tours: fun, or overdone?",st augustine lighthouse,238,#staugustinelighthouse,25723,Moderate
+st-augustine,4,"Nights of Lights 2026: magical, or too crowded?",nights of lights st augustine 2026,34,#nightsoflights,37945,Weak
+st-augustine,5,Best time to visit St. Augustine?,st augustine beach,338,#staugustine,2035800,Strong
 tampa,1,Clearwater Beach on a weekend: worth the traffic?,clearwater beach,2428,#clearwaterbeach,1404438,Strong
 tampa,2,"Gasparilla 2027: come for it, or stay away?",gasparilla,427,#gasparilla,231174,Moderate
 tampa,3,"Ybor City at night: worth it, or skip it?",ybor city,865,#yborcity,404809,Strong
-tampa,4,Stay in Tampa or St. Pete?,where to stay in tampa,0,#tampabay,5246959,Strong
-tampa,5,"Visiting Tampa without a car: doable, or a mistake?",tampa without a car,0,#tampa,13095580,Strong
+tampa,4,Stay in Tampa or St. Pete?,st petersburg fl,1724,#tampabay,5246959,Strong
+tampa,5,"Visiting Tampa without a car: doable, or a mistake?",tampa streetcar,0,#tampa,13095580,Strong
