@@ -20,6 +20,10 @@ on:
         description: "Also pull related searches for each phrasing (1/0). Slower; useful when writing new questions."
         required: false
         default: "0"
+      related_only:
+        description: "Only related searches, only for phrasings that don't have them yet (1/0). For search-intent work; cheapest on quota."
+        required: false
+        default: "0"
 
 permissions:
   contents: write
@@ -38,13 +42,15 @@ jobs:
         with:
           python-version: "3.12"
       - name: Seeds from spec.py
-        run: python3 scripts/questions/research.py seeds ${{ github.event.inputs.missing_only == '1' && '--missing' || '' }}
+        run: python3 scripts/questions/research.py seeds ${{ github.event.inputs.missing_only == '1' && '--missing' || '' }} ${{ github.event.inputs.related_only == '1' && '--related-missing' || '' }}
       - name: Pull Bing demand
         env:
           BING_WM_API_KEY: ${{ secrets.BING_WM_API_KEY }}
           BING_SEEDS: data/keywords/seeds.csv
           BING_MONTHS: "12"
-          BING_RELATED: ${{ github.event.inputs.related || '0' }}
+          BING_RELATED: ${{ github.event.inputs.related_only == '1' && '1' || github.event.inputs.related || '0' }}
+          BING_STATS: ${{ github.event.inputs.related_only == '1' && '0' || '1' }}
+          BING_WINDOW: ${{ github.event.inputs.related_only == '1' && '0' || '1' }}
           BING_OUT_DIR: data/keywords/run
         run: python3 scripts/keywords/bing_keywords.py
       - name: Commit results
