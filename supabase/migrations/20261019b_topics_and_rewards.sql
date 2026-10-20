@@ -72,3 +72,6 @@ create table if not exists public.reward_claims (
 alter table public.reward_claims enable row level security;
 drop policy if exists "read own rewards" on public.reward_claims;
 create policy "read own rewards" on public.reward_claims for select using (auth.uid() = user_id);
+-- Explicit Data API grants (Supabase stops adding them for new tables on Oct 30, 2026).
+grant select on public.reward_claims to authenticated;
+grant select, insert, update, delete on public.reward_claims to service_role;
