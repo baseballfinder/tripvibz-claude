@@ -147,6 +147,18 @@ await test("Sign-in: privacy + terms pages, TikTok bridge, providers off until s
   assert(cb.includes('cookie(request, "tt_state")'), "TikTok callback must check state");
 });
 
+await test("New tables and views in migrations come with explicit grants (Supabase, from Oct 30 2026)", async () => {
+  const dir = "supabase/migrations";
+  for (const f of (await readdir(dir)).filter(f => f.endsWith(".sql") && f.slice(0, 8) > "20261020")) {
+    const sql = (await readFile(join(dir, f), "utf8")).replace(/--.*$/gm, "");
+    for (const m of sql.matchAll(/create\s+(?:or\s+replace\s+)?(?:table|view|materialized\s+view)\s+(?:if\s+not\s+exists\s+)?(?:public\.)?"?(\w+)"?/gi)) {
+      const name = m[1];
+      assert(new RegExp(`grant\\s[^;]*\\son\\s+(?:table\\s+)?(?:public\\.)?"?${name}"?\\b`, "i").test(sql),
+        `${f}: ${name} has no grant (see supabase/migrations/README.md)`);
+    }
+  }
+});
+
 await test("Old UI is gone (no Cosign / Add to this article)", async () => {
   for (const f of pages) {
     const h = await readFile(f, "utf8");
