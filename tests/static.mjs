@@ -171,7 +171,7 @@ await test("Research data and scripts are not published", async () => {
 });
 
 await test("Python tools compile; workflows parse", async () => {
-  execFileSync("python3", ["-m", "py_compile", "scripts/questions/research.py", "scripts/questions/spec.py",
+  execFileSync("python3", ["-m", "py_compile", "scripts/questions/research.py", "scripts/questions/spec.py", "scripts/questions/intent.py",
     "scripts/city_requests_bot.py", "scripts/take_review_bot.py", "scripts/og_cards.py", "scripts/keywords/bing_keywords.py"]);
   execFileSync("python3", ["-c", "import yaml,glob;[yaml.safe_load(open(f)) for f in glob.glob('.github/workflows/*.yml')]"]);
 });
