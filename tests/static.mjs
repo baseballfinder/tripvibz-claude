@@ -158,11 +158,32 @@ await test("Phone notifications: search-visit and new-take notifiers present, ne
   assert(a.indexOf("/api/hit") > a.indexOf("if (isLocal)"), "search-visit beacon must sit after the localhost skip");
 });
 
+await test("New tables and views in migrations come with explicit grants (Supabase, from Oct 30 2026)", async () => {
+  const dir = "supabase/migrations";
+  for (const f of (await readdir(dir)).filter(f => f.endsWith(".sql") && f.slice(0, 8) > "20261020")) {
+    const sql = (await readFile(join(dir, f), "utf8")).replace(/--.*$/gm, "");
+    for (const m of sql.matchAll(/create\s+(?:or\s+replace\s+)?(?:table|view|materialized\s+view)\s+(?:if\s+not\s+exists\s+)?(?:public\.)?"?(\w+)"?/gi)) {
+      const name = m[1];
+      assert(new RegExp(`grant\\s[^;]*\\son\\s+(?:table\\s+)?(?:public\\.)?"?${name}"?\\b`, "i").test(sql),
+        `${f}: ${name} has no grant (see supabase/migrations/README.md)`);
+    }
+  }
+});
+
 await test("Old UI is gone (no Cosign / Add to this article)", async () => {
   for (const f of pages) {
     const h = await readFile(f, "utf8");
     assert(!/Cosign|Add to this article|Add my take|Back to feed|Start in South Florida/.test(h), `${f} still has old UI text`);
   }
+});
+
+await test("Structured data: theme pages link each take; take pages carry DiscussionForumPosting", async () => {
+  const fn = await readFile("functions/t/[id].js", "utf8");
+  assert(/"DiscussionForumPosting"/.test(fn) && /interactionStatistic/.test(fn), "take page schema missing");
+  assert(/main#root/.test(fn), "take text not pre-rendered for crawlers");
+  const b = await readFile("build.mjs", "utf8");
+  assert(/url: `\$\{SITE\}\/t\/\$\{t\.id\}`/.test(b), "ItemList items need take URLs");
+  assert(!/thread\.html\?id=/.test(b), "crawlable links should use /t/<id>");
 });
 
 await test("Sitemap and robots point at www", async () => {

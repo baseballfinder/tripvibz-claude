@@ -315,7 +315,8 @@ function articleLd(city, theme, takes, url, cfg, image) {
       itemListElement: ranked.map((t, i) => ({
         "@type": "ListItem",
         position: i + 1,
-        name: t.title
+        name: t.title,
+        url: `${SITE}/t/${t.id}`
       }))
     });
   }
@@ -333,7 +334,7 @@ function articleBody(city, theme, takes, events) {
                     new Date(a.created_at) - new Date(b.created_at));
 
   const entries = list.length
-    ? `<ol class="entries">${list.map(p => `<li class="entry"><div class="t">${esc(p.title)}</div>${
+    ? `<ol class="entries">${list.map(p => `<li class="entry"><a class="t" href="/t/${esc(p.id)}">${esc(p.title)}</a>${
         p.body ? `<div class="more">${esc(p.body)}</div>` : ""
       }<div class="foot"><span class="who">${p.ups} say true</span></div></li>`).join("")}</ol>`
     : `<div class="empty-article"><b>Live in ${esc(city.name)}? What do tourists get wrong?</b>
@@ -398,7 +399,7 @@ function cityBody(city, counts, takes) {
 <h1>What locals say about ${esc(city.name)}</h1>
 <nav class="chips">${Object.keys(THEMES).map(k =>
     `<a class="chip" href="/${esc(city.slug)}/${THEMES[k].slug}/">${esc(THEMES[k].nav)}${counts[k] ? ` (${counts[k]})` : ""}</a>`).join("")}</nav>
-<div class="feed">${ranked.length ? ranked.map(p => `<article class="take"><a class="tt" href="/thread.html?id=${p.id}">${esc(p.title)}</a>${
+<div class="feed">${ranked.length ? ranked.map(p => `<article class="take"><a class="tt" href="/t/${esc(p.id)}">${esc(p.title)}</a>${
     p.body ? `<div class="more">${esc(p.body)}</div>` : ""}<div class="who">${p.ups} true · ${p.downs} nope</div></article>`).join("")
   : `<div class="empty2"><b>No takes here yet</b>Live in ${esc(city.name)}? <a href="/${esc(city.slug)}/add/">Tell visitors what they get wrong.</a></div>`}</div>`;
 }
