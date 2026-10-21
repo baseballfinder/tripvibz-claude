@@ -142,11 +142,44 @@ await test("Gift cards stay in draft (off for everyone, sandbox payouts)", async
   assert(bot.includes('os.environ.get("REWARDS_ON") != "1"') && bot.includes("testflight.tremendous.com"), "rewards bot lost its draft/sandbox guards");
 });
 
+await test("Sign-in: privacy + terms pages, TikTok bridge, providers off until set up", async () => {
+  for (const p of ["privacy/index.html", "terms/index.html"]) assert(await exists(join("dist", p)), `dist/${p} missing (Meta and TikTok require it)`);
+  const tv = await readFile("assets/tv.js", "utf8");
+  assert(/var SIGNIN = \{ facebook: false, tiktok: false \}/.test(tv) || /var SIGNIN = \{[^}]*\}/.test(tv), "SIGNIN switches missing");
+  for (const f of ["functions/api/auth/tiktok/start.js", "functions/api/auth/tiktok/callback.js", "functions/api/auth/tiktok/_shared.js"]) {
+    const src = await readFile(f, "utf8");
+    await import("esbuild").then(e => e.transform(src, { loader: "js", format: "esm" }));   // syntax check
+  }
+  const cb = await readFile("functions/api/auth/tiktok/callback.js", "utf8");
+  assert(cb.includes('cookie(request, "tt_state")'), "TikTok callback must check state");
+});
+
+await test("New tables and views in migrations come with explicit grants (Supabase, from Oct 30 2026)", async () => {
+  const dir = "supabase/migrations";
+  for (const f of (await readdir(dir)).filter(f => f.endsWith(".sql") && f.slice(0, 8) > "20261020")) {
+    const sql = (await readFile(join(dir, f), "utf8")).replace(/--.*$/gm, "");
+    for (const m of sql.matchAll(/create\s+(?:or\s+replace\s+)?(?:table|view|materialized\s+view)\s+(?:if\s+not\s+exists\s+)?(?:public\.)?"?(\w+)"?/gi)) {
+      const name = m[1];
+      assert(new RegExp(`grant\\s[^;]*\\son\\s+(?:table\\s+)?(?:public\\.)?"?${name}"?\\b`, "i").test(sql),
+        `${f}: ${name} has no grant (see supabase/migrations/README.md)`);
+    }
+  }
+});
+
 await test("Old UI is gone (no Cosign / Add to this article)", async () => {
   for (const f of pages) {
     const h = await readFile(f, "utf8");
     assert(!/Cosign|Add to this article|Add my take|Back to feed|Start in South Florida/.test(h), `${f} still has old UI text`);
   }
+});
+
+await test("Structured data: theme pages link each take; take pages carry DiscussionForumPosting", async () => {
+  const fn = await readFile("functions/t/[id].js", "utf8");
+  assert(/"DiscussionForumPosting"/.test(fn) && /interactionStatistic/.test(fn), "take page schema missing");
+  assert(/main#root/.test(fn), "take text not pre-rendered for crawlers");
+  const b = await readFile("build.mjs", "utf8");
+  assert(/url: `\$\{SITE\}\/t\/\$\{t\.id\}`/.test(b), "ItemList items need take URLs");
+  assert(!/thread\.html\?id=/.test(b), "crawlable links should use /t/<id>");
 });
 
 await test("Sitemap and robots point at www", async () => {
@@ -166,7 +199,7 @@ await test("Research data and scripts are not published", async () => {
 });
 
 await test("Python tools compile; workflows parse", async () => {
-  execFileSync("python3", ["-m", "py_compile", "scripts/questions/research.py", "scripts/questions/spec.py",
+  execFileSync("python3", ["-m", "py_compile", "scripts/questions/research.py", "scripts/questions/spec.py", "scripts/questions/intent.py",
     "scripts/city_requests_bot.py", "scripts/take_review_bot.py", "scripts/rewards_bot.py", "scripts/og_cards.py", "scripts/keywords/bing_keywords.py"]);
   execFileSync("python3", ["-c", "import yaml,glob;[yaml.safe_load(open(f)) for f in glob.glob('.github/workflows/*.yml')]"]);
 });

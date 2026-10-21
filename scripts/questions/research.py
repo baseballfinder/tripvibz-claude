@@ -32,14 +32,18 @@ def opt_id(label):
     return s[:24] or "opt"
 
 
-def seeds(missing_only=False):
-    """missing_only: skip phrasings that already have Bing data in data/keywords/ (saves API quota)."""
+def seeds(missing_only=False, related_missing=False):
+    """missing_only: skip phrasings that already have Bing data in data/keywords/ (saves API quota).
+    related_missing: only phrasings with no related-searches data yet (for search-intent work)."""
     os.makedirs(OUT, exist_ok=True)
     have = set()
+    import glob
     if missing_only:
-        import glob
         for f in glob.glob(os.path.join(OUT, "*", "*", "keyword_window.csv")):
             have.update(r["keyword"] for r in csv.DictReader(open(f)))
+    if related_missing:
+        for f in glob.glob(os.path.join(OUT, "*", "*", "related_keywords.csv")):
+            have.update(r["seed"] for r in csv.DictReader(open(f)))
     seen, rows = set(), []
     for slug, qs in spec.CITIES.items():
         for i, q in enumerate(qs, 1):
@@ -130,7 +134,7 @@ where not exists (select 1 from questions where city_id = (select id from cities
 
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
-    if cmd == "seeds": seeds("--missing" in sys.argv)
+    if cmd == "seeds": seeds("--missing" in sys.argv, "--related-missing" in sys.argv)
     elif cmd == "tags": tags()
     elif cmd == "score": score(sys.argv[2], sys.argv[3])
     elif cmd == "sql": sql()

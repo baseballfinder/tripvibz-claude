@@ -172,6 +172,7 @@ def main():
     months = int(os.environ.get("BING_MONTHS", "12"))
     do_related = os.environ.get("BING_RELATED", "1") == "1"
     do_window = os.environ.get("BING_WINDOW", "1") == "1"
+    do_stats = os.environ.get("BING_STATS", "1") == "1"   # 0 = related searches only (saves quota)
     rate = float(os.environ.get("BING_RATE", "0.3"))
     today = dt.date.today()
     out_dir = os.environ.get("BING_OUT_DIR", f"out/bing/{today.isoformat()}")
@@ -231,7 +232,7 @@ def main():
         kw = seed["keyword"]
         base = {"q": kw, "country": country, "language": language}
 
-        if i > 0:
+        if i > 0 and do_stats:
             st, p = call("GetKeywordStats", base, key)
             calls += 1
             if st == 200:

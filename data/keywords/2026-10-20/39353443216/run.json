@@ -1,0 +1,18 @@
+{
+ "run_date": "2026-10-20",
+ "key_name_used": "BING_WM_API_KEY",
+ "key_lengths_seen": {
+  "BING_WM_API_KEY": 32
+ },
+ "country": "us",
+ "language": "en-US",
+ "window": "2025-10-01..2026-09-30",
+ "seeds": 109,
+ "calls": 110,
+ "seeds_with_stats": 1,
+ "stats_rows": 25,
+ "window_rows": 0,
+ "related_rows": 6276,
+ "errors": [],
+ "out_dir": "data/keywords/run"
+}

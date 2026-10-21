@@ -224,6 +224,18 @@ await test("Gift card preview: shows only with ?preview=rewards", async () => {
   await page.evaluate(() => sessionStorage.clear());
 });
 
+await test("Sign-in options: Facebook and TikTok buttons (preview), TikTok goes to the bridge", async () => {
+  await go("/miami/?preview=signin");
+  await page.evaluate(() => window.TV.openLogin());
+  assert(await page.isVisible("#loginmodal .oauth.facebook"), "Facebook button missing");
+  assert(await page.isVisible("#loginmodal [data-tiktok]"), "TikTok button missing");
+  const req = page.waitForRequest(r => r.url().includes("/api/auth/tiktok/start?next=%2Fmiami%2F"), { timeout: 5000 });
+  await page.click("#loginmodal [data-tiktok]");
+  await req;
+  await go("/miami/?signin=tiktok_off");
+  assert(!page.url().includes("signin="), "sign-in message flag not cleared from the address");
+});
+
 await test("Feed voting: True/Nope toggles", async () => {
   const posts = await api("posts?select=id,city_id&type=in.(what_not_to_do,worst_times,hidden_gem)&limit=1");
   if (!posts.length) return;   // nothing to vote on yet

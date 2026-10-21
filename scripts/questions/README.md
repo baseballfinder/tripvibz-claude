@@ -34,3 +34,21 @@ searches people type for it and the hashtags they post under.
   month Bing reports zero.
 - **Instagram posts**: total public posts ever made with the hashtag. Big generic
   tags (#miami) dwarf specific ones; compare within a city.
+
+
+## Search intent (what searchers actually want)
+
+The questions are framed as debates ("worth it?"), but people searching a topic
+mostly want something else: when to go, how to get there, where to stay,
+tickets. `intent.py` measures that per question so each page shows (and asks
+locals for) what searchers need.
+
+1. Bing related searches: run **Actions → Question keywords** with `related_only=1`
+   (one call per phrasing that doesn't have them yet).
+2. `python3 scripts/questions/intent.py suggest` — Google autocomplete for every phrasing.
+3. `python3 scripts/questions/intent.py classify` → `data/keywords/question-intent.csv`:
+   intent mix, what searchers also ask, the page template, the quick checks to collect,
+   and "booking searches/month" (searches × share about tickets, hotels and events).
+
+Page templates: When to go · Where to stay · Plan the visit · Where locals go ·
+Event guide · Quick verdict · Reword (searches about right-now info we can't serve).

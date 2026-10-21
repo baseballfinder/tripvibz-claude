@@ -27,6 +27,7 @@ preview instead of the local build: `BASE=https://<branch>.tripvibz.pages.dev no
 | Sharing | Share button on every take card, share menu (copy, text, WhatsApp, Facebook, X, email) all carry the take's www /t/ link, thread "Do your friends agree?" share, "Ask your friends" after voting on a question | e2e |
 | New topics (review queue) | City page "Something we didn't ask about?" box sends the take with its topic and shows the thank-you state | e2e |
 | Gift cards (draft) | Hidden unless ?preview=rewards; preview shows the right amount; code stays off and Tremendous stays in sandbox until launched | e2e + static |
+| Sign-in options | Facebook + TikTok buttons appear (with ?preview=signin until set up), TikTok button goes to the sign-in bridge, return messages clear from the address; privacy and terms pages exist; bridge checks its state cookie | e2e + static |
 | Threads and replies | Split bar, typed "I disagree" reply sent | e2e |
 | JavaScript health | No errors on any page visited | e2e |
 | City pages exist | Page, vote page and add page for every city in the database | static |
@@ -43,6 +44,7 @@ preview instead of the local build: `BASE=https://<branch>.tripvibz.pages.dev no
 
 - **Google sign-in completing.** Needs a real Google account; the tests stop at the sign-in box.
   After a sign-in change: sign in on the preview link and post one take with the Local badge.
+- **Facebook / TikTok sign-in completing.** Needs the Meta and TikTok apps set up; after switching one on, sign in on the preview link and post one take.
 - **Facebook's actual preview.** After a share-card change, paste a city link into
   developers.facebook.com/tools/debug and click Scrape Again.
 - **Phone share sheet.** On phones the Share button opens the system share sheet instead of the menu;
