@@ -33,6 +33,8 @@
 
   /* ---- month calendar (worst_times only) ---- */
   .cal{margin-top:34px}
+  .themes + .cal{margin-top:22px}
+  .ev .w a{color:inherit;text-decoration:underline}
   .cal-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}
   .cal-head h2{font-family:"Archivo";font-weight:900;font-size:21px}
   .cal-head .sub{font-size:13.5px;color:var(--muted);margin:6px 0 0;line-height:1.5;flex-basis:100%}
@@ -40,8 +42,8 @@
   .legend i{width:11px;height:11px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:-1px}
   .sw-avoid{background:#f5b5a4}.sw-busy{background:#f0d492}.sw-good{background:#a8ddcd}.sw-none{background:var(--sand)}
 
-  .months{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
-  @media(max-width:620px){.months{grid-template-columns:repeat(3,1fr)}}
+  .cal-months{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+  @media(max-width:620px){.cal-months{grid-template-columns:repeat(3,1fr)}}
   .m{border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:10px 6px 9px;cursor:pointer;text-align:center;font-family:"Public Sans";transition:transform .08s ease}
   .m:hover{transform:translateY(-2px)}
   .m .mn{font-family:"Archivo";font-weight:800;font-size:14px;color:var(--ink);display:block}
@@ -239,6 +241,8 @@
         ).join("")}
       </div>
 
+      ${THEME === "worst_times" && !list.length ? calendarBlock() : ""}
+
       <div class="feed" id="entries" style="margin-top:20px">
         ${list.length ? list.map(p => T2.takeHtml(p, CTX)).join("") :
           `<div class="empty2"><b>No takes here yet</b>Live in ${escapeHtml(CITY.name)}? One sentence is enough, and the first 10 signed-in locals are its founding locals.</div>`}
@@ -246,7 +250,7 @@
 
       ${addCard()}
 
-      ${THEME === "worst_times" ? calendarBlock() : ""}`;
+      ${THEME === "worst_times" && list.length ? calendarBlock() : ""}`;
 
     $("#entries").addEventListener("click", async e => {
       const b = e.target.closest("[data-vote]"); if (!b) return;
@@ -285,9 +289,10 @@
     return `<section class="cal">
       <div class="cal-head">
         <h2>${escapeHtml(CITY.name)} month by month</h2>
-        <p class="sub">What's happening each month, and whether locals would tell you to
-           come. Dates shift year to year, so this is month-level on purpose — check
-           the exact weekend before you book.</p>
+        <p class="sub">Festivals, conventions, weather and price seasons that change what a
+           visit is like. <b>Researched by the TripVibz editors</b> from official event and
+           weather sources, and checked monthly. Dates shift year to year, so confirm the
+           exact weekend before you book.</p>
       </div>
 
       <div class="legend">
@@ -297,14 +302,15 @@
         <span><i class="sw-none"></i>Nothing flagged</span>
       </div>
 
-      <div class="months" id="months">${cells}</div>
+      <div class="cal-months" id="months">${cells}</div>
 
       <div class="m-detail">
         <h3>${MONTHS_LONG[SEL_MONTH-1]} in ${escapeHtml(CITY.name)}</h3>
         ${sel.length ? sel.map(ev => `<div class="ev">
             <div class="n">${escapeHtml(ev.name)}<span class="sev ${ev.severity}">${ev.severity}</span></div>
             ${ev.blurb ? `<div class="b">${escapeHtml(ev.blurb)}</div>` : ""}
-            <div class="w">${escapeHtml(spanLabel(ev))} · ${escapeHtml(ev.kind)}</div>
+            <div class="w">${escapeHtml(spanLabel(ev))} · ${escapeHtml(ev.kind)}${
+              ev.source && /^https:\/\//.test(ev.source) ? ` · <a href="${escapeHtml(ev.source)}" target="_blank" rel="noopener nofollow">Source</a>` : ""}</div>
           </div>`).join("")
           : `<div class="none">Nothing flagged for ${MONTHS_LONG[SEL_MONTH-1]} yet. If you know this
              city, add what happens then.</div>`}
@@ -425,8 +431,8 @@
 
     if(THEME === "worst_times"){
       const { data: evs } = await sb.from("city_events")
-        .select("id,name,blurb,kind,severity,start_month,end_month")
-        .eq("city_id", CITY.id);
+        .select("*")      // includes source once the 20261021a migration is in
+        .eq("city_id", CITY.id).eq("status", "approved");
       EVENTS = evs || [];
     }
 

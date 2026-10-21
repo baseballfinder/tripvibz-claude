@@ -44,7 +44,7 @@
   };
 
   const SECTIONS = [["all","Everything"],["what_not_to_do","What not to do"],["worst_times","Worst times"],["hidden_gem","What locals do"]];
-  let CITY = null, POSTS = [], CTX = null, QS = [], SECTION = "all", SORT = "top";
+  let CITY = null, POSTS = [], CTX = null, QS = [], EVENTS = [], SECTION = "all", SORT = "top";
   const NT = { kind: "what_not_to_do", topic: "", text: "", busy: false, sent: false, err: "" };
   const NT_KINDS = [["what_not_to_do","Don’t do this"],["hidden_gem","Do this"],["take","It depends"],["worst_times","When to go"]];
 
@@ -106,6 +106,30 @@
       <div class="qnote">One tap. ${total ? `See what ${total} other ${total === 1 ? "person" : "people"} said.` : "Be the first to answer."}</div></div>`;
   }
 
+  // Month strip from the editors' calendar (city_events); full calendar lives on the worst-times page.
+  const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const RANK = { good: 1, busy: 2, avoid: 3 };
+  const covers = (e, m) => e.start_month <= e.end_month ? (m >= e.start_month && m <= e.end_month) : (m >= e.start_month || m <= e.end_month);
+  function monthSev(m){
+    return EVENTS.filter(e => covers(e, m)).reduce((w, e) => !w || RANK[e.severity] > RANK[w] ? e.severity : w, null);
+  }
+  function runs(sev){
+    const ms = [...Array(12)].map((_, i) => i + 1).filter(m => monthSev(m) === sev);
+    const out = []; let a = null, b = null;
+    ms.forEach(m => { if (a && m === b + 1) b = m; else { if (a) out.push([a, b]); a = b = m; } });
+    if (a) out.push([a, b]);
+    return out.map(([x, y]) => x === y ? MON[x-1] : `${MON[x-1]}–${MON[y-1]}`).join(", ");
+  }
+  function whenCard(){
+    if (!EVENTS.length) return "";
+    const best = runs("good"), worst = runs("avoid");
+    return `<a class="when" href="/${esc(CITY.slug)}/worst-times-to-visit/">
+      <div class="when-k">When to go</div>
+      <div class="when-strip">${MON.map((mn, i) => `<span class="${monthSev(i+1) || ""}" title="${mn}">${mn[0]}</span>`).join("")}</div>
+      <div class="when-t">${best ? `<span><i class="good"></i>Best: ${best}</span>` : ""}${worst ? `<span><i class="avoid"></i>Avoid: ${worst}</span>` : ""}</div>
+      <div class="when-go">Month-by-month calendar →</div></a>`;
+  }
+
   function render(){
     const list = T2.sortPosts(POSTS.filter(p => SECTION === "all" || p.type === SECTION), SORT);
     const locals = new Set(POSTS.filter(p => p.author_verified && p.author_id).map(p => p.author_id)).size;
@@ -119,6 +143,7 @@
       ${POSTS.length || votes ? `<div class="stats"><span>${POSTS.length} take${POSTS.length === 1 ? "" : "s"}</span><span>${locals} local${locals === 1 ? "" : "s"}</span><span>${votes} vote${votes === 1 ? "" : "s"}</span></div>` : ""}
       <div style="height:14px"></div>
       ${questionCard()}
+      ${whenCard()}
       <nav class="chips" aria-label="Sections">${SECTIONS.map(([id,l]) => `<button class="chip" data-sec="${id}" aria-pressed="${SECTION===id}">${l}</button>`).join("")}</nav>
       <div class="row-between" style="margin:2px 0 12px">
         <div class="seg" role="group" aria-label="Sort">${[["top","Top"],["hot","Hot"],["new","New"]].map(([id,l]) => `<button data-sort="${id}" aria-pressed="${SORT===id}">${l}</button>`).join("")}</div>
@@ -153,7 +178,10 @@
     await auth.ensure();
     await T2.finishClaim();
     POSTS = await T2.loadPosts(CITY.id, ["what_not_to_do","worst_times","hidden_gem","take"]);
-    [CTX, QS] = await Promise.all([T2.hydrate(POSTS, CITY.id), T2.loadQuestions(CITY.id)]);
+    let evs;
+    [CTX, QS, evs] = await Promise.all([T2.hydrate(POSTS, CITY.id), T2.loadQuestions(CITY.id),
+      sb.from("city_events").select("name,severity,start_month,end_month").eq("city_id", CITY.id).eq("status", "approved")]);
+    EVENTS = (evs && evs.data) || [];
     render();
   })();
 })();

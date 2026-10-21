@@ -200,7 +200,17 @@ await test("Topic page: new take cards, starters open the add page, calendar on 
   assert(s && s.startsWith("/nashville/add/?kind=what_not_to_do"), "starter link wrong");
   assert(!(await page.content()).includes("Cosign"), "old Cosign UI is back");
   await go("/nashville/worst-times-to-visit/");
-  assert(await page.locator(".months .m").count() === 12, "month calendar missing");
+  assert(await page.locator(".cal-months .m").count() === 12, "month calendar missing");
+  assert(/Researched by the TripVibz editors/.test(await page.textContent(".cal")), "calendar must be labeled as editors' research, not locals");
+  const sel = page.locator('.cal-months .m[aria-pressed="true"] .mn');
+  assert(await sel.count() === 1 && await sel.evaluate(e => getComputedStyle(e).color !== getComputedStyle(e.closest("button")).backgroundColor), "selected month label invisible");
+});
+
+await test("City page: When-to-go strip links to the month-by-month calendar", async () => {
+  await go("/nashville/");
+  await page.waitForSelector("a.when", { timeout: 8000 });
+  assert(await page.locator(".when-strip span").count() === 12, "month strip should have 12 cells");
+  assert((await page.getAttribute("a.when", "href")) === "/nashville/worst-times-to-visit/", "strip should link to the calendar");
 });
 
 await test("New topic: city page box sends a take for review (with its topic)", async () => {
