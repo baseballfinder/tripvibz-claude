@@ -1,0 +1,1784 @@
+{
+ "las-vegas": [
+  {
+   "name": "CES",
+   "kind": "other",
+   "severity": "avoid",
+   "start_month": 1,
+   "end_month": 1,
+   "blurb": "Early January. The giant consumer tech trade show takes over the Strip for four days, and big convention weeks push room rates up across town.",
+   "source": "https://www.ces.tech/"
+  },
+  {
+   "name": "Spring shoulder season",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 3,
+   "end_month": 5,
+   "blurb": "Highs in the 70s and 80s with cooler evenings, and fewer visitors than the peak periods. Midweek stays are usually cheapest.",
+   "source": "https://travel.usnews.com/Las_Vegas_NV/When_To_Visit/"
+  },
+  {
+   "name": "EDC Las Vegas",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 5,
+   "end_month": 5,
+   "blurb": "Mid-May. Three all-night dance music festival nights at Las Vegas Motor Speedway, north of the Strip, draw festivalgoers from out of town.",
+   "source": "https://www.lvmonorail.com/events/edc-las-vegas/"
+  },
+  {
+   "name": "Summer heat",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 6,
+   "end_month": 8,
+   "blurb": "Daytime highs often top 100\u00b0F, and hotel rates run a bit higher. Plan outdoor sightseeing for early morning or after dark.",
+   "source": "https://travel.usnews.com/Las_Vegas_NV/When_To_Visit/"
+  },
+  {
+   "name": "Fall shoulder season",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 9,
+   "end_month": 10,
+   "blurb": "The heat breaks: highs fall into the 80s and 90s, and crowds are lighter than in summer or the winter holidays.",
+   "source": "https://travel.usnews.com/Las_Vegas_NV/When_To_Visit/"
+  },
+  {
+   "name": "Las Vegas Grand Prix",
+   "kind": "sports",
+   "severity": "busy",
+   "start_month": 11,
+   "end_month": 11,
+   "blurb": "Mid-to-late November. The Formula 1 race runs on the Strip itself, with nightly road closures, detours and bus disruptions all race week.",
+   "source": "https://news3lv.com/news/local/list-of-closures-during-formula-1-race-week"
+  },
+  {
+   "name": "National Finals Rodeo",
+   "kind": "sports",
+   "severity": "busy",
+   "start_month": 12,
+   "end_month": 12,
+   "blurb": "Early-to-mid December. Ten nights of championship rodeo at the Thomas & Mack Center fill the city with rodeo fans.",
+   "source": "https://www.ticketnews.com/2026/08/national-finals-rodeo-las-vegas-tickets-on-sale/"
+  },
+  {
+   "name": "New Year's Eve",
+   "kind": "holiday",
+   "severity": "busy",
+   "start_month": 12,
+   "end_month": 12,
+   "blurb": "Holiday crowds are heaviest around New Year's Eve. Book flights and hotels several weeks ahead.",
+   "source": "https://travel.usnews.com/Las_Vegas_NV/When_To_Visit/"
+  }
+ ],
+ "chicago": [
+  {
+   "name": "Winter cold",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 11,
+   "end_month": 3,
+   "blurb": "Daytime highs sit in the low 30s with biting wind off the lake. Hotel and airfare rates are at their lowest, so it suits museum-focused trips.",
+   "source": "https://travel.usnews.com/Chicago_IL/When_To_Visit/"
+  },
+  {
+   "name": "St. Patrick's Day river dyeing",
+   "kind": "holiday",
+   "severity": "busy",
+   "start_month": 3,
+   "end_month": 3,
+   "blurb": "The Saturday before St. Patrick's Day. The Chicago River is dyed green in the morning, followed by the downtown parade; arrive early for a view.",
+   "source": "https://www.nbcchicago.com/news/local/when-is-the-chicago-river-dyeing-for-st-patricks-day-timing-how-to-watch-the-iconic-event/3907551/?amp=1"
+  },
+  {
+   "name": "Spring shoulder season",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 4,
+   "end_month": 5,
+   "blurb": "Highs from the high 50s to low 70s, reasonable hotel rates and moderate crowds. May is rainy, so pack an umbrella.",
+   "source": "https://travel.usnews.com/Chicago_IL/When_To_Visit/"
+  },
+  {
+   "name": "Summer peak season",
+   "kind": "season",
+   "severity": "busy",
+   "start_month": 6,
+   "end_month": 8,
+   "blurb": "The city's peak tourist season, with the highest hotel prices and rooms hard to find. Book three or four weeks ahead; heat waves can be humid.",
+   "source": "https://travel.usnews.com/Chicago_IL/When_To_Visit/"
+  },
+  {
+   "name": "Lollapalooza",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 7,
+   "end_month": 8,
+   "blurb": "Four days spanning the end of July and start of August in Grant Park, right by downtown and the Loop.",
+   "source": "https://wgntv.com/news/chicago-news/lollapalooza-officially-announces-dates-of-2026-festival/amp/"
+  },
+  {
+   "name": "Air and Water Show",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 8,
+   "end_month": 8,
+   "blurb": "A weekend in mid-August. The free lakefront air show centers on North Avenue Beach and usually draws very large crowds.",
+   "source": "https://chicago.suntimes.com/arts-and-culture/2026/08/11/what-to-know-about-the-2026-chicago-air-and-water-show"
+  },
+  {
+   "name": "Fall shoulder season",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 9,
+   "end_month": 10,
+   "blurb": "Highs in the 60s and 70s, fewer crowds and lower room rates after summer. Some outdoor attractions cut hours late in the season.",
+   "source": "https://travel.usnews.com/Chicago_IL/When_To_Visit/"
+  },
+  {
+   "name": "Chicago Marathon",
+   "kind": "sports",
+   "severity": "busy",
+   "start_month": 10,
+   "end_month": 10,
+   "blurb": "Second Sunday of October. Expect street closures along the course through the city's neighborhoods.",
+   "source": "https://www.chicagomarathon.com/runners/runner-information/future-event-dates/"
+  }
+ ],
+ "savannah": [
+  {
+   "name": "Spring high season",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 3,
+   "end_month": 5,
+   "blurb": "Blooming trees and flowers and warming weather make this the most popular time to visit. Hotel rates run higher, so book ahead.",
+   "source": "https://travel.usnews.com/Savannah_GA/When_To_Visit/"
+  },
+  {
+   "name": "St. Patrick's Day",
+   "kind": "holiday",
+   "severity": "busy",
+   "start_month": 3,
+   "end_month": 3,
+   "blurb": "On or around March 17. One of the country's oldest St. Patrick's parades packs downtown with thousands of spectators.",
+   "source": "https://www.wtoc.com/2026/03/18/savannahs-202nd-st-patricks-day-parade-brings-big-crowds-historic-debut-booming-business/"
+  },
+  {
+   "name": "Savannah Music Festival",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 3,
+   "end_month": 4,
+   "blurb": "Late March into early April. A 12-day festival of roots, classical and jazz concerts at venues around the historic district.",
+   "source": "https://www.thesavannahian.com/savannah-music-festival-announces-2026-lineup-tix-on-sale-now/"
+  },
+  {
+   "name": "Summer heat and storms",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 6,
+   "end_month": 8,
+   "blurb": "Highs around 90\u00b0F with heavy humidity day and night, and frequent afternoon thunderstorms. Sightsee in the morning.",
+   "source": "https://gosouthsavannah.com/visitor-info/savannah-weather-july.html"
+  },
+  {
+   "name": "Peak hurricane season",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 8,
+   "end_month": 10,
+   "blurb": "Atlantic hurricane season runs June through November, with most activity from mid-August to mid-October. Consider travel insurance.",
+   "source": "https://www.nhc.noaa.gov/climo/"
+  },
+  {
+   "name": "SCAD Savannah Film Festival",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 10,
+   "end_month": 10,
+   "blurb": "Late October. A week of film screenings hosted by the Savannah College of Art and Design.",
+   "source": "https://awardsradar.com/2026/08/28/scad-savannah-film-festival-is-returning-for-its-29th-year-october-24th-31st/"
+  },
+  {
+   "name": "Fall shoulder season",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 10,
+   "end_month": 11,
+   "blurb": "Cooler weather and slower tourism after the spring and summer high season, with the city's holiday lights starting late in the year.",
+   "source": "https://travel.usnews.com/Savannah_GA/When_To_Visit/"
+  }
+ ],
+ "san-francisco": [
+  {
+   "name": "J.P. Morgan Healthcare Conference",
+   "kind": "other",
+   "severity": "avoid",
+   "start_month": 1,
+   "end_month": 1,
+   "blurb": "Mid-January. This investor conference fills hotels around Union Square, which can sell out and charge very high rates that week.",
+   "source": "https://calodging.com/news/j-p-morgan-healthcare-conference-2026-kicks-off-in-san-francisco/"
+  },
+  {
+   "name": "Spring",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 3,
+   "end_month": 5,
+   "blurb": "Mild weather with highs in the mid-60s, hotel prices that haven't yet risen for summer, and fewer tourists. Bring a layer for the wind.",
+   "source": "https://travel.usnews.com/San_Francisco_CA/When_To_Visit/"
+  },
+  {
+   "name": "Foggy summer peak",
+   "kind": "season",
+   "severity": "avoid",
+   "start_month": 6,
+   "end_month": 8,
+   "blurb": "Peak tourist season brings higher room rates, while chilly, damp fog keeps highs in the 60s. Pack a jacket; it often isn't beach weather.",
+   "source": "https://travel.usnews.com/San_Francisco_CA/When_To_Visit/"
+  },
+  {
+   "name": "Outside Lands",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 8,
+   "end_month": 8,
+   "blurb": "Early-to-mid August. A three-day music festival in Golden Gate Park; expect large crowds and heavy demand on transit and taxis.",
+   "source": "https://www.sfmta.com/index%2Ephp/notices/outside-lands-2026"
+  },
+  {
+   "name": "Dreamforce",
+   "kind": "other",
+   "severity": "avoid",
+   "start_month": 9,
+   "end_month": 10,
+   "blurb": "Held in September or October at Moscone Center. Competition for hotel rooms is fierce that week and prices can soar, so book early or pick another week.",
+   "source": "https://www.salesforceben.com/dreamforce/"
+  },
+  {
+   "name": "Fall warm season",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 9,
+   "end_month": 11,
+   "blurb": "Often the warmest, sunniest stretch of the year, with highs in the low 70s, fewer crowds and lower hotel rates than summer.",
+   "source": "https://travel.usnews.com/San_Francisco_CA/When_To_Visit/"
+  },
+  {
+   "name": "Fleet Week",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 10,
+   "end_month": 10,
+   "blurb": "Early-to-mid October. Navy ships visit, and the free Blue Angels air show over the Marina Green draws crowds to the waterfront.",
+   "source": "https://www.ktvu.com/news/fleet-week-2026-calendar-events"
+  }
+ ],
+ "new-york": [
+  {
+   "name": "Winter low season",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 1,
+   "end_month": 2,
+   "blurb": "Late January and February bring the cheapest hotel rates of the year. The trade-off is cold, with temperatures in the 20s and 30s.",
+   "source": "https://travel.usnews.com/New_York_NY/When_To_Visit/"
+  },
+  {
+   "name": "Spring",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 4,
+   "end_month": 5,
+   "blurb": "Warming weather, outdoor markets and sidewalk dining, with highs reaching the upper 60s by May. Showers are common, so pack rain gear.",
+   "source": "https://travel.usnews.com/New_York_NY/When_To_Visit/"
+  },
+  {
+   "name": "Summer humidity",
+   "kind": "weather",
+   "severity": "busy",
+   "start_month": 6,
+   "end_month": 8,
+   "blurb": "Sticky, humid days and heavy family travel during school breaks make this one of the busiest seasons, though hotel prices stay fairly steady.",
+   "source": "https://travel.usnews.com/New_York_NY/When_To_Visit/"
+  },
+  {
+   "name": "US Open",
+   "kind": "sports",
+   "severity": "busy",
+   "start_month": 8,
+   "end_month": 9,
+   "blurb": "Late August to mid-September. The Grand Slam tennis tournament runs for two weeks at Flushing Meadows in Queens.",
+   "source": "https://www.wtatennis.com/news/4565225/us-open-2026-dates-draws-schedule-prize-money-and-everything-to-know"
+  },
+  {
+   "name": "Early fall",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 9,
+   "end_month": 10,
+   "blurb": "Crisp, sunny days with highs in the 60s and 70s. One of the nicest times to walk the city, though hotels are pricier.",
+   "source": "https://travel.usnews.com/New_York_NY/When_To_Visit/"
+  },
+  {
+   "name": "UN General Assembly",
+   "kind": "other",
+   "severity": "avoid",
+   "start_month": 9,
+   "end_month": 9,
+   "blurb": "Late September. World leaders' motorcades and street closures around the UN cause gridlock on the East Side of Midtown. Allow extra travel time.",
+   "source": "https://abc7ny.com/post/general-assembly-2026-security-road-closures-expected-nyc/19842827/"
+  },
+  {
+   "name": "New York City Marathon",
+   "kind": "sports",
+   "severity": "busy",
+   "start_month": 11,
+   "end_month": 11,
+   "blurb": "First Sunday of November. The race crosses all five boroughs, with street closures along the route.",
+   "source": "https://www.nyrr.org/tcsnycmarathon"
+  },
+  {
+   "name": "Thanksgiving to New Year's",
+   "kind": "holiday",
+   "severity": "busy",
+   "start_month": 11,
+   "end_month": 12,
+   "blurb": "Thanksgiving parade crowds, then the Rockefeller Center tree and holiday windows. Hotel prices are very high through Christmas.",
+   "source": "https://travel.usnews.com/New_York_NY/When_To_Visit/"
+  }
+ ],
+ "denver": [
+  {
+   "name": "National Western Stock Show",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 1,
+   "end_month": 1,
+   "blurb": "About two weeks in mid-to-late January. Rodeos, livestock shows and a downtown livestock parade at the National Western Complex.",
+   "source": "https://www.colorado.com/articles/national-western-stock-show"
+  },
+  {
+   "name": "March snowstorms",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 3,
+   "end_month": 3,
+   "blurb": "March is statistically Denver's snowiest month, averaging more than 10 inches.",
+   "source": "https://www.denver7.com/weather/weather-news/denvers-snowiest-month-is-upon-us-welcome-to-the-month-of-march"
+  },
+  {
+   "name": "Spring shoulder season",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 4,
+   "end_month": 5,
+   "blurb": "Highs in the mid-50s to low 60s, fewer tourists and lower hotel prices than summer. Expect some rain.",
+   "source": "https://travel.usnews.com/Denver_CO/When_To_Visit/"
+  },
+  {
+   "name": "Summer peak season",
+   "kind": "season",
+   "severity": "busy",
+   "start_month": 6,
+   "end_month": 8,
+   "blurb": "The busiest and most expensive season, with highs sometimes above 90\u00b0F and heavy July rain. Book well ahead.",
+   "source": "https://travel.usnews.com/Denver_CO/When_To_Visit/"
+  },
+  {
+   "name": "Fall shoulder season",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 9,
+   "end_month": 10,
+   "blurb": "Mostly sunny days, fewer crowds and lower rates, plus many food festivals. Nights turn cold, so bring layers.",
+   "source": "https://travel.usnews.com/Denver_CO/When_To_Visit/"
+  },
+  {
+   "name": "Great American Beer Festival",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 10,
+   "end_month": 10,
+   "blurb": "An October weekend. The Brewers Association's annual craft beer festival, held in Denver since 1982, draws beer fans from around the country.",
+   "source": "https://visitdenver.com/articles/post/raise-a-glass-to-the-great-outdoors-at-great-american-beer-festival/"
+  }
+ ],
+ "austin": [
+  {
+   "name": "Winter quiet season",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 12,
+   "end_month": 2,
+   "blurb": "Mild and dry, with highs in the low to mid-60s. It is the quietest stretch of the year and usually the cheapest.",
+   "source": "https://travel.usnews.com/Austin_TX/When_To_Visit/"
+  },
+  {
+   "name": "SXSW",
+   "kind": "festival",
+   "severity": "avoid",
+   "start_month": 3,
+   "end_month": 3,
+   "blurb": "Mid-March, about nine days. The tech, film and music festival takes over downtown, and flight and hotel prices can rise sharply.",
+   "source": "https://sxsw.com/wp-content/uploads/2026/04/SXSW-Announces-2027-Dates.pdf"
+  },
+  {
+   "name": "Spring",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 4,
+   "end_month": 5,
+   "blurb": "Highs in the 70s and 80s after SXSW clears out. Skip UT Austin's commencement weekend in May.",
+   "source": "https://travel.usnews.com/Austin_TX/When_To_Visit/"
+  },
+  {
+   "name": "Summer heat",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 6,
+   "end_month": 8,
+   "blurb": "Highs in the mid- to upper 90s, sometimes over 100\u00b0F, with high humidity. Spring-fed Barton Springs Pool is the best relief.",
+   "source": "https://travel.usnews.com/Austin_TX/When_To_Visit/"
+  },
+  {
+   "name": "Austin City Limits Music Festival",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 10,
+   "end_month": 10,
+   "blurb": "Two weekends in October at Zilker Park. Festival weekends bring big crowds and higher lodging rates.",
+   "source": "https://communityimpact.com/central-austin/business/charli-xcx-twenty-one-pilots-and-skrillex-to-headline-acl-music-festival-in-2026/"
+  },
+  {
+   "name": "Formula 1 US Grand Prix",
+   "kind": "sports",
+   "severity": "busy",
+   "start_month": 10,
+   "end_month": 10,
+   "blurb": "A late-October weekend of Formula 1 racing at Circuit of the Americas, southeast of downtown.",
+   "source": "https://www.crash.net/f1/news/1107273/1/when-next-f1-race-united-states-grand-prix-dates-and-schedule"
+  },
+  {
+   "name": "Late fall",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 11,
+   "end_month": 11,
+   "blurb": "Daytime highs in the 70s and the fall festival rush has passed. Book a couple of months ahead for the best rates.",
+   "source": "https://travel.usnews.com/Austin_TX/When_To_Visit/"
+  }
+ ],
+ "orlando": [
+  {
+   "name": "Winter low season",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 1,
+   "end_month": 2,
+   "blurb": "After the New Year rush, mild weather around 75\u00b0F, few rainy days and discounted accommodation make this the low season.",
+   "source": "https://www.lonelyplanet.com/articles/best-time-to-visit-orlando"
+  },
+  {
+   "name": "Spring break",
+   "kind": "holiday",
+   "severity": "avoid",
+   "start_month": 3,
+   "end_month": 4,
+   "blurb": "March to mid-April. Spring break crowds fill the theme parks; the third week of March is often the busiest.",
+   "source": "https://www.lonelyplanet.com/articles/best-time-to-visit-orlando"
+  },
+  {
+   "name": "Early May lull",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 5,
+   "end_month": 5,
+   "blurb": "Crowds and prices drop between spring break and summer vacation, though highs already reach the upper 80s.",
+   "source": "https://www.lonelyplanet.com/articles/best-time-to-visit-orlando"
+  },
+  {
+   "name": "Summer crowds and storms",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 6,
+   "end_month": 8,
+   "blurb": "Summer vacation crowds peak, highs often top 90\u00b0F, and afternoon thunderstorms are likely. Early July is especially busy.",
+   "source": "https://www.lonelyplanet.com/articles/best-time-to-visit-orlando"
+  },
+  {
+   "name": "Peak hurricane season",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 8,
+   "end_month": 10,
+   "blurb": "Atlantic hurricane season runs June through November, with most activity from mid-August to mid-October. Watch forecasts and consider insurance.",
+   "source": "https://www.nhc.noaa.gov/climo/"
+  },
+  {
+   "name": "EPCOT Food & Wine Festival",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 8,
+   "end_month": 11,
+   "blurb": "Late August to late November. Food and drink booths spread around EPCOT's World Showcase for most of the fall.",
+   "source": "https://www.fox35orlando.com/news/disney-world-sets-dates-epcot-food-wine-festival"
+  },
+  {
+   "name": "Pre-Christmas lull",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 12,
+   "end_month": 12,
+   "blurb": "The weeks between Thanksgiving and Christmas are quiet at the parks, with holiday decorations already up.",
+   "source": "https://www.lonelyplanet.com/articles/best-time-to-visit-orlando"
+  },
+  {
+   "name": "Christmas to New Year's",
+   "kind": "holiday",
+   "severity": "avoid",
+   "start_month": 12,
+   "end_month": 1,
+   "blurb": "Christmas week through early January is one of the most crowded times at the theme parks.",
+   "source": "https://www.lonelyplanet.com/articles/best-time-to-visit-orlando"
+  }
+ ],
+ "charleston": [
+  {
+   "name": "Late fall and early winter",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 12,
+   "end_month": 1,
+   "blurb": "Highs mostly in the 50s and 60s, lighter crowds and off-season hotel deals, plus the Holiday Festival of Lights.",
+   "source": "https://travel.usnews.com/Charleston_SC/When_To_Visit/"
+  },
+  {
+   "name": "Southeastern Wildlife Exposition",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 2,
+   "end_month": 2,
+   "blurb": "A mid-February weekend. Wildlife art, dog competitions and live animal shows at venues across downtown, including Marion Square.",
+   "source": "https://www.sewe.com/general-admission-tickets/"
+  },
+  {
+   "name": "Charleston Wine + Food",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 3,
+   "end_month": 3,
+   "blurb": "Early March, five days. Dinners, tastings and a Culinary Village with chefs and winemakers from around the world.",
+   "source": "https://thelocalpalate.com/events/charleston-wine-food-2027/"
+  },
+  {
+   "name": "Spring high season",
+   "kind": "season",
+   "severity": "busy",
+   "start_month": 3,
+   "end_month": 5,
+   "blurb": "Highs of 60 to 80\u00b0F and gardens in bloom draw heavy crowds. Hotel rates peak, especially around Easter; midweek stays help.",
+   "source": "https://travel.usnews.com/Charleston_SC/When_To_Visit/"
+  },
+  {
+   "name": "Spoleto Festival USA",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 5,
+   "end_month": 6,
+   "blurb": "Late May to early June, 17 days. An international performing arts festival with opera, theater, dance and music across the city.",
+   "source": "https://spoletousa.org/about/"
+  },
+  {
+   "name": "Summer heat",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 6,
+   "end_month": 8,
+   "blurb": "Hot, humid days with highs in the upper 80s, strong sun and family vacation crowds. August is the rainiest month.",
+   "source": "https://travel.usnews.com/Charleston_SC/When_To_Visit/"
+  },
+  {
+   "name": "Peak hurricane season",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 8,
+   "end_month": 10,
+   "blurb": "Atlantic hurricane season runs June through November, with most activity from mid-August to mid-October. Consider travel insurance.",
+   "source": "https://www.nhc.noaa.gov/climo/"
+  }
+ ],
+ "new-orleans": [
+  {
+   "name": "Winter lull",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 12,
+   "end_month": 1,
+   "blurb": "The coolest season, with highs in the 60s. Fewer tourists mean lower hotel rates, and it is the easiest time to avoid festival crowds.",
+   "source": "https://travel.usnews.com/New_Orleans_LA/When_To_Visit/"
+  },
+  {
+   "name": "Mardi Gras",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 2,
+   "end_month": 3,
+   "blurb": "Fat Tuesday falls between early February and early March. The week before it is the most crowded of the year, and some attractions close.",
+   "source": "https://www.neworleans.com/events/holidays-seasonal/mardi-gras/future-mardi-gras-dates/"
+  },
+  {
+   "name": "French Quarter Festival",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 4,
+   "end_month": 4,
+   "blurb": "Usually the second weekend of April. A free four-day music festival on stages across the French Quarter that draws large crowds.",
+   "source": "https://www.experienceneworleans.com/french-quarter-festival.html"
+  },
+  {
+   "name": "Jazz Fest",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 4,
+   "end_month": 5,
+   "blurb": "Two long weekends from late April into early May at the Fair Grounds Race Course, at the height of the city's spring festival season.",
+   "source": "https://www.jambase.com/article/new-orleans-jazz-fest-lineup-2026"
+  },
+  {
+   "name": "Summer heat",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 6,
+   "end_month": 8,
+   "blurb": "The hottest and rainiest months, with highs in the low 90s and humidity that makes walking tours uncomfortable. Hotel deals are plentiful.",
+   "source": "https://travel.usnews.com/New_Orleans_LA/When_To_Visit/"
+  },
+  {
+   "name": "Essence Festival",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 7,
+   "end_month": 7,
+   "blurb": "Fourth of July weekend. Concerts at the Caesars Superdome plus other programming around the city.",
+   "source": "https://www.wafb.com/2026/03/09/cardi-b-latto-brandy-monica-announced-essence-fest-2026"
+  },
+  {
+   "name": "Hurricane season peak",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 8,
+   "end_month": 10,
+   "blurb": "Hurricane season runs June 1 to November 30, with most activity from mid-August to mid-October. Watch forecasts and consider trip insurance.",
+   "source": "https://www.nhc.noaa.gov/climo/"
+  }
+ ],
+ "nashville": [
+  {
+   "name": "Winter off-season",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 1,
+   "end_month": 3,
+   "blurb": "Cold and often gray, with temperatures from the upper 20s to the 40s, but flights and hotels are much cheaper than the rest of the year.",
+   "source": "https://travel.usnews.com/Nashville_TN/When_To_Visit/"
+  },
+  {
+   "name": "Spring",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 4,
+   "end_month": 5,
+   "blurb": "Highs start in the low 70s and warm through May. Pack for humidity and thunderstorms.",
+   "source": "https://travel.usnews.com/Nashville_TN/When_To_Visit/"
+  },
+  {
+   "name": "CMA Fest",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 6,
+   "end_month": 6,
+   "blurb": "Four days in early to mid-June. The country music festival fills downtown with fans, and hotel rates climb for the week.",
+   "source": "https://www.wsmv.com/2026/08/14/cma-fest-2027-tickets-sale-festival-prepares-new-nissan-stadium-debut/"
+  },
+  {
+   "name": "Fourth of July",
+   "kind": "holiday",
+   "severity": "busy",
+   "start_month": 7,
+   "end_month": 7,
+   "blurb": "The free downtown concert and fireworks show is one of the biggest single-day events in the city, centered on Lower Broadway.",
+   "source": "https://www.newschannel5.com/news/400k-people-expected-to-visit-nashville-for-fourth-of-july-weekend"
+  },
+  {
+   "name": "Summer heat",
+   "kind": "weather",
+   "severity": "busy",
+   "start_month": 7,
+   "end_month": 8,
+   "blurb": "Highs reach the 90s in July, with humidity and thunderstorms, and hotel rates are at their highest in summer.",
+   "source": "https://travel.usnews.com/Nashville_TN/When_To_Visit/"
+  },
+  {
+   "name": "Fall",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 9,
+   "end_month": 10,
+   "blurb": "Temperatures ease back toward the low 70s by October, the tail end of the city's best-weather stretch.",
+   "source": "https://travel.usnews.com/Nashville_TN/When_To_Visit/"
+  },
+  {
+   "name": "A Country Christmas",
+   "kind": "holiday",
+   "severity": "busy",
+   "start_month": 11,
+   "end_month": 12,
+   "blurb": "Early November to early January. Gaylord Opryland's annual holiday decorations and attractions run through the holidays at the resort near the Grand Ole Opry.",
+   "source": "https://www.wsmv.com/2026/07/23/gaylord-opryland-announces-new-theme-43rd-annual-country-christmas/"
+  },
+  {
+   "name": "New Year's Eve Big Bash",
+   "kind": "holiday",
+   "severity": "busy",
+   "start_month": 12,
+   "end_month": 12,
+   "blurb": "December 31. A free concert and countdown at Bicentennial Mall draws very large crowds. Use rideshare or shuttles.",
+   "source": "https://www.wsmv.com/2025/12/30/nashville-prepares-new-years-eve-big-bash-with-250000-expected"
+  }
+ ],
+ "san-diego": [
+  {
+   "name": "Gray whale season",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 12,
+   "end_month": 3,
+   "blurb": "From late December to mid-March, migrating gray whales can be spotted from Cabrillo National Monument on Point Loma. It is also the cooler, rainier time of year.",
+   "source": "https://www.nps.gov/cabr/planyourvisit/whale-watching.htm"
+  },
+  {
+   "name": "Spring",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 3,
+   "end_month": 4,
+   "blurb": "Mild weather in the mid-60s and fewer crowds while school is still in session. One of the two best times to visit.",
+   "source": "https://travel.usnews.com/San_Diego_CA/When_To_Visit/"
+  },
+  {
+   "name": "May Gray and June Gloom",
+   "kind": "weather",
+   "severity": "busy",
+   "start_month": 5,
+   "end_month": 6,
+   "blurb": "A marine layer often keeps the coast cool and cloudy, sometimes all day, while crowds and room rates climb toward summer. Inland areas are usually sunnier.",
+   "source": "https://en.wikipedia.org/wiki/Climate_of_San_Diego"
+  },
+  {
+   "name": "Summer peak",
+   "kind": "season",
+   "severity": "busy",
+   "start_month": 7,
+   "end_month": 8,
+   "blurb": "Highs in the high 70s, but the busiest and most expensive time, with long lines at attractions and hotels that sell out. Book at least a month ahead.",
+   "source": "https://travel.usnews.com/San_Diego_CA/When_To_Visit/"
+  },
+  {
+   "name": "Comic-Con",
+   "kind": "other",
+   "severity": "avoid",
+   "start_month": 7,
+   "end_month": 7,
+   "blurb": "Late July. Downtown hotels sell out fast once Comic-Con's booking opens, and rooms near the Gaslamp get very expensive that week.",
+   "source": "https://sdccblog.com/2026/04/hotelpocalypse-2026-do-you-feel-empowered/"
+  },
+  {
+   "name": "Fall",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 9,
+   "end_month": 11,
+   "blurb": "Summer weather often lasts into September. October and November bring fewer crowds and lower hotel rates.",
+   "source": "https://travel.usnews.com/San_Diego_CA/When_To_Visit/"
+  }
+ ],
+ "seattle": [
+  {
+   "name": "Rainy season",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 11,
+   "end_month": 3,
+   "blurb": "The wet season runs roughly October through March, with November to January the wettest. Expect short gray days in the 30s and 40s, though hotel deals are plentiful.",
+   "source": "https://www.celebritycruises.com/blog/best-time-to-visit-seattle"
+  },
+  {
+   "name": "Alaska cruise season",
+   "kind": "season",
+   "severity": "busy",
+   "start_month": 4,
+   "end_month": 10,
+   "blurb": "Mid-April to mid-October, cruise ships sail for Alaska from downtown piers, adding crowds downtown on sailing days.",
+   "source": "https://www.cruisehive.com/port-of-seattle-opens-its-busiest-alaska-cruise-season-in-history/2026/"
+  },
+  {
+   "name": "Summer high season",
+   "kind": "season",
+   "severity": "busy",
+   "start_month": 6,
+   "end_month": 8,
+   "blurb": "The driest, sunniest months, with highs around 75\u00b0F. It is also the busiest time, with higher hotel rates and limited availability, so book several weeks ahead.",
+   "source": "https://travel.usnews.com/Seattle_WA/When_To_Visit/"
+  },
+  {
+   "name": "Seafair Weekend",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 7,
+   "end_month": 8,
+   "blurb": "Late July or early August. The Boeing Seafair Air Show flies over Lake Washington, with free general admission viewing at Genesee Park.",
+   "source": "https://www.fox13seattle.com/news/blue-angels-schedule-2026"
+  },
+  {
+   "name": "Early fall",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 9,
+   "end_month": 10,
+   "blurb": "Mild weather before the rains set in, smaller crowds once summer ends, and lower hotel rates. The best time to visit.",
+   "source": "https://travel.usnews.com/Seattle_WA/When_To_Visit/"
+  }
+ ],
+ "honolulu": [
+  {
+   "name": "Holiday high season",
+   "kind": "holiday",
+   "severity": "avoid",
+   "start_month": 12,
+   "end_month": 1,
+   "blurb": "Late December into early January brings the highest lodging demand of the year in Hawaii. Book early and expect higher prices.",
+   "source": "https://www.hawaii-guide.com/best-time-to-visit-hawaii"
+  },
+  {
+   "name": "Humpback whale peak",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 1,
+   "end_month": 3,
+   "blurb": "Humpbacks are in Hawaiian waters from about November to April, with the peak from January through March. A good time for whale-watching tours.",
+   "source": "https://hawaiihumpbackwhale.noaa.gov/about/about.html"
+  },
+  {
+   "name": "Spring shoulder season",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 4,
+   "end_month": 5,
+   "blurb": "Mid-April to early June is one of the cheapest and least crowded stretches for flights and hotels.",
+   "source": "https://hawaii.com/best-time-to-visit-hawaii-weather-crowds-and-prices"
+  },
+  {
+   "name": "Summer family season",
+   "kind": "season",
+   "severity": "busy",
+   "start_month": 6,
+   "end_month": 8,
+   "blurb": "Mid-June to mid-August is peak family travel while schools are out, with June and July the most crowded.",
+   "source": "https://hawaii.com/best-time-to-visit-hawaii-weather-crowds-and-prices"
+  },
+  {
+   "name": "Fall shoulder season",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 9,
+   "end_month": 11,
+   "blurb": "Demand usually eases after Labor Day. September to mid-November brings lower prices and quieter beaches.",
+   "source": "https://hawaii.com/best-time-to-visit-hawaii-weather-crowds-and-prices"
+  },
+  {
+   "name": "Thanksgiving week",
+   "kind": "holiday",
+   "severity": "busy",
+   "start_month": 11,
+   "end_month": 11,
+   "blurb": "Late November. Demand for flights and rooms jumps sharply for the holiday week.",
+   "source": "https://www.hawaii-guide.com/best-time-to-visit-hawaii"
+  },
+  {
+   "name": "Honolulu Marathon",
+   "kind": "sports",
+   "severity": "busy",
+   "start_month": 12,
+   "end_month": 12,
+   "blurb": "Mid-December, with a 5 a.m. start. Roads along the course close on race morning.",
+   "source": "https://www.honolulumarathon.org/events/honolulu-marathon"
+  }
+ ],
+ "knoxville": [
+  {
+   "name": "Big Ears Festival",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 3,
+   "end_month": 4,
+   "blurb": "Late March or early April. A four-day music festival spread across about two dozen downtown venues.",
+   "source": "https://www.jambase.com/article/big-ears-festival-2027-lineup"
+  },
+  {
+   "name": "Dogwood Arts",
+   "kind": "festival",
+   "severity": "good",
+   "start_month": 4,
+   "end_month": 4,
+   "blurb": "April, when the dogwoods bloom along the city's marked dogwood trails. The Dogwood Arts Festival at World's Fair Park is usually late in the month.",
+   "source": "https://cityviewmag.com/new-trail-old-favorites-included-in-aprils-dogwood-arts-events/"
+  },
+  {
+   "name": "UT home football Saturdays",
+   "kind": "sports",
+   "severity": "busy",
+   "start_month": 9,
+   "end_month": 11,
+   "blurb": "Neyland Stadium seats 101,915, and campus and downtown fill with tailgaters on home Saturdays from September to November. Plan parking and arrival times ahead.",
+   "source": "https://www.visitknoxville.com/blog/post/guide-to-gameday"
+  },
+  {
+   "name": "Fall color downtown",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 10,
+   "end_month": 10,
+   "blurb": "Crisp weather and changing leaves around Krutch Park and Volunteer Landing. Pick a weekend without a home football game for an easier visit.",
+   "source": "https://www.downtownknoxville.org/fall/"
+  },
+  {
+   "name": "Holidays on Ice",
+   "kind": "holiday",
+   "severity": "good",
+   "start_month": 11,
+   "end_month": 1,
+   "blurb": "The Market Square skating rink runs from late November to early January, closed Christmas Day.",
+   "source": "https://knoxvilletn.gov/government/city_departments_offices/special_events/knoxvilles_holidays_on_ice"
+  }
+ ],
+ "asheville": [
+  {
+   "name": "January lull",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 1,
+   "end_month": 1,
+   "blurb": "One of the least busy months, with affordable hotel rates. It is also the snowiest month, with temperatures in the 30s, and mountain roads can be tricky.",
+   "source": "https://www.lonelyplanet.com/articles/when-to-visit-asheville"
+  },
+  {
+   "name": "Biltmore Blooms",
+   "kind": "festival",
+   "severity": "good",
+   "start_month": 3,
+   "end_month": 5,
+   "blurb": "Late March to late May. Tulips, daffodils, azaleas and wisteria fill the Biltmore Estate gardens and house.",
+   "source": "https://www.biltmore.com/events/biltmore-blooms/"
+  },
+  {
+   "name": "Mountain Dance and Folk Festival",
+   "kind": "festival",
+   "severity": "good",
+   "start_month": 7,
+   "end_month": 8,
+   "blurb": "Late July into early August. Three evenings of traditional mountain music and dance, held every summer since 1928.",
+   "source": "https://www.exploreasheville.com/asheville/events/99th-mountain-dance-and-folk-festival"
+  },
+  {
+   "name": "Fall leaf season",
+   "kind": "season",
+   "severity": "busy",
+   "start_month": 10,
+   "end_month": 10,
+   "blurb": "October is the busiest month. Colors peak in the city in the second half of the month, rooms book early and rates are at their highest.",
+   "source": "https://www.lonelyplanet.com/articles/when-to-visit-asheville"
+  },
+  {
+   "name": "Christmas at Biltmore",
+   "kind": "holiday",
+   "severity": "busy",
+   "start_month": 11,
+   "end_month": 1,
+   "blurb": "Early November to early January. Daytime visits need a timed reservation, and Candlelight Christmas Evenings need a separate ticket booked ahead.",
+   "source": "https://www.exploreasheville.com/article/christmas-at-biltmore"
+  }
+ ],
+ "daytona-beach": [
+  {
+   "name": "Daytona 500 and Speedweeks",
+   "kind": "sports",
+   "severity": "busy",
+   "start_month": 2,
+   "end_month": 2,
+   "blurb": "Mid to late February. Speedweeks races lead up to the Daytona 500, held on a Sunday.",
+   "source": "https://www.daytonainternationalspeedway.com/2025/10/22/daytona-international-speedway-announces-2027-daytona-500-date/"
+  },
+  {
+   "name": "Bike Week",
+   "kind": "festival",
+   "severity": "avoid",
+   "start_month": 2,
+   "end_month": 3,
+   "blurb": "Ten days from late February into early March. Big motorcycle crowds fill the area and overlap with spring breakers.",
+   "source": "https://daytonabeach.gov/954/Biker-Events"
+  },
+  {
+   "name": "April",
+   "kind": "weather",
+   "severity": "good",
+   "start_month": 4,
+   "end_month": 4,
+   "blurb": "Warm, sunny days with highs around 81\u00b0F, after the February and March event crowds have gone.",
+   "source": "https://www.weather2travel.com/florida/daytona-beach/today/"
+  },
+  {
+   "name": "Coke Zero Sugar 400",
+   "kind": "sports",
+   "severity": "busy",
+   "start_month": 8,
+   "end_month": 8,
+   "blurb": "Late August. A Saturday night NASCAR Cup race at Daytona International Speedway.",
+   "source": "https://www.daytonabeach.com/event/2026-coke-zero-sugar-400/53905/"
+  },
+  {
+   "name": "Hurricane season peak",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 8,
+   "end_month": 10,
+   "blurb": "Hurricane season runs June 1 to November 30, with most activity from mid-August to mid-October. Watch forecasts and consider trip insurance.",
+   "source": "https://www.nhc.noaa.gov/climo/"
+  },
+  {
+   "name": "Biketoberfest",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 10,
+   "end_month": 10,
+   "blurb": "Four days in mid-October. A large motorcycle rally with events across Volusia County.",
+   "source": "https://daytonabeach.gov/954/Biker-Events"
+  },
+  {
+   "name": "November",
+   "kind": "weather",
+   "severity": "good",
+   "start_month": 11,
+   "end_month": 11,
+   "blurb": "Highs around 77\u00b0F and one of the better months for weather, after Biketoberfest and before winter.",
+   "source": "https://www.weather2travel.com/florida/daytona-beach/today/"
+  }
+ ],
+ "key-west": [
+  {
+   "name": "Winter high season",
+   "kind": "season",
+   "severity": "busy",
+   "start_month": 12,
+   "end_month": 2,
+   "blurb": "The busiest and most expensive time, with temperatures in the mid-70s. Holiday weeks add even more visitors.",
+   "source": "https://travel.usnews.com/Key_West_FL/When_To_Visit/"
+  },
+  {
+   "name": "Spring",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 3,
+   "end_month": 5,
+   "blurb": "Winter crowds thin out, hotel rates are more reasonable, and skies are clear, with highs climbing to the mid-80s by May. The best time to visit.",
+   "source": "https://travel.usnews.com/Key_West_FL/When_To_Visit/"
+  },
+  {
+   "name": "Key West Pride",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 6,
+   "end_month": 6,
+   "blurb": "Early June, with a street fair and several days of events. Room rates surge during Pride.",
+   "source": "https://www.keywestchamber.org/latest-community-news/key-west-pride-to-celebrate-diversity-and-history-june-3-7-2026"
+  },
+  {
+   "name": "Hemingway Days",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 7,
+   "end_month": 7,
+   "blurb": "The week of Hemingway's July 21 birthday, with the look-alike contest at Sloppy Joe's, a fishing contest and a street fair.",
+   "source": "https://www.wgcu.org/human-interest/2026-07-24/the-papas-are-back-hemingway-hopefuls-return-to-key-west"
+  },
+  {
+   "name": "Lobster mini-season",
+   "kind": "sports",
+   "severity": "busy",
+   "start_month": 7,
+   "end_month": 7,
+   "blurb": "The last Wednesday and Thursday of July. Thousands of locals and visitors take to the water for the two-day spiny lobster sport season.",
+   "source": "https://visitfloridakeys.com/experiences/what-were-famous-for/fishing/lobster-season"
+  },
+  {
+   "name": "Hurricane season peak",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 8,
+   "end_month": 10,
+   "blurb": "Hurricane season runs June 1 to November 30, with most activity from mid-August to mid-October. Watch forecasts and consider trip insurance.",
+   "source": "https://www.nhc.noaa.gov/climo/"
+  },
+  {
+   "name": "Fantasy Fest",
+   "kind": "festival",
+   "severity": "avoid",
+   "start_month": 10,
+   "end_month": 10,
+   "blurb": "Ten days in late October, ending with the main parade. An adults-first event; Old Town hotels sell out months ahead and rates rise toward parade weekend.",
+   "source": "https://events.keysweekly.com/fantasy-fest-2026-key-west-s-wildest-ten-days-msxzoofz"
+  }
+ ],
+ "miami": [
+  {
+   "name": "Miami Marathon",
+   "kind": "sports",
+   "severity": "busy",
+   "start_month": 1,
+   "end_month": 2,
+   "blurb": "Run on a Sunday in late January or early February. Streets in Downtown, Coconut Grove and Miami Beach close from about 5 a.m. to 2 p.m. on race day.",
+   "source": "https://www.local10.com/news/local/2025/01/31/here-are-the-miami-marathon-street-closures/"
+  },
+  {
+   "name": "Calle Ocho Festival",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 3,
+   "end_month": 3,
+   "blurb": "A one-day street festival in mid-March that closes 15 blocks of SW 8th Street in Little Havana. Great if you want to go; plan around it if you're staying nearby.",
+   "source": "https://www.miamiandbeaches.com/event/calle-ocho-music-festival/103"
+  },
+  {
+   "name": "Miami Open",
+   "kind": "sports",
+   "severity": "busy",
+   "start_month": 3,
+   "end_month": 3,
+   "blurb": "The pro tennis tournament runs for about two weeks in the second half of March at Hard Rock Stadium in Miami Gardens.",
+   "source": "https://www.miamiopen.com/faq/"
+  },
+  {
+   "name": "Miami Music Week and Ultra",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 3,
+   "end_month": 3,
+   "blurb": "Late March brings a week of 200-plus electronic music events, ending with the three-day Ultra festival at Bayfront Park in Downtown Miami.",
+   "source": "https://www.miamiandbeaches.com/events/miami-music-week-guide"
+  },
+  {
+   "name": "Formula 1 Miami Grand Prix",
+   "kind": "sports",
+   "severity": "busy",
+   "start_month": 4,
+   "end_month": 5,
+   "blurb": "Race weekend falls around the turn of April and May at the Miami International Autodrome on the Hard Rock Stadium campus in Miami Gardens.",
+   "source": "https://ticketing.formula1.com/miami/"
+  },
+  {
+   "name": "Rainy season",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 5,
+   "end_month": 10,
+   "blurb": "South Florida's wet season runs from mid-May to mid-October, with hot, humid days and frequent thunderstorms.",
+   "source": "https://www.weather.gov/media/mfl/news/RainySeasonOutlook2025.pdf"
+  },
+  {
+   "name": "Miami Spice",
+   "kind": "other",
+   "severity": "good",
+   "start_month": 8,
+   "end_month": 9,
+   "blurb": "Through August and September, 300-plus restaurants offer three-course prix-fixe menus, a good way to eat well during the slower, hotter months.",
+   "source": "https://www.miaminewtimes.com/food-drink/2026-miami-spice-restaurant-list-40569425/"
+  },
+  {
+   "name": "Hurricane season peak",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 8,
+   "end_month": 10,
+   "blurb": "Hurricane season runs June 1 to November 30, and most Atlantic activity falls between mid-August and mid-October. Buy flexible bookings or travel insurance.",
+   "source": "https://www.nhc.noaa.gov/climo/"
+  }
+ ],
+ "miami-beach": [
+  {
+   "name": "Miami International Boat Show",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 2,
+   "end_month": 2,
+   "blurb": "A five-day show in mid-February at the Miami Beach Convention Center and marinas on both sides of Biscayne Bay.",
+   "source": "https://www.oceanindependence.com/events-and-yacht-shows/miami-international-boat-show/"
+  },
+  {
+   "name": "South Beach Wine & Food Festival",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 2,
+   "end_month": 2,
+   "blurb": "Four days of chef-led tastings and dinners across South Beach in late February. Book early if you're coming for it.",
+   "source": "https://www.miamiandbeaches.com/event/south-beach-wine-and-food-festival/265"
+  },
+  {
+   "name": "Spring break",
+   "kind": "season",
+   "severity": "avoid",
+   "start_month": 3,
+   "end_month": 3,
+   "blurb": "In March, South Beach has used non-resident garage rates of $40 or more, beach-entrance checkpoints Thursday to Sunday, and limits on Ocean Drive traffic.",
+   "source": "https://www.wlrn.org/light/government-politics/2026-02-24/miami-beach-spring-break-crackdown"
+  },
+  {
+   "name": "Miami Beach Pride",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 4,
+   "end_month": 4,
+   "blurb": "A week of events in April that ends with a festival at Lummus Park and a parade along Ocean Drive.",
+   "source": "https://www.miamibeachpride.com/post/miami-beach-pride-announces-2026-dates-and-theme-pride-is"
+  },
+  {
+   "name": "Memorial Day weekend",
+   "kind": "holiday",
+   "severity": "avoid",
+   "start_month": 5,
+   "end_month": 5,
+   "blurb": "The city has used flat garage rates for non-residents, nightly lane reductions on 5th Street and the Julia Tuttle, and license plate readers on this weekend.",
+   "source": "https://www.nbcmiami.com/news/local/miami-beach-prepares-for-memorial-day-with-parking-fees-traffic-restrictions/3319774/"
+  },
+  {
+   "name": "Sargassum season",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 3,
+   "end_month": 10,
+   "blurb": "Sargassum seaweed can wash up from March through October, usually heaviest in late spring and summer. The amount varies a lot from year to year.",
+   "source": "https://www.miamidade.gov/global/recreation/sargassum.page"
+  },
+  {
+   "name": "Art Basel Miami Beach",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 12,
+   "end_month": 12,
+   "blurb": "The art fair is held in Miami Beach in early December and is the centerpiece of Miami Art Week. Book rooms early if you're coming for it.",
+   "source": "https://www.artbasel.com/miami-beach/at-the-show"
+  },
+  {
+   "name": "Dry season",
+   "kind": "weather",
+   "severity": "good",
+   "start_month": 11,
+   "end_month": 4,
+   "blurb": "After the wet season ends in mid-October, the weather turns drier and less humid. These months are the most comfortable for the beach.",
+   "source": "https://www.weather.gov/media/mfl/news/RainySeasonOutlook2025.pdf"
+  }
+ ],
+ "key-biscayne": [
+  {
+   "name": "Winter weekdays",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 12,
+   "end_month": 3,
+   "blurb": "Crandon Park Beach is much less crowded in winter, and on weekdays you may have long stretches of sand nearly to yourself.",
+   "source": "https://www.floridarambler.com/florida-best-beaches/crandon-park-beach/"
+  },
+  {
+   "name": "Sargassum season",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 3,
+   "end_month": 10,
+   "blurb": "Miami-Dade's sargassum season runs from March through October, and the island's ocean-facing beaches can get heavy seaweed in some years.",
+   "source": "https://www.miamidade.gov/global/recreation/sargassum.page"
+  },
+  {
+   "name": "Rainy season",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 5,
+   "end_month": 10,
+   "blurb": "From mid-May to mid-October, expect heat, humidity and frequent thunderstorms. Plan beach time for the morning.",
+   "source": "https://www.weather.gov/media/mfl/news/RainySeasonOutlook2025.pdf"
+  },
+  {
+   "name": "Summer weekend crowds",
+   "kind": "season",
+   "severity": "busy",
+   "start_month": 6,
+   "end_month": 8,
+   "blurb": "On summer weekends, Crandon Park's 3,000 parking spaces fill up and shaded picnic tables go early. Come on a weekday or arrive early.",
+   "source": "https://www.floridarambler.com/florida-best-beaches/crandon-park-beach/"
+  },
+  {
+   "name": "Fourth of July Parade",
+   "kind": "holiday",
+   "severity": "busy",
+   "start_month": 7,
+   "end_month": 7,
+   "blurb": "Held every July 4 since 1959, the morning parade runs along Crandon Boulevard, the island's main road.",
+   "source": "https://miamiandbeaches.com/event/key-biscayne-fourth-of-july-parade/8801"
+  },
+  {
+   "name": "Hurricane season peak",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 8,
+   "end_month": 10,
+   "blurb": "Most Atlantic hurricane activity comes between mid-August and mid-October. The Rickenbacker Causeway is the only road on and off the island.",
+   "source": "https://www.nhc.noaa.gov/climo/"
+  }
+ ],
+ "fort-lauderdale": [
+  {
+   "name": "Spring break",
+   "kind": "season",
+   "severity": "avoid",
+   "start_month": 3,
+   "end_month": 4,
+   "blurb": "Spring break rules on the beach run from March into mid-April. Alcohol, coolers, tents and amplified music are banned, and police patrols increase.",
+   "source": "https://www.wlrn.org/government-politics/2025-02-26/spring-break-fort-lauderdale"
+  },
+  {
+   "name": "Tortuga Music Festival",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 4,
+   "end_month": 4,
+   "blurb": "A three-day music festival on Fort Lauderdale Beach Park in early April.",
+   "source": "https://www.visitlauderdale.com/sunny_org/events/annual-events-festivals"
+  },
+  {
+   "name": "Fort Lauderdale Air Show",
+   "kind": "other",
+   "severity": "busy",
+   "start_month": 5,
+   "end_month": 5,
+   "blurb": "An air show over Fort Lauderdale Beach on a weekend in mid-May, with crowds along the sand.",
+   "source": "https://www.visitlauderdale.com/sunny_org/events/annual-events-festivals"
+  },
+  {
+   "name": "Rainy season",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 5,
+   "end_month": 10,
+   "blurb": "From mid-May to mid-October, expect heat, humidity and near-daily thunderstorms.",
+   "source": "https://www.weather.gov/media/mfl/news/RainySeasonOutlook2025.pdf"
+  },
+  {
+   "name": "Dine Out Lauderdale",
+   "kind": "other",
+   "severity": "good",
+   "start_month": 8,
+   "end_month": 9,
+   "blurb": "Dine Out Lauderdale, a restaurant promotion, runs in August and September. It makes late summer a better-value time to eat out.",
+   "source": "https://www.visitlauderdale.com/sunny_org/events/annual-events-festivals"
+  },
+  {
+   "name": "Hurricane season peak",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 8,
+   "end_month": 10,
+   "blurb": "Hurricane season runs June to November, and most activity falls between mid-August and mid-October.",
+   "source": "https://www.nhc.noaa.gov/climo/"
+  },
+  {
+   "name": "Fort Lauderdale International Boat Show",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 10,
+   "end_month": 11,
+   "blurb": "Held at six waterfront venues from late October into the first days of November, with shuttles from the Broward County Convention Center.",
+   "source": "https://www.yachtcharterfleet.com/news/fort-lauderdale-international-boat-show-announces-show-updates-as-ticket-sales-open-for-2026-edition"
+  },
+  {
+   "name": "Winterfest Boat Parade",
+   "kind": "holiday",
+   "severity": "busy",
+   "start_month": 12,
+   "end_month": 12,
+   "blurb": "A lighted holiday boat parade through Fort Lauderdale on a Saturday in mid-December.",
+   "source": "https://www.visitlauderdale.com/sunny_org/events/annual-events-festivals"
+  }
+ ],
+ "tampa": [
+  {
+   "name": "Gasparilla Parade of Pirates",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 1,
+   "end_month": 1,
+   "blurb": "On a Saturday in late January, a 4.5-mile pirate parade runs down Bayshore Boulevard into downtown. It's free and draws big crowds.",
+   "source": "https://gasparillapiratefest.com/parade-of-pirates/"
+  },
+  {
+   "name": "Florida State Fair",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 2,
+   "end_month": 2,
+   "blurb": "The state fair runs for about 12 days in early to mid-February at the Florida State Fairgrounds in Tampa.",
+   "source": "https://www.visitstpeteclearwater.com/event/florida-state-fair/60086"
+  },
+  {
+   "name": "Yankees spring training",
+   "kind": "sports",
+   "severity": "busy",
+   "start_month": 2,
+   "end_month": 3,
+   "blurb": "The Yankees play Grapefruit League games at Steinbrenner Field from late February until about the third week of March.",
+   "source": "https://www.mlb.com/yankees/news/yankees-2026-spring-training-faq"
+  },
+  {
+   "name": "Rainy season",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 5,
+   "end_month": 10,
+   "blurb": "From late May to early October, expect frequent thunderstorms. The peak, with heavy rain and frequent lightning, runs from July to early September.",
+   "source": "https://www.weather.gov/tbw/RainySeason"
+  },
+  {
+   "name": "Red tide risk",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 8,
+   "end_month": 10,
+   "blurb": "Red tide blooms appear most years in late summer or early fall, often between Clearwater and Sanibel. They can cause eye and breathing irritation at the beach.",
+   "source": "https://myfwc.com/research/redtide/general/about/"
+  },
+  {
+   "name": "Hurricane season peak",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 8,
+   "end_month": 10,
+   "blurb": "Hurricane season runs June 1 to November 30, and most Atlantic activity falls between mid-August and mid-October.",
+   "source": "https://www.nhc.noaa.gov/climo/"
+  },
+  {
+   "name": "Late fall",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 11,
+   "end_month": 12,
+   "blurb": "The rainy season ends around early October, so late fall brings drier weather before the January Gasparilla crowds.",
+   "source": "https://www.weather.gov/tbw/RainySeason"
+  }
+ ],
+ "st-augustine": [
+  {
+   "name": "Celtic Music & Heritage Festival",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 3,
+   "end_month": 3,
+   "blurb": "A weekend festival of Celtic music and culture in mid-March at Francis Field, downtown.",
+   "source": "https://www.actionnewsjax.com/news/local/st-augustine-celtic-music-heritage-festival-returns-march-2026/JXMZ5MZADBDLHHFNOPIBFEHFAA/"
+  },
+  {
+   "name": "Spring",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 3,
+   "end_month": 5,
+   "blurb": "From March through mid-May the weather is usually pleasant, which suits walking the old town and visiting the Castillo.",
+   "source": "https://www.nps.gov/casa/planyourvisit/weather.htm"
+  },
+  {
+   "name": "Summer heat and storms",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 5,
+   "end_month": 9,
+   "blurb": "Summers are hot and humid with frequent afternoon thunderstorms. The heat index inside the Castillo can top 105\u00b0F, and lightning closes its gundeck.",
+   "source": "https://www.nps.gov/casa/planyourvisit/weather.htm"
+  },
+  {
+   "name": "Hurricane season peak",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 8,
+   "end_month": 10,
+   "blurb": "Hurricane season runs June 1 to November 30, and most Atlantic activity falls between mid-August and mid-October.",
+   "source": "https://www.nhc.noaa.gov/climo/"
+  },
+  {
+   "name": "King tides",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 10,
+   "end_month": 10,
+   "blurb": "Fall king tides can flood low streets, including near the bayfront seawall by the Castillo and parts of Bridge Street. Check tide times if you're driving downtown.",
+   "source": "https://news4jax.com/news/local/2024/10/14/city-of-st-augustine-urges-residents-to-be-cautious-as-king-tides-expected-to-bring-street-flooding"
+  },
+  {
+   "name": "Autumn",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 10,
+   "end_month": 11,
+   "blurb": "October through late November is often mild and pleasant, after the summer heat and before the holiday lights crowds.",
+   "source": "https://www.nps.gov/casa/planyourvisit/weather.htm"
+  },
+  {
+   "name": "Nights of Lights",
+   "kind": "holiday",
+   "severity": "busy",
+   "start_month": 11,
+   "end_month": 1,
+   "blurb": "Millions of white lights stay on nightly from late November to mid-January. Traffic and parking are hard on weekends, so come midweek if you can.",
+   "source": "https://www.visitstaugustine.com/article/ultimate-survival-guide-to-st-augustine-nights-lights"
+  },
+  {
+   "name": "Colonial Night Watch",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 12,
+   "end_month": 12,
+   "blurb": "On the first weekend in December, reenactors camp in town and a torch-lit parade moves down St. George Street on Saturday night.",
+   "source": "https://www.visitstaugustine.com/event/colonial-night-watch"
+  }
+ ],
+ "fort-myers": [
+  {
+   "name": "Peak season",
+   "kind": "season",
+   "severity": "busy",
+   "start_month": 1,
+   "end_month": 4,
+   "blurb": "Lee County's peak season typically runs from mid-January through April. Book lodging well ahead.",
+   "source": "https://www.fox4now.com/news/local-news/record-breaking-tourism-booming-growth-shifting-seasons-in-swfl"
+  },
+  {
+   "name": "Edison Festival of Light",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 2,
+   "end_month": 2,
+   "blurb": "A February festival in Fort Myers that ends with the evening Grand Parade of Light in mid-to-late February.",
+   "source": "https://www.edisonfestival.org/"
+  },
+  {
+   "name": "Spring training",
+   "kind": "sports",
+   "severity": "busy",
+   "start_month": 2,
+   "end_month": 3,
+   "blurb": "From late February to late March, the Red Sox play at JetBlue Park and the Twins at Hammond Stadium.",
+   "source": "https://www.mlb.com/news/red-sox-to-begin-2026-spring-training-exhibition-season-february-20-at-jetblue-park"
+  },
+  {
+   "name": "Spring break on Fort Myers Beach",
+   "kind": "season",
+   "severity": "avoid",
+   "start_month": 3,
+   "end_month": 3,
+   "blurb": "March is one of the busiest months on Fort Myers Beach. Expect heavy traffic onto Estero Island and beachfront hotels booked weeks out.",
+   "source": "https://winknews.com/2025/03/24/fort-myers-beach-sees-spring-break-surge-several-hotels-fully-booked/"
+  },
+  {
+   "name": "Summer off-season",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 6,
+   "end_month": 8,
+   "blurb": "Summer is the low season. It's hot and humid, with tropical thunderstorms most afternoons.",
+   "source": "https://sanibel-captiva.org/the-best-time-to-visit-sanibel-island/"
+  },
+  {
+   "name": "Red tide risk",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 8,
+   "end_month": 10,
+   "blurb": "Red tide blooms appear most years in late summer or early fall, often between Clearwater and Sanibel. They can cause eye and breathing irritation at the beach.",
+   "source": "https://myfwc.com/research/redtide/general/about/"
+  },
+  {
+   "name": "Hurricane season peak",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 8,
+   "end_month": 10,
+   "blurb": "Hurricane season runs June 1 to November 30, and most Atlantic activity falls between mid-August and mid-October.",
+   "source": "https://www.nhc.noaa.gov/climo/"
+  },
+  {
+   "name": "Fall shelling season",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 10,
+   "end_month": 11,
+   "blurb": "October and November bring good shelling on nearby Sanibel, with less rain and lighter crowds than winter. Hurricane season runs through November.",
+   "source": "https://sanibel-captiva.org/the-best-time-to-visit-sanibel-island/"
+  }
+ ],
+ "sarasota": [
+  {
+   "name": "Winter high season",
+   "kind": "season",
+   "severity": "busy",
+   "start_month": 12,
+   "end_month": 3,
+   "blurb": "Most of Sarasota's visitors and snowbirds arrive in winter, when highs sit in the 60s and 70s. This is the area's peak season.",
+   "source": "https://www.visitsarasota.com/article/seasons-sarasota-county"
+  },
+  {
+   "name": "Forks & Corks",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 1,
+   "end_month": 1,
+   "blurb": "The Forks & Corks food and wine Grand Tasting is held on a Sunday in late January at The Ringling museum.",
+   "source": "https://www.visitsarasota.com/events-festivals/forks-corks-grand-tasting"
+  },
+  {
+   "name": "Orioles spring training",
+   "kind": "sports",
+   "severity": "busy",
+   "start_month": 2,
+   "end_month": 3,
+   "blurb": "The Orioles play home games at Ed Smith Stadium from late February to mid-March.",
+   "source": "https://www.mlb.com/news/press-release-orioles-announce-2027-spring-training-schedule"
+  },
+  {
+   "name": "Summer rainy season",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 6,
+   "end_month": 10,
+   "blurb": "From June to October, downpours are common, usually in the early afternoon. They pass quickly, but lightning can linger.",
+   "source": "https://www.visitsarasota.com/article/seasons-sarasota-county"
+  },
+  {
+   "name": "Red tide risk",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 8,
+   "end_month": 10,
+   "blurb": "Red tide blooms appear most years in late summer or early fall along this stretch of coast. They can cause eye and breathing irritation on the beaches.",
+   "source": "https://myfwc.com/research/redtide/general/about/"
+  },
+  {
+   "name": "Hurricane season peak",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 8,
+   "end_month": 9,
+   "blurb": "Hurricane season runs June 1 to November 30, and its prime time locally is August and September.",
+   "source": "https://www.visitsarasota.com/article/seasons-sarasota-county"
+  },
+  {
+   "name": "Fall shoulder season",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 10,
+   "end_month": 11,
+   "blurb": "Fall is a shoulder season with mild weather and little rain, after summer storms and before the winter rush.",
+   "source": "https://www.visitsarasota.com/article/seasons-sarasota-county"
+  },
+  {
+   "name": "Siesta Key Crystal Classic",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 11,
+   "end_month": 11,
+   "blurb": "An international sand-sculpting contest on Siesta Key Beach over four days in mid-November.",
+   "source": "https://www.visitsarasota.com/events-festivals/2026-siesta-key-crystal-classic-sandsculpting-festival"
+  }
+ ],
+ "naples": [
+  {
+   "name": "Peak season",
+   "kind": "season",
+   "severity": "busy",
+   "start_month": 12,
+   "end_month": 4,
+   "blurb": "December through April is Naples' peak season. Book rooms and restaurant tables early.",
+   "source": "https://www.compasshotel.com/compass-hotel-naples/blog/the-best-time-of-year-to-visit-naples-florida-weather-events-and-deals"
+  },
+  {
+   "name": "Naples Winter Wine Festival",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 1,
+   "end_month": 1,
+   "blurb": "A charity wine auction weekend in late January at The Ritz-Carlton Naples, Tibur\u00f3n, during an already busy month.",
+   "source": "https://www.gulfshorebusiness.com/gb-daily/naples-winter-wine-festival-sets-2027-dates-theme/article_1699ca96-596a-4620-9526-75d755c41d50.html"
+  },
+  {
+   "name": "Naples National Art Fair",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 2,
+   "end_month": 2,
+   "blurb": "A juried art fair in Cambier Park, downtown Naples, over a weekend in late February.",
+   "source": "https://www.naplesart.org/national-art-fair"
+  },
+  {
+   "name": "Summer off-season",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 5,
+   "end_month": 9,
+   "blurb": "May through September brings fewer crowds and lower hotel rates, at the cost of more heat and humidity.",
+   "source": "https://www.compasshotel.com/compass-hotel-naples/blog/the-best-time-of-year-to-visit-naples-florida-weather-events-and-deals"
+  },
+  {
+   "name": "Rainy season",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 5,
+   "end_month": 10,
+   "blurb": "South Florida's wet season runs from mid-May to mid-October, with frequent afternoon thunderstorms.",
+   "source": "https://www.weather.gov/media/mfl/news/RainySeasonOutlook2025.pdf"
+  },
+  {
+   "name": "Hurricane season peak",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 8,
+   "end_month": 10,
+   "blurb": "Hurricane season runs June 1 to November 30, and most Atlantic activity falls between mid-August and mid-October.",
+   "source": "https://www.nhc.noaa.gov/climo/"
+  },
+  {
+   "name": "Stone Crab Festival",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 10,
+   "end_month": 10,
+   "blurb": "A late-October festival in Tin City that celebrates the new stone crab season, which opens October 15.",
+   "source": "https://www.naplesgov.com/parksrec/page/stone-crab-festival"
+  },
+  {
+   "name": "Stone crab season",
+   "kind": "other",
+   "severity": "good",
+   "start_month": 10,
+   "end_month": 5,
+   "blurb": "Florida's stone crab season runs from October 15 through May 1, the only time fresh claws are on local menus.",
+   "source": "https://myfwc.com/news/all-news/stone-crab-1025/"
+  }
+ ]
+}
