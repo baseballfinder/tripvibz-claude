@@ -166,6 +166,15 @@ await test("Old UI is gone (no Cosign / Add to this article)", async () => {
   }
 });
 
+await test("Structured data: theme pages link each take; take pages carry DiscussionForumPosting", async () => {
+  const fn = await readFile("functions/t/[id].js", "utf8");
+  assert(/"DiscussionForumPosting"/.test(fn) && /interactionStatistic/.test(fn), "take page schema missing");
+  assert(/main#root/.test(fn), "take text not pre-rendered for crawlers");
+  const b = await readFile("build.mjs", "utf8");
+  assert(/url: `\$\{SITE\}\/t\/\$\{t\.id\}`/.test(b), "ItemList items need take URLs");
+  assert(!/thread\.html\?id=/.test(b), "crawlable links should use /t/<id>");
+});
+
 await test("Sitemap and robots point at www", async () => {
   const sm = await readFile("dist/sitemap.xml", "utf8"), rb = await readFile("dist/robots.txt", "utf8");
   assert(sm.includes("https://www.tripvibz.com/"), "sitemap not on www");
