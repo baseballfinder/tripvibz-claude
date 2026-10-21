@@ -147,6 +147,17 @@ await test("Sign-in: privacy + terms pages, TikTok bridge, providers off until s
   assert(cb.includes('cookie(request, "tt_state")'), "TikTok callback must check state");
 });
 
+await test("Phone notifications: search-visit and new-take notifiers present, never sent from local", async () => {
+  for (const f of ["functions/api/hit.js", "functions/api/_notify.js"]) {
+    const src = await readFile(f, "utf8");
+    await import("esbuild").then(e => e.transform(src, { loader: "js", format: "esm" }));
+  }
+  const take = await readFile("functions/api/take.js", "utf8");
+  assert(take.includes("notify(context.env"), "take function no longer notifies");
+  const a = await readFile("assets/analytics.js", "utf8");
+  assert(a.indexOf("/api/hit") > a.indexOf("if (isLocal)"), "search-visit beacon must sit after the localhost skip");
+});
+
 await test("New tables and views in migrations come with explicit grants (Supabase, from Oct 30 2026)", async () => {
   const dir = "supabase/migrations";
   for (const f of (await readdir(dir)).filter(f => f.endsWith(".sql") && f.slice(0, 8) > "20261020")) {

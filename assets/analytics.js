@@ -22,6 +22,19 @@
     return;
   }
 
+  /* ---- search visits → James's phone (functions/api/hit.js) ----
+     Once per visit, only when the visit started from a search engine. */
+  try {
+    var ref = document.referrer || "", refHost = ref ? new URL(ref).hostname : "";
+    if (refHost && refHost !== host && /(^|\.)(google\.[a-z.]+|bing\.com|duckduckgo\.com|yahoo\.com|ecosia\.org|search\.brave\.com|perplexity\.ai|chatgpt\.com)$/.test(refHost)
+        && !sessionStorage.getItem("tv_search_hit")) {
+      sessionStorage.setItem("tv_search_hit", "1");
+      var body = JSON.stringify({ path: location.pathname, ref: ref });
+      if (!(navigator.sendBeacon && navigator.sendBeacon("/api/hit", new Blob([body], { type: "application/json" }))))
+        fetch("/api/hit", { method: "POST", headers: { "content-type": "application/json" }, body: body, keepalive: true });
+    }
+  } catch (e) { /* never block analytics */ }
+
   /* ---- Google Analytics 4 ---- */
   var ga = document.createElement("script");
   ga.async = true;

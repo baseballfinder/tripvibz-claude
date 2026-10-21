@@ -27,6 +27,7 @@ preview instead of the local build: `BASE=https://<branch>.tripvibz.pages.dev no
 | Sharing | Share button on every take card, share menu (copy, text, WhatsApp, Facebook, X, email) all carry the take's www /t/ link, thread "Do your friends agree?" share, "Ask your friends" after voting on a question | e2e |
 | New topics (review queue) | City page "Something we didn't ask about?" box sends the take with its topic and shows the thank-you state | e2e |
 | Sign-in options | Facebook + TikTok buttons appear (with ?preview=signin until set up), TikTok button goes to the sign-in bridge, return messages clear from the address; privacy and terms pages exist; bridge checks its state cookie | e2e + static |
+| Phone notifications | Search-visit notifier and new-take notifier present and valid; the search beacon never fires on localhost | static |
 | Threads and replies | Split bar, typed "I disagree" reply sent | e2e |
 | JavaScript health | No errors on any page visited | e2e |
 | City pages exist | Page, vote page and add page for every city in the database | static |
@@ -48,6 +49,7 @@ preview instead of the local build: `BASE=https://<branch>.tripvibz.pages.dev no
   developers.facebook.com/tools/debug and click Scrape Again.
 - **Phone share sheet.** On phones the Share button opens the system share sheet instead of the menu;
   the tests run as a desktop browser. After a sharing change, tap Share on a take on your phone.
+- **Phone notifications (ntfy).** After a change to `functions/api/_notify.js`, `hit.js` or `take.js`: open a TripVibz page from a Google result and post a test take; both should reach the ntfy app.
 - **Email (Kit) and the city-request issue.** Run Actions → City requests → Run workflow
   and confirm no error; an issue only appears when a city has 5 asks.
 - **Nightly backup.** Check Actions → Nightly database backup shows green.
