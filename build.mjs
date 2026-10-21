@@ -342,7 +342,7 @@ function articleBody(city, theme, takes, events) {
        <a class="btn coral" href="/${esc(city.slug)}/add/?kind=${theme}">Add your take</a></div>`;
 
   const cal = theme === "worst_times" && events.length
-    ? `<section class="cal"><h2>${esc(city.name)} month by month</h2>${
+    ? `<section class="cal"><h2>${esc(city.name)} month by month</h2><p class="sub">Festivals, conventions, weather and price seasons that change what a visit is like. Researched by the TripVibz editors from official event and weather sources.</p>${
         MONTHS.map((m, i) => {
           const inM = events.filter(e => e.start_month <= e.end_month
             ? (i + 1 >= e.start_month && i + 1 <= e.end_month)
