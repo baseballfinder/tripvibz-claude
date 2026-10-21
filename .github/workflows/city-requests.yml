@@ -16,6 +16,8 @@ on:
 permissions:
   contents: write
   issues: write
+  pull-requests: write
+  actions: write
 
 concurrency:
   group: city-requests
@@ -51,16 +53,26 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: python3 scripts/city_requests_bot.py open
-      - name: Build its share card and deploy
+      - name: Build its share card and open a pull request
         if: steps.city.outputs.slug != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SLUG: ${{ steps.city.outputs.slug }}
+          NAME: ${{ steps.city.outputs.name }}
+          ISSUE: ${{ github.event.issue.number }}
         run: |
-          python3 scripts/og_cards.py "${{ steps.city.outputs.slug }}"
+          # main is protected (pull request + passing tests), so the new city's
+          # share card goes up as a pull request. Pull requests opened with this
+          # token don't start other workflows, so the tests are started by hand.
+          python3 scripts/og_cards.py "$SLUG"
+          BRANCH="city/$SLUG"
           git config user.name "tripvibz-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
           git add assets/og
-          git commit -m "Open ${{ steps.city.outputs.name }}: share card" || echo "no card change"
-          git push origin main
-          gh issue comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "${{ steps.city.outputs.name }} is open. Live in about a minute: https://www.tripvibz.com/${{ steps.city.outputs.slug }}/ — these are starter questions; ask Claude for sharper local ones anytime."
-          gh issue close ${{ github.event.issue.number }} --repo ${{ github.repository }}
+          git commit -m "Open $NAME: share card" || echo "no card change"
+          git push -f origin "$BRANCH"
+          PR=$(gh pr create --repo "${{ github.repository }}" --base main --head "$BRANCH" \
+            --title "Open $NAME" --body "$NAME is live in the database with 5 starter questions. Merge this to publish its page and Facebook share card. Closes #$ISSUE." || true)
+          gh workflow run tests.yml --repo "${{ github.repository }}" --ref "$BRANCH"
+          gh issue comment "$ISSUE" --repo "${{ github.repository }}" --body "@baseballfinder $NAME is added. Last step: merge ${PR:-the \"Open $NAME\" pull request} once its tests pass, and the page goes live at https://www.tripvibz.com/$SLUG/. Ask Claude for sharper local questions any time."
