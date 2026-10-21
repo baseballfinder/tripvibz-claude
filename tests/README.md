@@ -26,6 +26,7 @@ preview instead of the local build: `BASE=https://<branch>.tripvibz.pages.dev no
 | True / Nope on takes | Toggle on, vote sent | e2e |
 | Sharing | Share button on every take card, share menu (copy, text, WhatsApp, Facebook, X, email) all carry the take's www /t/ link, thread "Do your friends agree?" share, "Ask your friends" after voting on a question | e2e |
 | New topics (review queue) | City page "Something we didn't ask about?" box sends the take with its topic and shows the thank-you state | e2e |
+| Gift cards (draft) | Hidden unless ?preview=rewards; preview shows the right amount; code stays off and Tremendous stays in sandbox until launched | e2e + static |
 | Sign-in options | Facebook + TikTok buttons appear (with ?preview=signin until set up), TikTok button goes to the sign-in bridge, return messages clear from the address; privacy and terms pages exist; bridge checks its state cookie | e2e + static |
 | Threads and replies | Split bar, typed "I disagree" reply sent | e2e |
 | JavaScript health | No errors on any page visited | e2e |

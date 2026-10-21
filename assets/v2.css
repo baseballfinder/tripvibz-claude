@@ -151,6 +151,23 @@
 /* waiting-for-review takes */
 .tag2.pending{background:#fff3cd;color:#7a5600}
 .take.is-pending{border-style:dashed;border-color:#e6c76a}
+/* gift card (draft) */
+.rw{position:relative;margin:4px 0 14px;padding:16px 16px 14px;border-radius:18px;background:linear-gradient(135deg,#fff6e3 0%,#ffe7d6 100%);border:1.5px solid #f2c9a4;overflow:hidden}
+.rw-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.rw-amt{font:900 26px "Archivo",sans-serif;color:#c4391b;letter-spacing:-.02em}
+.rw-tag{font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#8a4a1c;background:#fff;border-radius:999px;padding:3px 9px}
+.rw-h{font:800 17px/1.3 "Archivo",sans-serif;color:var(--ink)}
+.rw-p{margin-top:4px;font-size:14px;line-height:1.4;color:#5b4a3a}
+.rw-row{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+.rw-dots{display:flex;gap:5px}
+.rw-dots i{width:22px;height:8px;border-radius:99px;background:#f0d2b8}
+.rw-dots i.on{background:#c4391b}
+.rw-n{font-size:13px;font-weight:700;color:#5b4a3a}
+.rw-go{margin-left:auto;display:inline-flex;align-items:center;min-height:42px;padding:0 16px;border-radius:999px;background:var(--ink);color:#fff;font:800 14px "Public Sans",sans-serif;text-decoration:none}
+.rw-fine{margin-top:10px;font-size:12.5px;line-height:1.4;color:#7a6654}
+.rw-fine summary{cursor:pointer;font-weight:700;color:#5b4a3a}
+.rw-mini{display:block;margin:14px 0 0;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.08);font-size:13.5px;color:#f3e7da}
+.rw-mini b{color:#ffb38f}
 /* new topic composer */
 .nt{margin:18px 0 6px;padding:16px;border-radius:16px;background:#fff;border:1.5px dashed #d9d1c2}
 .nt h2{font:800 17px "Archivo",sans-serif;margin:0 0 4px;color:var(--ink)}

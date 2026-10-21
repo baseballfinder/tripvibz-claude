@@ -206,6 +206,7 @@ await test("Topic page: new take cards, starters open the add page, calendar on 
 await test("New topic: city page box sends a take for review (with its topic)", async () => {
   await go("/miami/");
   assert(await page.locator("#nt").count() === 1, "new-topic box missing");
+  assert(await page.locator(".rw").count() === 0, "gift card shows without preview (must stay draft)");
   await page.fill("#nt-topic", "TEST parking near South Beach");
   await page.click('[data-ntk="hidden_gem"]');
   await page.fill("#nt-text", "TEST use the city garages on 7th and 13th, cheaper than the meters.");
@@ -214,6 +215,13 @@ await test("New topic: city page box sends a take for review (with its topic)", 
   const w = writes.find(x => x.table.startsWith("posts") && x.body.topic);
   assert(w && w.body.topic === "TEST parking near South Beach" && w.body.type === "hidden_gem", "take with topic was not sent");
   assert(/Thanks, it's in/.test(await page.textContent("#nt")), "thank-you state missing");
+});
+
+await test("Gift card preview: shows only with ?preview=rewards", async () => {
+  await go("/miami/?preview=rewards");
+  assert(await page.locator(".rw").count() === 1, "gift card card missing in preview");
+  assert(/\$2\.50/.test(await page.textContent(".rw-amt")), "Miami (5 questions) should show $2.50");
+  await page.evaluate(() => sessionStorage.clear());
 });
 
 await test("Sign-in options: Facebook and TikTok buttons (preview), TikTok goes to the bridge", async () => {

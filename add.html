@@ -178,11 +178,13 @@
     const nextQ = QS.find(x => !x.mine);
     const url = `${location.origin}/${CITY.slug}/`;
     const badge = verified ? T2.tenureBadge(ctx.tenure[p.author_id]) : (MY_TENURE || S.tenure ? T2.tenureBadge(MY_TENURE || S.tenure) : "Local");
+    const rw = mine && T2.rewardsOn() && QS.length ? await T2.rewardProgress(CITY.id, QS) : null;
 
     $("#root").innerHTML = `
       <div class="row-between" style="min-height:44px;margin-top:6px"><a class="back" href="/${CITY.slug}/">← ${esc(CITY.name)}</a></div>
       <span class="live">${T2.ICON.check.replace("<svg", '<svg width="14" height="14"')}Your take is live</span>
       <div style="margin-top:12px">${T2.takeHtml(p, ctx, { noBar: true })}</div>
+      ${rw ? `<div style="margin-top:14px">${T2.rewardCardHtml(CITY, rw)}</div>` : ""}
 
       ${mine && !verified ? `
       <section class="dark" style="margin-top:18px">

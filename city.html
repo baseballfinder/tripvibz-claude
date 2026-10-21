@@ -44,7 +44,7 @@
   };
 
   const SECTIONS = [["all","Everything"],["what_not_to_do","What not to do"],["worst_times","Worst times"],["hidden_gem","What locals do"]];
-  let CITY = null, POSTS = [], CTX = null, QS = [], SECTION = "all", SORT = "top";
+  let CITY = null, POSTS = [], CTX = null, QS = [], SECTION = "all", SORT = "top", RW = null;
   const NT = { kind: "what_not_to_do", topic: "", text: "", busy: false, sent: false, err: "" };
   const NT_KINDS = [["what_not_to_do","Don’t do this"],["hidden_gem","Do this"],["take","It depends"],["worst_times","When to go"]];
 
@@ -118,6 +118,7 @@
       <h1>What locals say about ${esc(CITY.name)}</h1>
       ${POSTS.length || votes ? `<div class="stats"><span>${POSTS.length} take${POSTS.length === 1 ? "" : "s"}</span><span>${locals} local${locals === 1 ? "" : "s"}</span><span>${votes} vote${votes === 1 ? "" : "s"}</span></div>` : ""}
       <div style="height:14px"></div>
+      ${RW ? T2.rewardCardHtml(CITY, RW) : ""}
       ${questionCard()}
       <nav class="chips" aria-label="Sections">${SECTIONS.map(([id,l]) => `<button class="chip" data-sec="${id}" aria-pressed="${SECTION===id}">${l}</button>`).join("")}</nav>
       <div class="row-between" style="margin:2px 0 12px">
@@ -154,6 +155,7 @@
     await T2.finishClaim();
     POSTS = await T2.loadPosts(CITY.id, ["what_not_to_do","worst_times","hidden_gem","take"]);
     [CTX, QS] = await Promise.all([T2.hydrate(POSTS, CITY.id), T2.loadQuestions(CITY.id)]);
+    if (T2.rewardsOn() && QS.length) RW = await T2.rewardProgress(CITY.id, QS);
     render();
   })();
 })();

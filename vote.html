@@ -46,7 +46,7 @@
   const T2 = window.TV2;
   const SLUG = window.TV.parseRoute().city;
   const qs = new URLSearchParams(location.search);
-  let CITY = null, QS = [], Q = null, ERR = "";
+  let CITY = null, QS = [], Q = null, ERR = "", RW = null;
 
   function subjectOf(prompt){ const i = prompt.indexOf(":"); return i > 0 ? prompt.slice(0, i) : ""; }
 
@@ -69,6 +69,7 @@
       <div class="kicker" style="color:#ff9b80;margin-top:22px">Locals, settle this</div>
       <h1>${esc(Q.prompt)}</h1>
       <p class="lede">Visitors planning a trip see what locals picked.</p>
+      ${RW ? `<div class="rw-mini">${RW.done[Q.id] ? "✓ Answered." : `<b>${T2.money(T2.REWARDS.cents)}</b> for your take on this one.`} ${RW.answered} of ${RW.total} done toward a <b>${T2.money(RW.prize)}</b> gift card.</div>` : ""}
       <div class="qopts" id="opts">${T2.qOptionsHtml(Q, false)}</div>
       ${voted ? `
         <div class="verdict">${esc(verdict)}</div>
@@ -119,6 +120,7 @@
     QS = await T2.loadQuestions(CITY.id);
     if (!QS.length) { location.replace(`/${CITY.slug}/`); return; }
     Q = QS.find(x => x.id === qs.get("q")) || QS.find(x => !x.mine) || QS[0];
+    if (T2.rewardsOn()) RW = await T2.rewardProgress(CITY.id, QS);
     document.title = `${Q.prompt} · TripVibz`;
     const a = qs.get("a");
     // One-tap from email: the link itself is the vote.

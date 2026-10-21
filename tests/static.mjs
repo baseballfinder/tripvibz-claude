@@ -135,6 +135,13 @@ await test("Question answers get the right label (Do this / Don't do this / It d
   for (const [q, o, want] of cases) assert(kind(q, o) === want, `"${q}" / "${o}" -> ${kind(q, o)}, wanted ${want}`);
 });
 
+await test("Gift cards stay in draft (off for everyone, sandbox payouts)", async () => {
+  const v2 = await readFile("assets/v2.js", "utf8");
+  assert(/var REWARDS = \{ on: false/.test(v2), "REWARDS.on must stay false until James launches it");
+  const bot = await readFile("scripts/rewards_bot.py", "utf8");
+  assert(bot.includes('os.environ.get("REWARDS_ON") != "1"') && bot.includes("testflight.tremendous.com"), "rewards bot lost its draft/sandbox guards");
+});
+
 await test("Sign-in: privacy + terms pages, TikTok bridge, providers off until set up", async () => {
   for (const p of ["privacy/index.html", "terms/index.html"]) assert(await exists(join("dist", p)), `dist/${p} missing (Meta and TikTok require it)`);
   const tv = await readFile("assets/tv.js", "utf8");
@@ -193,7 +200,7 @@ await test("Research data and scripts are not published", async () => {
 
 await test("Python tools compile; workflows parse", async () => {
   execFileSync("python3", ["-m", "py_compile", "scripts/questions/research.py", "scripts/questions/spec.py", "scripts/questions/intent.py",
-    "scripts/city_requests_bot.py", "scripts/take_review_bot.py", "scripts/og_cards.py", "scripts/keywords/bing_keywords.py"]);
+    "scripts/city_requests_bot.py", "scripts/take_review_bot.py", "scripts/rewards_bot.py", "scripts/og_cards.py", "scripts/keywords/bing_keywords.py"]);
   execFileSync("python3", ["-c", "import yaml,glob;[yaml.safe_load(open(f)) for f in glob.glob('.github/workflows/*.yml')]"]);
 });
 
