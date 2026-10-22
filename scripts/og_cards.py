@@ -195,7 +195,7 @@ def card_home(cities, photos, leads):
     mark = Image.open(MARK).convert("RGBA").resize((60, 60), Image.LANCZOS)
     base.paste(mark, (PAD, PAD - 6), mark)
     d.text((PAD + 74, PAD + 24), "TripVibz", font=font(34, 900), fill=WHITE, anchor="lm")
-    y = headline(d, "Take the city. Don't let the city take you.", PAD + 96, max_w=600 - PAD - 30, lines=4, sizes=(64, 58, 54, 50))
+    y = headline(d, "The local take on every city.", PAD + 96, max_w=600 - PAD - 30, lines=4, sizes=(64, 58, 54, 50))
     # Two real lead questions as poll chips.
     qf = font(24, 700)
     y = max(y + 18, 420)
