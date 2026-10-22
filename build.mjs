@@ -547,7 +547,7 @@ const newest = rows => rows.length
 // home + cities index
 pages.push({ path: "/", lastmod: newest(posts), priority: "1.0" });
 await emit("index.html", await minifyHtml(render(indexTpl, {
-  title: "TripVibz — what locals know that guidebooks don't",
+  title: "TripVibz — what locals know that travel sites don't",
   desc: "Locals tell visitors what to avoid, when not to come, and what the guidebooks get wrong. One sentence at a time.",
   canonical: `${SITE}/`,
   image: `${SITE}/assets/og/home.jpg`,
