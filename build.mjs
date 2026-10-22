@@ -61,6 +61,7 @@ const THEMES = {
   what_not_to_do: {
     slug: "what-not-to-do",
     nav: "What not to do",
+    chip: "What not to do",
     title: c => `What not to do in ${c}`,
     lede: c => `The mistakes visitors make in ${c}, according to people who live there. Ranked by how many locals say it's true.`,
     desc: c => `Local advice on what not to do in ${c} — the mistakes visitors make, written and ranked by people who live there.`
@@ -68,6 +69,7 @@ const THEMES = {
   worst_times: {
     slug: "worst-times-to-visit",
     nav: "Worst times to visit",
+    chip: "Worst times",
     title: c => `Worst times to visit ${c}`,
     lede: c => `The weeks, days and hours locals would tell you to avoid in ${c} — and what to do instead.`,
     desc: c => `The worst times to visit ${c}, month by month — festivals, seasons and weeks locals say to avoid.`
@@ -75,6 +77,7 @@ const THEMES = {
   hidden_gem: {
     slug: "what-locals-do",
     nav: "What locals actually do",
+    chip: "What locals do",
     title: c => `What locals actually do in ${c}`,
     lede: c => `The parts of ${c} that don't show up on the top-ten lists, from people who never left.`,
     desc: c => `What locals actually do in ${c} — the spots and habits that never make the top-ten lists.`
@@ -361,8 +364,8 @@ function articleBody(city, theme, takes, events) {
   <p class="lede">${esc(t.lede(city.name))}</p>
   <div class="by">${list.length} take${list.length === 1 ? "" : "s"}</div>
 </div>
-<div class="themes">${Object.keys(THEMES).map(k =>
-  `<a class="${k === theme ? "on" : ""}" href="/${esc(city.slug)}/${THEMES[k].slug}/">${esc(THEMES[k].nav)}</a>`).join("")}</div>
+<nav class="chips" aria-label="Show"><a class="chip" href="/${esc(city.slug)}/" aria-pressed="false">Everything</a>${Object.keys(THEMES).map(k =>
+  `<a class="chip" href="/${esc(city.slug)}/${THEMES[k].slug}/" aria-pressed="${k === theme}">${esc(THEMES[k].chip)}</a>`).join("")}</nav>
 ${entries}
 ${cal}`;
 }
