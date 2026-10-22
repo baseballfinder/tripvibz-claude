@@ -462,7 +462,18 @@ const versionAssets = html => html.replace(/(["'])\/assets\/([\w.-]+)\1/g,
 // Logo / favicon links for every page (files: scripts/brand_assets.py).
 const ICON_LINKS = `<link rel="icon" href="/favicon.ico" sizes="48x48"><link rel="icon" href="/assets/brand/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><meta name="theme-color" content="#ff5630">`;
 
+// One footer on every public page (About, Privacy, Terms, contact). Pages that
+// carried their own footer get this one instead; the admin page gets none.
+const SITE_FOOTER = `<footer class="site-foot"><div class="wrap">
+<div class="sf-brand"><b>TripVibz</b><span class="tagline">Take the city. Don't let the city take you.</span></div>
+<nav class="sf-links" aria-label="Site"><a href="/cities/">Cities</a><a href="/about/">About</a><a href="/about/#contact">Contact</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a></nav>
+<div class="sf-note">© ${new Date().getFullYear()} TripVibz · A city guide written by the people who live there.</div>
+</div></footer>`;
+
 async function emit(path, html) {
+  if (typeof html === "string" && path.endsWith(".html") && !/(^|\/)admin\.html$/.test(path) && /<\/body>/i.test(html)) {
+    html = html.replace(/<footer[\s\S]*?<\/footer>\s*/gi, "").replace(/<\/body>/i, () => SITE_FOOTER + "</body>");
+  }
   if (typeof html === "string" && path.endsWith(".html")) {
     if (!html.includes('rel="icon"')) html = html.replace(/<\/head>/i, () => ICON_LINKS + "</head>");
     html = versionAssets(html);
@@ -545,6 +556,7 @@ await emit("index.html", await minifyHtml(render(indexTpl, {
 }), null));
 
 pages.push({ path: "/cities/", lastmod: newest(posts), priority: "0.8" });
+pages.push({ path: "/about/", lastmod: new Date().toISOString().slice(0, 10), priority: "0.3" });
 await emit("cities/index.html", await minifyHtml(render(placesTpl, {
   title: "Every city on TripVibz — local guides by residents",
   desc: "Browse cities where locals have written what visitors get wrong, when not to visit, and what residents actually do.",

@@ -196,6 +196,16 @@ await test("Unknown pages are real 404s; old take links redirect to /t/<id>", as
   assert(!/Disallow: \/thread\.html/.test(robots), "robots.txt must not block thread.html (Google needs to see the redirect)");
 });
 
+await test("Every public page has the site footer with About, Privacy and Terms", async () => {
+  assert(await exists("dist/about/index.html"), "about page missing");
+  for (const f of pages) {
+    if (/admin\.html$/.test(f)) continue;
+    const h = await readFile(f, "utf8");
+    assert((h.match(/class="site-foot"/g) || []).length === 1, `${f}: needs exactly one site footer`);
+    for (const href of ["/about/", "/privacy/", "/terms/"]) assert(h.includes(`href="${href}"`), `${f}: footer missing ${href}`);
+  }
+});
+
 await test("Old UI is gone (no Cosign / Add to this article)", async () => {
   for (const f of pages) {
     const h = await readFile(f, "utf8");
