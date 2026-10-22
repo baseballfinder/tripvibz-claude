@@ -11,6 +11,7 @@
  * Admins revoke local status for spam (admin.html), and a revoked row is never
  * re-marked near by a later check.
  */
+import { adminHeaders } from "./_supabase.js";
 const SUPABASE_URL = "https://nkxorlktzbgwqnfwmuus.supabase.co";
 const SUPABASE_KEY = "sb_publishable_5UOevsS8KmWWGrQYNWsabg_0sVOIPmB";
 export const NEAR_MI = 40, REGION_MI = 150;
@@ -31,7 +32,7 @@ export async function locate(env, request, userId, focusCityId) {
   const cf = request.cf || {};
   const lat = Number(cf.latitude), lng = Number(cf.longitude);
   if (!env.SUPABASE_SERVICE_ROLE_KEY || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  const svc = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` };
+  const svc = adminHeaders(env.SUPABASE_SERVICE_ROLE_KEY);
 
   const cities = await (await fetch(`${SUPABASE_URL}/rest/v1/cities?select=id,slug,name,lat,lng`, { headers: svc })).json();
   const found = (Array.isArray(cities) ? cities : [])

@@ -1,3 +1,4 @@
+import { adminHeaders } from "../../_supabase.js";
 import { SB, CALLBACK, SITE, safeNext, cookie, back, sha256hex } from "./_shared.js";
 
 export async function onRequestGet({ request, env }) {
@@ -24,8 +25,7 @@ export async function onRequestGet({ request, env }) {
     // 2. Supabase: find or create the account, then a one-time sign-in token
     const email = `tt-${(await sha256hex("tiktok:" + tok.open_id)).slice(0, 32)}@tiktok.users.tripvibz.com`;
     const meta = { full_name: user.display_name || "TikTok user", avatar_url: user.avatar_url || null, provider: "tiktok" };
-    const admin = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, authorization: "Bearer " + env.SUPABASE_SERVICE_ROLE_KEY,
-      "content-type": "application/json" };
+    const admin = adminHeaders(env.SUPABASE_SERVICE_ROLE_KEY, { "content-type": "application/json" });
     // Creating fails harmlessly if the account already exists.
     await fetch(`${SB}/auth/v1/admin/users`, { method: "POST", headers: admin,
       body: JSON.stringify({ email, email_confirm: true, user_metadata: meta, app_metadata: { provider: "tiktok" } }) });
