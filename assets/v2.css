@@ -175,3 +175,29 @@
 .when-t i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 .when-t i.good{background:#a8ddcd}.when-t i.avoid{background:#f5b5a4}
 .when-go{margin-top:8px;font-size:13.5px;font-weight:800;color:#c4391b}
+
+/* city page: takes section + new-topic accordion */
+.takes{margin-top:22px}
+.takes-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.takes-h h2{font:900 20px "Archivo",sans-serif;margin:0;color:var(--ink)}
+.takes-h h2 span{font-size:14px;font-weight:800;color:var(--muted);margin-left:4px}
+.takes-h .founders{font-size:12.5px;font-weight:600;color:var(--muted)}
+details.nt{padding:0;border-style:solid;border-width:1px;border-color:var(--line)}
+details.nt summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;cursor:pointer;min-height:48px}
+details.nt summary::-webkit-details-marker{display:none}
+details.nt summary b{display:block;font:800 16px "Archivo",sans-serif;color:var(--ink)}
+details.nt summary small{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+details.nt summary i{flex:none;width:30px;height:30px;border-radius:50%;background:var(--ink);position:relative;transition:transform .15s ease}
+details.nt summary i::before,details.nt summary i::after{content:"";position:absolute;left:50%;top:50%;width:12px;height:2px;margin:-1px 0 0 -6px;background:#fff;border-radius:2px}
+details.nt summary i::after{transform:rotate(90deg)}
+details.nt[open] summary i{transform:rotate(45deg)}
+details.nt .nt-body{padding:0 16px 16px}
+
+/* When-to-go lines: Best / Avoid / Plan around, each with its reason */
+.when-t{display:block}
+.when-t .wl{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;line-height:1.45;color:#3f3a31;font-weight:500;margin-top:6px}
+.when-t .wl i{flex:none;width:10px;height:10px;border-radius:3px;margin-top:5px}
+.when-t .wl i.good{background:#a8ddcd}.when-t .wl i.avoid{background:#f5b5a4}.when-t .wl i.busy{background:#f0d492}
+.when-t .wl em{display:block;font-style:normal;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.when-t .wl b{font-weight:800;color:var(--ink)}
+.cal-sum{background:#fff;border:1px solid var(--line);border-radius:14px;padding:6px 14px 12px;margin:14px 0 4px}
