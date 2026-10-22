@@ -135,3 +135,14 @@ footer{border-top:1px solid var(--line);padding:26px 0;font-size:13px;color:var(
 .site-foot .sf-links a{color:var(--ink);font-weight:700;text-decoration:none}
 .site-foot .sf-links a:hover{text-decoration:underline}
 .site-foot .sf-note{font-size:12.5px}
+
+/* sign-in box: "or" divider + email link form */
+.modal-or{display:flex;align-items:center;gap:10px;margin:4px 0 10px;color:var(--muted);font-size:12.5px}
+.modal-or::before,.modal-or::after{content:"";flex:1;border-top:1px solid var(--line)}
+.email-login input{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:11px;padding:12px;font:16px "Public Sans",sans-serif;margin-bottom:8px;background:#fff;color:var(--ink)}
+.email-login input:focus{outline:2px solid var(--ink);outline-offset:1px}
+.oauth.email{background:var(--ink);border-color:var(--ink);color:#fff}
+.oauth.email[disabled]{opacity:.6}
+.email-msg{font-size:13px;line-height:1.45;color:#0c6b5e;margin:-2px 0 10px}
+.email-msg.err{color:#a52d15}
+.email-msg[hidden]{display:none}
