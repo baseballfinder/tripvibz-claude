@@ -238,6 +238,11 @@ await test("Sign-in options: Facebook and TikTok buttons (preview), TikTok goes 
   await page.evaluate(() => window.TV.openLogin());
   assert(await page.isVisible("#loginmodal .oauth.facebook"), "Facebook button missing");
   assert(await page.isVisible("#loginmodal [data-tiktok]"), "TikTok button missing");
+  assert(await page.isVisible("#loginmodal [data-email-form] input[type=email]"), "email sign-in field missing");
+  await page.fill("#loginmodal [data-email-form] input", "not-an-email");
+  await page.click("#loginmodal [data-email-form] button");
+  assert(/doesn't look right/.test(await page.textContent("#loginmodal [data-email-msg]")), "bad email should be caught before sending");
+  assert((await page.locator("#loginmodal .oauth.google:visible").count()) + (await page.locator("#loginmodal [data-gsi]:visible").count()) <= 1, "two Google buttons showing");
   const req = page.waitForRequest(r => r.url().includes("/api/auth/tiktok/start?next=%2Fmiami%2F"), { timeout: 5000 });
   await page.click("#loginmodal [data-tiktok]");
   await req;

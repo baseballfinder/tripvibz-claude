@@ -114,10 +114,13 @@
      done (see README → "Sign-in providers"); until then ?preview=signin shows
      the buttons for review. Instagram has no sign-in for websites: people with
      Instagram sign in with the Facebook (Meta) account it's linked to. */
-  var SIGNIN = { facebook: false, tiktok: false };
+  var SIGNIN = { facebook: false, tiktok: false, email: false };
   var SIGNIN_PREVIEW = /[?&]preview=signin\b/.test(location.search);
   var FACEBOOK_LOGIN = SIGNIN.facebook || SIGNIN_PREVIEW;
   var TIKTOK_LOGIN = SIGNIN.tiktok || SIGNIN_PREVIEW;
+  // Email sign-in links need a real email sender (custom SMTP in Supabase Auth);
+  // Supabase's built-in sender only delivers to project team members.
+  var EMAIL_LOGIN = SIGNIN.email || SIGNIN_PREVIEW;
   var TIKTOK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#fff" d="M16.6 5.82A4.3 4.3 0 0 1 15.54 3h-3.09v12.4a2.6 2.6 0 0 1-2.6 2.5 2.6 2.6 0 0 1-2.6-2.6 2.6 2.6 0 0 1 3.37-2.48V9.66a5.73 5.73 0 0 0-.77-.05A5.68 5.68 0 0 0 4.17 15.3 5.68 5.68 0 0 0 9.85 21a5.68 5.68 0 0 0 5.68-5.69V9.01a7.33 7.33 0 0 0 4.3 1.38V7.3a4.3 4.3 0 0 1-3.23-1.48z"/></svg>';
 
   /* Google Identity Services ("Sign in with Google" button).
@@ -200,17 +203,22 @@
     wrap.innerHTML =
       '<div class="modal-card">' +
       '<h3 data-login-title>Join TripVibz</h3>' +
-      '<p data-login-text>Save your cosigns, post takes, and review places.</p>' +
+      '<p data-login-text>Post takes, vote, and get a Local badge for your city.</p>' +
       '<div class="gsi-host" data-gsi hidden></div>' +
       '<button class="oauth google" data-provider="google">' + GOOGLE_SVG + "Continue with Google</button>" +
-      '<button class="modal-alt" data-login-alt hidden>Trouble signing in? Use the other way</button>' +
+      '<button class="modal-alt" data-login-alt hidden>Google button not working? Try another way</button>' +
       // Facebook login is off until Meta app review is done; an unapproved
       // app fails for everyone who isn't a listed tester.
       (FACEBOOK_LOGIN ? '<button class="oauth facebook" data-provider="facebook">' + FACEBOOK_SVG + "Continue with Facebook</button>" +
         '<div class="modal-note">On Instagram? Use the Facebook account it\'s linked to.</div>' : "") +
       (TIKTOK_LOGIN ? '<button class="oauth tiktok" data-tiktok>' + TIKTOK_SVG + "Continue with TikTok</button>" : "") +
+      (EMAIL_LOGIN ? '<div class="modal-or"><span>or</span></div>' +
+        '<form class="email-login" data-email-form novalidate>' +
+        '<input type="email" name="email" autocomplete="email" inputmode="email" placeholder="you@example.com" aria-label="Email address" required>' +
+        '<button class="oauth email" type="submit">Email me a sign-in link</button>' +
+        '<div class="email-msg" data-email-msg hidden></div></form>' : "") +
       '<button class="modal-close" data-modal-close>Maybe later</button>' +
-      '<div class="modal-fine">We only use your name and photo to set up your profile. You can keep browsing and voting without an account.</div>' +
+      '<div class="modal-fine">We only use your name, photo and email to set up your profile, and never show your email. You can keep browsing and voting without an account.</div>' +
       "</div>";
     document.body.appendChild(wrap);
 
@@ -224,7 +232,25 @@
     wrap.querySelector("[data-modal-close]").addEventListener("click", closeLogin);
     var redirectBtn = wrap.querySelector(".oauth.google");
     var alt = wrap.querySelector("[data-login-alt]");
-    alt.addEventListener("click", function () { alt.hidden = true; redirectBtn.hidden = false; });
+    alt.addEventListener("click", function () {
+      // Swap Google's own button for our redirect one; never show both.
+      var gsi = wrap.querySelector("[data-gsi]"); if (gsi) gsi.hidden = true;
+      alt.hidden = true; redirectBtn.hidden = false;
+    });
+    var form = wrap.querySelector("[data-email-form]");
+    if (form) form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      var input = form.querySelector("input"), btn = form.querySelector("button"), msg = form.querySelector("[data-email-msg]");
+      var email = (input.value || "").trim();
+      msg.hidden = false; msg.className = "email-msg";
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { msg.textContent = "That email doesn't look right."; msg.className = "email-msg err"; input.focus(); return; }
+      btn.disabled = true; btn.textContent = "Sending…";
+      var out = await sb.auth.signInWithOtp({ email: email, options: { emailRedirectTo: location.href.split("#")[0] } });
+      btn.disabled = false; btn.textContent = "Email me a sign-in link";
+      if (out.error) { console.error(out.error); msg.textContent = "Couldn't send it. Try again in a minute, or use another option."; msg.className = "email-msg err"; return; }
+      msg.textContent = "Check your inbox at " + email + " and tap the link. You can close this tab.";
+      if (window.TV2 && TV2.track) TV2.track("email_link_sent", {});
+    });
     mountGoogleButton(wrap.querySelector("[data-gsi]"), redirectBtn);
     wrap.addEventListener("click", function (e) { if (e.target === wrap) closeLogin(); });
   }
@@ -238,7 +264,7 @@
     m.querySelector("[data-login-title]").textContent = pending ? "Almost there" : "Join TripVibz";
     m.querySelector("[data-login-text]").textContent = pending
       ? "Your take is saved. Sign in and we'll post it right away."
-      : "Save your cosigns, post takes, and review places.";
+      : "Post takes, vote, and get a Local badge for your city.";
     m.hidden = false;
   }
   function closeLogin() { var m = $("#loginmodal"); if (m) m.hidden = true; }
