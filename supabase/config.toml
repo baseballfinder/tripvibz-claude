@@ -1,0 +1,5 @@
+# Supabase CLI / GitHub integration settings.
+# Only database migrations (supabase/migrations) are deployed from this repo.
+# Auth, API and email settings are managed in the Supabase dashboard; the
+# integration ignores them here by default.
+project_id = "tripvibz"

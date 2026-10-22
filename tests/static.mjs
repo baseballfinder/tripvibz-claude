@@ -159,8 +159,8 @@ await test("Phone notifications: search-visit and new-take notifiers present, ne
 });
 
 await test("New tables and views in migrations come with explicit grants (Supabase, from Oct 30 2026)", async () => {
-  const dir = "supabase/migrations";
-  for (const f of (await readdir(dir)).filter(f => f.endsWith(".sql") && f.slice(0, 8) > "20261020")) {
+  const dirs = ["supabase/migrations", "supabase/applied-by-hand"];
+  for (const dir of dirs) for (const f of (await readdir(dir)).filter(f => f.endsWith(".sql") && f.slice(0, 8) > "20261020")) {
     const sql = (await readFile(join(dir, f), "utf8")).replace(/--.*$/gm, "");
     for (const m of sql.matchAll(/create\s+(?:or\s+replace\s+)?(?:table|view|materialized\s+view)\s+(?:if\s+not\s+exists\s+)?(?:public\.)?"?(\w+)"?/gi)) {
       const name = m[1];
@@ -205,6 +205,18 @@ await test("Every public page has the site footer with About, Privacy and Terms"
     for (const href of ["/about/", "/privacy/", "/terms/"]) assert(h.includes(`href="${href}"`), `${f}: footer missing ${href}`);
     assert(!/@miamitake\.com/i.test(h), `${f}: use a tripvibz.com address, not a Miami Take one`);
   }
+});
+
+await test("Migrations are named the way the Supabase GitHub integration expects", async () => {
+  const files = (await readdir("supabase/migrations")).filter(f => f.endsWith(".sql"));
+  const seen = new Set();
+  for (const f of files) {
+    assert(/^\d{14}_[a-z0-9_]+\.sql$/.test(f), `${f}: name it YYYYMMDDHHMMSS_name.sql (see supabase/migrations/README.md)`);
+    const v = f.slice(0, 14);
+    assert(!seen.has(v), `${f}: two migrations share version ${v}`);
+    seen.add(v);
+  }
+  assert(files.length >= 23, "the 23 placeholders for already-applied migrations must stay");
 });
 
 await test("Old UI is gone (no Cosign / Add to this article)", async () => {

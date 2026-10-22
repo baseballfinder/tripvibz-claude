@@ -2,7 +2,7 @@
 """
 The 100 largest US cities (Census 2024 estimates, per Wikipedia's
 "List of United States cities by population"), with approximate centers.
-Writes supabase/migrations/20261018_city_candidates_seed.sql.
+Writes supabase/applied-by-hand/20261018_city_candidates_seed.sql.
 
     python3 scripts/us_top100.py
 """
