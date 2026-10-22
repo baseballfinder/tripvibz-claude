@@ -203,6 +203,7 @@ await test("Every public page has the site footer with About, Privacy and Terms"
     const h = await readFile(f, "utf8");
     assert((h.match(/class="site-foot"/g) || []).length === 1, `${f}: needs exactly one site footer`);
     for (const href of ["/about/", "/privacy/", "/terms/"]) assert(h.includes(`href="${href}"`), `${f}: footer missing ${href}`);
+    assert(!/@miamitake\.com/i.test(h), `${f}: use a tripvibz.com address, not a Miami Take one`);
   }
 });
 

@@ -468,7 +468,7 @@ const ICON_LINKS = `<link rel="icon" href="/favicon.ico" sizes="48x48"><link rel
 // One footer on every public page (About, Privacy, Terms, contact). Pages that
 // carried their own footer get this one instead; the admin page gets none.
 const SITE_FOOTER = `<footer class="site-foot"><div class="wrap">
-<div class="sf-brand"><b>TripVibz</b><span class="tagline">Take the city. Don't let the city take you.</span></div>
+<div class="sf-brand"><b>TripVibz</b><span class="tagline">The local take on every city.</span></div>
 <nav class="sf-links" aria-label="Site"><a href="/cities/">Cities</a><a href="/about/">About</a><a href="/about/#contact">Contact</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a></nav>
 <div class="sf-note">© ${new Date().getFullYear()} TripVibz · A city guide written by the people who live there.</div>
 </div></footer>`;
