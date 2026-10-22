@@ -110,7 +110,7 @@ const lead = slug => { const c = cities.find(x => x.slug === slug); return qs.fi
 
 await test("Home: hero, city grid, logo, request link", async () => {
   await go("/");
-  assert(/tourists get wrong/i.test(await page.textContent("h1")), "headline missing");
+  assert(/Take the city/i.test(await page.textContent("h1")), "headline missing");
   const n = await page.locator("#needs a").count();
   assert(n >= cities.length, `city grid shows ${n} of ${cities.length}`);
   assert(await page.locator("header .brand-mark").count() === 1, "logo missing in header");
