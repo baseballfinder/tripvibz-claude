@@ -22,7 +22,7 @@ const esc = s => String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replac
 
 async function rows(path) {
   const r = await fetch(`${SB}/rest/v1/${path}`, { headers: { apikey: KEY } });
-  if (!r.ok) return [];
+  if (!r.ok) throw new Error(`supabase ${r.status}`);   // an outage is not "not found"
   return r.json();
 }
 const read = async path => (await rows(path))[0] || null;
@@ -34,14 +34,21 @@ const plain = s => String(s || "").replace(/\s+/g, " ").trim();
 export async function onRequestGet({ params, request, env }) {
   const page = await env.ASSETS.fetch(new URL("/thread", request.url));
   const id = String(params.id || "");
-  if (!/^[0-9a-f-]{36}$/i.test(id)) return page;
+  // A real 404 for bad or removed takes, so Google drops them instead of
+  // indexing an empty page (hidden takes aren't readable with the public key).
+  const notFound = async () => {
+    const nf = await env.ASSETS.fetch(new URL("/404.html", request.url));
+    return new Response(nf.body, { status: 404, headers: { "content-type": "text/html; charset=utf-8" } });
+  };
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return notFound();
 
   let post = null, city = null;
   try {
     post = await read(`posts?select=title,body,type,ups,downs,city_id,created_at,author_verified&id=eq.${id}`);
-    if (post) city = await read(`cities?select=name,state,slug&id=eq.${post.city_id}`);
-  } catch (e) { /* fall back to the plain page */ }
-  if (!post || !city) return page;
+    if (!post) return notFound();
+    city = await read(`cities?select=name,state,slug&id=eq.${post.city_id}`);
+  } catch (e) { return page; /* database hiccup: serve the page, which loads it itself */ }
+  if (!city) return page;
 
   const title = `“${post.title}” — a ${city.name} local`;
   const votes = post.ups + post.downs;

@@ -641,7 +641,6 @@ Allow: /
 # lives at the clean paths listed in the sitemap.
 Disallow: /*?add=
 Disallow: /place.html
-Disallow: /thread.html
 Disallow: /admin.html
 
 Sitemap: ${SITE}/sitemap.xml
@@ -651,6 +650,8 @@ await emit("_redirects", `# Old query-param URLs -> clean paths
 /article.html  /  301
 /city.html     /cities/  301
 /places.html   /cities/  301
+/map.html      /cities/  301
+/map           /cities/  301
 `);
 
 let before = 0, after = 0;

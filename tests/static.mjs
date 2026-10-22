@@ -184,6 +184,18 @@ await test("Signed-in-nearby check: 40-mile rule, stores no coordinates, never r
   assert((await readFile("functions/api/take.js", "utf8")).includes('from "./locate.js"'), "take alerts should include the nearby check");
 });
 
+await test("Unknown pages are real 404s; old take links redirect to /t/<id>", async () => {
+  assert(await exists("dist/404.html"), "dist/404.html missing (without it Cloudflare serves the home page for every bad URL)");
+  const nf = await readFile("dist/404.html", "utf8");
+  assert(/noindex/.test(nf), "404 page must be noindex");
+  const t = await readFile("functions/t/[id].js", "utf8");
+  assert(/status: 404/.test(t), "/t/<id> must return 404 for missing takes");
+  const th = await readFile("functions/thread.js", "utf8");
+  assert(/301/.test(th) && th.includes("/t/${id}"), "thread.html?id= should 301 to /t/<id>");
+  const robots = await readFile("dist/robots.txt", "utf8");
+  assert(!/Disallow: \/thread\.html/.test(robots), "robots.txt must not block thread.html (Google needs to see the redirect)");
+});
+
 await test("Old UI is gone (no Cosign / Add to this article)", async () => {
   for (const f of pages) {
     const h = await readFile(f, "utf8");
