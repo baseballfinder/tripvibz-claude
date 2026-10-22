@@ -91,14 +91,18 @@
       authors.length && cityId ? sb.from("city_tenure").select("user_id,tenure").eq("city_id", cityId).in("user_id", authors) : { data: [] },
       cityId ? sb.from("city_founders").select("author_id,rank").eq("city_id", cityId) : { data: [] },
       placeIds.length ? sb.from("places").select("id,name").in("id", placeIds) : { data: [] },
-      auth.me && ids.length ? sb.from("votes").select("post_id,value").eq("user_id", auth.me.id).in("post_id", ids) : { data: [] }
+      auth.me && ids.length ? sb.from("votes").select("post_id,value").eq("user_id", auth.me.id).in("post_id", ids) : { data: [] },
+      // "Signed in nearby" (functions/api/locate.js). Missing table before the
+      // migration runs just means no checkmarks.
+      authors.length && cityId ? sb.from("local_checks").select("user_id,near,revoked").eq("city_id", cityId).in("user_id", authors) : { data: [] }
     ]);
-    var ctx = { profiles: {}, tenure: {}, founders: {}, places: {}, myVotes: {} };
+    var ctx = { profiles: {}, tenure: {}, founders: {}, places: {}, myVotes: {}, local: {} };
     (res[0].data || []).forEach(function (x) { ctx.profiles[x.id] = x; });
     (res[1].data || []).forEach(function (x) { ctx.tenure[x.user_id] = x.tenure; });
     (res[2].data || []).forEach(function (x) { ctx.founders[x.author_id] = x.rank; });
     (res[3].data || []).forEach(function (x) { ctx.places[x.id] = x.name; });
     (res[4].data || []).forEach(function (x) { ctx.myVotes[x.post_id] = x.value; });
+    ((res[5] && res[5].data) || []).forEach(function (x) { ctx.local[x.user_id] = x; });
     ctx.founderCount = Object.keys(ctx.founders).length;
     return ctx;
   }
@@ -142,7 +146,11 @@
     }
     var me = auth.me && p.author_id === auth.me.id;
     var name = me ? "You" : shortName(ctx.profiles[p.author_id]);
-    var html = "<b>" + esc(name) + '</b><span class="bdg local">' + esc(tenureBadge(ctx.tenure[p.author_id])) + "</span>";
+    var chk = ctx.local && ctx.local[p.author_id];
+    // Revoked by an admin: their claim to be local here didn't hold up.
+    if (chk && chk.revoked) return "<b>" + esc(name) + '</b><span class="bdg unv">Unverified</span>';
+    var html = "<b>" + esc(name) + '</b><span class="bdg local"' + (chk && chk.near ? ' title="Signed in from nearby"' : "") + ">" +
+      esc(tenureBadge(ctx.tenure[p.author_id])) + (chk && chk.near ? " ✓" : "") + "</span>";
     if (ctx.founders[p.author_id]) html += '<span class="bdg found">Founding local</span>';
     return html;
   }

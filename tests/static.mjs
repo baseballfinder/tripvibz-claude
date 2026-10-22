@@ -170,6 +170,20 @@ await test("New tables and views in migrations come with explicit grants (Supaba
   }
 });
 
+await test("Signed-in-nearby check: 40-mile rule, stores no coordinates, never re-marks a revoked city", async () => {
+  const src = await readFile("functions/api/locate.js", "utf8");
+  const { transform } = await import("esbuild");
+  const { code } = await transform(src, { loader: "js", format: "esm" });
+  const m = await import("data:text/javascript;base64," + Buffer.from(code).toString("base64"));
+  assert(m.band(m.miles(40.7128, -74.0060, 40.7357, -74.1724)) === "near", "Newark should count as near New York");
+  assert(m.band(m.miles(40.7128, -74.0060, 39.9526, -75.1652)) === "region", "Philadelphia is region, not near, for New York");
+  assert(m.band(m.miles(25.7617, -80.1918, 41.8781, -87.6298)) === "far", "Miami to Chicago is far");
+  const rowObj = src.slice(src.indexOf("const rows ="), src.indexOf("if (rows.length)"));
+  assert(!/lat|lng|latitude|longitude|ip/i.test(rowObj.replace(/checked_at/g, "")), "saved rows must not include coordinates or IP");
+  assert(/revoked\.has\(c\.city_id\)/.test(src), "revoked rows must be skipped");
+  assert((await readFile("functions/api/take.js", "utf8")).includes('from "./locate.js"'), "take alerts should include the nearby check");
+});
+
 await test("Old UI is gone (no Cosign / Add to this article)", async () => {
   for (const f of pages) {
     const h = await readFile(f, "utf8");

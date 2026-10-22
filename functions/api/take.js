@@ -31,6 +31,7 @@ const json = (body, status = 200) =>
 const norm = (s) => (s || "").toLowerCase().replace(/[^a-z]/g, "");
 
 import { notify, where } from "./_notify.js";
+import { locate } from "./locate.js";
 
 export async function onRequestPost(context) {
   const { request } = context;
@@ -106,13 +107,23 @@ export async function onRequestPost(context) {
   // Phone notification for James (functions/api/_notify.js); never delays the reply.
   const kind = { what_not_to_do: "Don't do this", hidden_gem: "Do this", take: "It depends", worst_times: "When to go" }[type] || type;
   const place = where(request);
-  context.waitUntil(notify(context.env, {
+  // Signed-in-nearby check for this take's city (advisory; see locate.js), then the alert.
+  context.waitUntil((async () => {
+    let geo = null;
+    try {
+      const out = row && row.author_id ? await locate(context.env, request, row.author_id, city_id) : null;
+      geo = out && out.cities.find((c) => c.city_id === city_id);
+    } catch { /* alert without it */ }
+    const geoLine = !geo ? "" : geo.revoked ? "\nLocal status: revoked earlier"
+      : geo.near ? "\n📍 Signed in nearby" : `\nNot nearby: about ${geo.mi} mi away`;
+    await notify(context.env, {
     title: `New take: ${city_name || "TripVibz"}${topic ? " (new topic, needs review)" : ""}`,
-    message: `${topic ? `Topic: ${topic}\n` : ""}${kind}: ${title}${place ? `\nPosted from near ${place}` : ""}`,
+    message: `${topic ? `Topic: ${topic}\n` : ""}${kind}: ${title}${place ? `\nPosted from near ${place}` : ""}${geoLine}`,
     click: row && row.id ? `https://www.tripvibz.com/t/${row.id}` : "https://www.tripvibz.com/",
     tags: topic ? "memo,warning" : "memo",
     priority: topic ? 4 : 3
-  }));
+    });
+  })());
 
   return json({ ok: true, row, locality: { submitted_city, city_match } });
 }
