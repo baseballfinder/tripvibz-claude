@@ -83,7 +83,7 @@
   "use strict";
   const { sb, $, TYPE_LABEL, escapeHtml, timeAgo, toast, auth, openLogin, isSignedIn, routes } = window.TV;
 
-  let ROWS = [], CITIES = {}, PROFILES = {};
+  let ROWS = [], CITIES = {}, PROFILES = {}, CHECKS = {};
   let FILTER = "all", CITY = "", SEARCH = "", editing = null;
 
   const STATUSES = ["approved","hidden","rejected"];
@@ -125,8 +125,12 @@
 
     const ids = [...new Set(ROWS.map(r => r.author_id).filter(Boolean))];
     if(ids.length){
-      const { data: profs } = await sb.from("profiles").select("id,display_name,username").in("id", ids);
+      const [{ data: profs }, { data: checks }] = await Promise.all([
+        sb.from("profiles").select("id,display_name,username").in("id", ids),
+        sb.from("local_checks").select("user_id,city_id,near,revoked").in("user_id", ids)
+      ]);
       (profs||[]).forEach(p => { PROFILES[p.id] = p; });
+      (checks||[]).forEach(c => { CHECKS[c.user_id + ":" + c.city_id] = c; });
     }
   }
 
@@ -186,6 +190,25 @@
     $("#rows").addEventListener("click", onAction);
   }
 
+  // "Signed in nearby" check for this author in this city (functions/api/locate.js).
+  function localTag(r){
+    const c = r.author_id && r.city_id ? CHECKS[r.author_id + ":" + r.city_id] : null;
+    if(!c) return '<span class="loc">No location check</span>';
+    if(c.revoked) return '<span class="loc" style="color:#c0341a">Local revoked</span>';
+    return c.near ? '<span class="loc loc-local">📍 Signed in nearby</span>' : '<span class="loc">Not nearby</span>';
+  }
+
+  async function setLocal(r, revoked){
+    const key = r.author_id + ":" + r.city_id, prev = CHECKS[key], at = revoked ? new Date().toISOString() : null;
+    const { error } = prev
+      ? await sb.from("local_checks").update({ revoked, revoked_at: at }).eq("user_id", r.author_id).eq("city_id", r.city_id)
+      : await sb.from("local_checks").insert({ user_id: r.author_id, city_id: r.city_id, near: false, revoked, revoked_at: at });
+    if(error){ console.error(error); toast("Couldn't change local status"); return; }
+    CHECKS[key] = Object.assign({ user_id: r.author_id, city_id: r.city_id, near: false }, prev || {}, { revoked });
+    toast(revoked ? "Local status revoked for this city" : "Local status restored");
+    render();
+  }
+
   function row(r){
     const city = CITIES[r.city_id];
     const isEditing = editing === r.id;
@@ -194,6 +217,7 @@
         <span class="st st-${r.status}">${r.status}</span>
         <span class="badge b-${r.type}">${TYPE_LABEL[r.type]||r.type}</span>
         ${r.city_match === true ? '<span class="loc loc-local">Local</span>' : ""}
+        ${localTag(r)}
       </div>
 
       <div class="t">${escapeHtml(r.title)}</div>
@@ -212,6 +236,9 @@
         ${r.status !== "approved" ? `<button data-act="approved" class="go">Approve</button>` : ""}
         ${r.status !== "hidden"   ? `<button data-act="hidden">Hide</button>` : ""}
         ${r.status !== "rejected" ? `<button data-act="rejected">Reject</button>` : ""}
+        ${r.author_id && r.city_id ? ((CHECKS[r.author_id + ":" + r.city_id] || {}).revoked
+          ? `<button data-act="restore-local">Restore local</button>`
+          : `<button data-act="revoke-local">Revoke local</button>`) : ""}
         <button data-act="edit" class="${isEditing?"on":""}">${isEditing?"Cancel":"Edit"}</button>
         <button data-act="delete" class="danger">Delete</button>
       </div>
@@ -257,6 +284,7 @@
     const act = btn.dataset.act;
 
     if(act === "edit"){ editing = editing === id ? null : id; render(); return; }
+    if(act === "revoke-local" || act === "restore-local"){ await setLocal(r, act === "revoke-local"); return; }
 
     if(act === "save"){
       const get = f => art.querySelector(`[data-f="${f}"]`).value;

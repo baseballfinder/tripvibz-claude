@@ -291,6 +291,7 @@
           this.canPersist = true;
         }
         if (this.me && !this.me.is_anonymous) await this.syncProfile();
+        if (this.me && !this.me.is_anonymous) this.locate();
         this.renderUI();
       } catch (e) {
         console.error(e);
@@ -306,6 +307,25 @@
     },
 
     // Copy name + photo from the social identity into the profile row.
+    // "Signed in nearby" check (functions/api/locate.js): once a day per person,
+    // in the background, no prompt. Never blocks or changes anything on the page.
+    locate(cityId) {
+      try {
+        var key = "tv_locate_" + this.me.id, today = new Date().toISOString().slice(0, 10);
+        try { if (!cityId && localStorage.getItem(key) === today) return; } catch (e) { /* storage off: just run */ }
+        var self = this;
+        sb.auth.getSession().then(function (r) {
+          var token = r.data.session && r.data.session.access_token;
+          if (!token) return;
+          return fetch("/api/locate", {
+            method: "POST",
+            headers: { authorization: "Bearer " + token, "content-type": "application/json" },
+            body: JSON.stringify(cityId ? { city_id: cityId } : {})
+          }).then(function (res) { if (res.ok) { try { localStorage.setItem(key, today); } catch (e) {} } });
+        }).catch(function () {});
+      } catch (e) { /* advisory only */ }
+    },
+
     async syncProfile() {
       if (!this.me) return;
       var m = this.me.user_metadata || {};
