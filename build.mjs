@@ -548,7 +548,7 @@ await emit("index.html", await minifyHtml(render(indexTpl, {
   desc: "Locals tell visitors what to avoid, when not to come, and what the guidebooks get wrong. One sentence at a time.",
   canonical: `${SITE}/`,
   image: `${SITE}/assets/og/home.jpg`,
-  og: ogCard("home.jpg", "What do tourists get wrong about your city? Locals vote.",
+  og: ogCard("home.jpg", "The local take on every city.",
     `${cities.length} cities and counting. One-tap questions like “Navy Pier: worth it, or skip it?” See what locals say before you book.`),
   body: cityGrid(cities, countsBySlug),
   mount: "needs",
