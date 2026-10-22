@@ -142,7 +142,9 @@ for (const slug of ["nashville", "knoxville", "miami"]) {
     assert(w > 0, "hero photo did not load");
     assert((await page.textContent(".qcard .qp")).trim() === lead(slug).prompt, "lead question is not the first active question");
     assert(await page.locator(".qcard a.qopt").count() >= 2, "question options missing");
-    assert(await page.locator("[data-sec]").count() === 4, "section chips missing");
+    const hasTakes = (await page.locator(".feed .take").count()) > 0;
+    assert(await page.locator("[data-sec]").count() === (hasTakes ? 4 : 0), hasTakes ? "section chips missing" : "filter chips should be hidden when there are no takes");
+    assert(await page.locator("details.nt:not([open])").count() === 1, "new-topic box should start collapsed");
     assert(await page.locator(".fab").count() === 0, "old \"What do tourists get wrong\" button is back");
   });
 }
@@ -216,6 +218,8 @@ await test("City page: When-to-go strip links to the month-by-month calendar", a
 await test("New topic: city page box sends a take for review (with its topic)", async () => {
   await go("/miami/");
   assert(await page.locator("#nt").count() === 1, "new-topic box missing");
+  assert(!(await page.isVisible("#nt-topic")), "new-topic form should be collapsed until opened");
+  await page.click("#nt summary");
   await page.fill("#nt-topic", "TEST parking near South Beach");
   await page.click('[data-ntk="hidden_gem"]');
   await page.fill("#nt-text", "TEST use the city garages on 7th and 13th, cheaper than the meters.");
