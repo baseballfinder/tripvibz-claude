@@ -197,7 +197,8 @@ await test("Sign in with Google: badge button opens the sign-in box", async () =
 await test("Topic page: new take cards, starters open the add page, calendar on worst times", async () => {
   await go("/nashville/what-not-to-do/");
   assert(/What not to do in Nashville/.test(await page.textContent("h1")), "headline missing");
-  assert(await page.locator(".themes a").count() === 3, "topic tabs missing");
+  assert(await page.locator(".takes .chips a.chip").count() === 4, "section chips (same as the city page) missing");
+  assert(await page.locator(".takes .chips a.chip[aria-pressed=\"true\"]").count() === 1, "current section should be selected");
   const s = await page.getAttribute(".qcard a.qopt >> nth=0", "href");
   assert(s && s.startsWith("/nashville/add/?kind=what_not_to_do"), "starter link wrong");
   assert(!(await page.content()).includes("Cosign"), "old Cosign UI is back");

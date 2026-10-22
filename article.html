@@ -22,18 +22,13 @@
   .hd .lede{font-size:16.5px;color:#39352d;line-height:1.55;margin:0 0 14px}
   .hd .by{font-size:13px;color:var(--muted);font-weight:600}
 
-  .themes{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 2px}
-  .themes a{font-family:"Archivo";font-weight:700;font-size:13px;border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:7px 14px;text-decoration:none;color:var(--muted)}
-  .themes a:hover{border-color:#bdb4a3;color:var(--ink)}
-  .themes a.on{background:var(--sand);border-color:var(--ink);color:var(--ink)}
 
   .areas{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0 2px}
   .areas button{font-size:12.5px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:999px;padding:5px 12px;cursor:pointer;font-family:"Public Sans"}
   .areas button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
 
   /* ---- month calendar (worst_times only) ---- */
-  .cal{margin-top:34px}
-  .themes + .cal{margin-top:22px}
+  .cal{margin-top:18px}
   .ev .w a{color:inherit;text-decoration:underline}
   .cal-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}
   .cal-head h2{font-family:"Archivo";font-weight:900;font-size:21px}
@@ -127,6 +122,9 @@
   // city automatically. Prompts stay about how the city works, never about
   // a named business.
   // ---------------------------------------------------------------------
+  // Same section chips, same labels, as the city page (city.html SECTIONS).
+  const SECTION_CHIPS = [["all","Everything"],["what_not_to_do","What not to do"],["worst_times","Worst times"],["hidden_gem","What locals do"]];
+  const PHOTO_BASE = "https://nkxorlktzbgwqnfwmuus.supabase.co/storage/v1/object/public/city-photos/";
   const THEMES = {
     what_not_to_do: {
       vent: c => `What do tourists do in ${c} that drives you crazy?`,
@@ -224,6 +222,7 @@
 
     $("#root").innerHTML = `
       <a class="back" href="${routes.city(CITY.slug)}">← ${escapeHtml(CITY.name)}</a>
+      <img class="city-hero short" src="${PHOTO_BASE}${encodeURIComponent(CITY.photo || CITY.slug + ".webp")}" alt="${escapeHtml(CITY.name)}" width="800" height="300" onerror="this.remove()">
 
       <div class="hd">
         <div class="kicker">${escapeHtml(CITY.name)}${CITY.state ? ", "+escapeHtml(CITY.state) : ""}</div>
@@ -232,22 +231,19 @@
         ${ENTRIES.length ? `<div class="by">${ENTRIES.length} take${ENTRIES.length===1?"":"s"}${locals ? ` · ${locals} signed-in local${locals===1?"":"s"}` : ""}</div>` : ""}
       </div>
 
-      <div class="themes">
-        ${Object.keys(THEMES).map(k=>
-          `<a class="${k===THEME?"on":""}" href="${routes.article(CITY.slug,k)}">${escapeHtml(THEMES[k].nav)}</a>`
-        ).join("")}
-      </div>
+      ${THEME === "worst_times" ? calendarBlock() : ""}
 
-      ${THEME === "worst_times" && !list.length ? calendarBlock() : ""}
-
-      <div class="feed" id="entries" style="margin-top:20px">
-        ${list.length ? list.map(p => T2.takeHtml(p, CTX)).join("") :
-          `<div class="empty2"><b>No takes here yet</b>Live in ${escapeHtml(CITY.name)}? One sentence is enough, and the first 10 signed-in locals are its founding locals.</div>`}
-      </div>
-
-      ${addCard()}
-
-      ${THEME === "worst_times" && list.length ? calendarBlock() : ""}`;
+      <section class="takes" aria-labelledby="takes-h">
+        <div class="takes-h"><h2 id="takes-h">Local takes${list.length ? ` <span>${list.length}</span>` : ""}</h2>
+          <span class="founders">${CTX.founderCount} of 10 founding local spots taken</span></div>
+        <nav class="chips" aria-label="Show">${SECTION_CHIPS.map(([k, l]) =>
+          `<a class="chip" href="${k === "all" ? routes.city(CITY.slug) : routes.article(CITY.slug, k)}" aria-pressed="${k === THEME}">${escapeHtml(l)}</a>`).join("")}</nav>
+        <div class="feed" id="entries">
+          ${list.length ? list.map(p => T2.takeHtml(p, CTX)).join("") :
+            `<div class="empty2"><b>No takes yet</b>Live in ${escapeHtml(CITY.name)}? One sentence is enough, and the first 10 signed-in locals become founding locals.</div>`}
+        </div>
+        ${addCard()}
+      </section>`;
 
     $("#entries").addEventListener("click", async e => {
       const b = e.target.closest("[data-vote]"); if (!b) return;

@@ -201,3 +201,7 @@ details.nt .nt-body{padding:0 16px 16px}
 .when-t .wl em{display:block;font-style:normal;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
 .when-t .wl b{font-weight:800;color:var(--ink)}
 .cal-sum{background:#fff;border:1px solid var(--line);border-radius:14px;padding:6px 14px 12px;margin:14px 0 4px}
+
+/* chips as links (topic pages) look exactly like the city page's filter chips */
+a.chip{display:inline-flex;align-items:center;text-decoration:none}
+.city-hero.short{aspect-ratio:16/6;max-height:150px}
