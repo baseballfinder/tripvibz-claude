@@ -109,30 +109,12 @@
       <div class="qnote">One tap. ${total ? `See what ${total} other ${total === 1 ? "person" : "people"} said.` : "Be the first to answer."}</div></div>`;
   }
 
-  // Month strip from the editors' calendar (city_events); full calendar lives on the worst-times page.
-  const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const covers = (e, m) => e.start_month <= e.end_month ? (m >= e.start_month && m <= e.end_month) : (m >= e.start_month || m <= e.end_month);
-  // Same rule as the calendar page: avoid beats good, good beats busy.
-  function monthSev(m){
-    const sevs = new Set(EVENTS.filter(e => covers(e, m)).map(e => e.severity === "avoid" && !["season","weather"].includes(e.kind) ? "busy" : e.severity));
-    return sevs.has("avoid") ? "avoid" : sevs.has("good") ? "good" : sevs.has("busy") ? "busy" : null;
-  }
-  function runs(sev){
-    const ms = [...Array(12)].map((_, i) => i + 1).filter(m => monthSev(m) === sev);
-    const out = []; let a = null, b = null;
-    ms.forEach(m => { if (a && m === b + 1) b = m; else { if (a) out.push([a, b]); a = b = m; } });
-    if (a) out.push([a, b]);
-    // join a run that ends in December with one that starts in January (Nov–Feb)
-    if (out.length > 1 && out[0][0] === 1 && out[out.length-1][1] === 12) { const last = out.pop(); out[0] = [last[0], out[0][1]]; }
-    return out.map(([x, y]) => x === y ? MON[x-1] : `${MON[x-1]}–${MON[y-1]}`).join(", ");
-  }
   function whenCard(){
     if (!EVENTS.length) return "";
-    const best = runs("good"), worst = runs("avoid");
     return `<a class="when" href="/${esc(CITY.slug)}/worst-times-to-visit/">
       <div class="when-k">When to go</div>
-      <div class="when-strip">${MON.map((mn, i) => `<span class="${monthSev(i+1) || ""}" title="${mn}">${mn[0]}</span>`).join("")}</div>
-      <div class="when-t">${best ? `<span><i class="good"></i>Best: ${best}</span>` : ""}${worst ? `<span><i class="avoid"></i>Avoid: ${worst}</span>` : ""}</div>
+      <div class="when-strip">${T2.whenStrip(EVENTS)}</div>
+      <div class="when-t">${T2.whenSummary(EVENTS)}</div>
       <div class="when-go">Month-by-month calendar →</div></a>`;
   }
 

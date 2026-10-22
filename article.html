@@ -207,14 +207,7 @@
     ? (m >= ev.start_month && m <= ev.end_month)
     : (m >= ev.start_month || m <= ev.end_month);
   const eventsIn = m => EVENTS.filter(e => covers(e, m));
-  // Month colour: avoid beats good, good beats busy. A festival inside a good
-  // season shouldn't hide that it's a good time to come (the detail still lists it).
-  function monthSeverity(m){
-    // A one-off event (CES, Fantasy Fest) marks its month busy at most; only a
-    // season or weather can mark a whole month "avoid".
-    const sevs = new Set(eventsIn(m).map(e => e.severity === "avoid" && !["season","weather"].includes(e.kind) ? "busy" : e.severity));
-    return sevs.has("avoid") ? "avoid" : sevs.has("good") ? "good" : sevs.has("busy") ? "busy" : null;
-  }
+  function monthSeverity(m){ return T2.monthSeverity(EVENTS, m); }   // shared rule in assets/v2.js
   const spanLabel = ev => ev.start_month === ev.end_month
     ? MONTHS_LONG[ev.start_month-1]
     : `${MONTHS[ev.start_month-1]} – ${MONTHS[ev.end_month-1]}`;
@@ -298,6 +291,8 @@
            weather sources, and checked monthly. Dates shift year to year, so confirm the
            exact weekend before you book.</p>
       </div>
+
+      ${EVENTS.length ? `<div class="when-t cal-sum">${T2.whenSummary(EVENTS)}</div>` : ""}
 
       <div class="legend">
         <span><i class="sw-avoid"></i>Avoid</span>

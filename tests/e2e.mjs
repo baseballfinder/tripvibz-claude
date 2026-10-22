@@ -213,6 +213,8 @@ await test("City page: When-to-go strip links to the month-by-month calendar", a
   await page.waitForSelector("a.when", { timeout: 8000 });
   assert(await page.locator(".when-strip span").count() === 12, "month strip should have 12 cells");
   assert((await page.getAttribute("a.when", "href")) === "/nashville/worst-times-to-visit/", "strip should link to the calendar");
+  const best = await page.textContent(".when-t .wl:first-child");
+  assert(/Best/i.test(best) && /·\s*\S/.test(best), "Best line should name the reason (e.g. 'Mar–May · Spring')");
 });
 
 await test("New topic: city page box sends a take for review (with its topic)", async () => {

@@ -405,11 +405,80 @@
     share(takeShare({ id: b.dataset.shareTake, title: (title || "").trim() }, b.dataset.city || window.__tvCityName || ""));
   });
 
+  /* ---------- "When to go" summary from the editors' calendar (city_events) ----------
+     Month colour: avoid beats good, good beats busy. A one-off event (CES,
+     Fantasy Fest) marks its month busy at most; only a season or weather can
+     mark a whole month "avoid". Each line names the reason. */
+  var WMON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  var SEASONAL = { season: 1, weather: 1 };
+  function wCovers(e, m) { return e.start_month <= e.end_month ? (m >= e.start_month && m <= e.end_month) : (m >= e.start_month || m <= e.end_month); }
+  function wMonths(e) { var out = []; for (var m = 1; m <= 12; m++) if (wCovers(e, m)) out.push(m); return out; }
+  function wSev(events, m) {
+    var has = {};
+    (events || []).forEach(function (e) { if (wCovers(e, m)) has[e.severity === "avoid" && !SEASONAL[e.kind] ? "busy" : e.severity] = 1; });
+    return has.avoid ? "avoid" : has.good ? "good" : has.busy ? "busy" : null;
+  }
+  function wSpan(a, b) { return a === b ? WMON[a - 1] : WMON[a - 1] + "–" + WMON[b - 1]; }
+  function wRuns(events, sev) {
+    var ms = [], out = [], a = null, b = null;
+    for (var m = 1; m <= 12; m++) if (wSev(events, m) === sev) ms.push(m);
+    ms.forEach(function (m) { if (a && m === b + 1) b = m; else { if (a) out.push([a, b]); a = b = m; } });
+    if (a) out.push([a, b]);
+    // join a run ending in December with one starting in January (Nov–Feb)
+    if (out.length > 1 && out[0][0] === 1 && out[out.length - 1][1] === 12) { var last = out.pop(); out[0] = [last[0], out[0][1]]; }
+    return out;
+  }
+  function wInRun(run, m) { return run[0] <= run[1] ? (m >= run[0] && m <= run[1]) : (m >= run[0] || m <= run[1]); }
+  // The entries behind a run of months: most overlap first, at most two names.
+  function wWhy(events, run, pick) {
+    return events.filter(pick).map(function (e) {
+      return { e: e, n: wMonths(e).filter(function (m) { return wInRun(run, m); }).length };
+    }).filter(function (x) { return x.n; }).sort(function (x, y) { return y.n - x.n; })
+      .slice(0, 2).map(function (x) { return x.e.name; });
+  }
+  function wLine(cls, label, items) {
+    return '<div class="wl"><i class="' + cls + '"></i><div><em>' + label + "</em>" + items.join("<br>") + "</div></div>";
+  }
+  function whenSummary(events) {
+    events = events || [];
+    var lines = [];
+    var best = wRuns(events, "good").map(function (r) {
+      var why = wWhy(events, r, function (e) { return e.severity === "good"; });
+      return "<b>" + wSpan(r[0], r[1]) + "</b>" + (why.length ? " · " + esc(why.join(", ")) : "");
+    });
+    var worst = wRuns(events, "avoid").map(function (r) {
+      var why = wWhy(events, r, function (e) { return e.severity === "avoid" && SEASONAL[e.kind]; });
+      return "<b>" + wSpan(r[0], r[1]) + "</b>" + (why.length ? " · " + esc(why.join(", ")) : "");
+    });
+    // Big one-off events worth planning around: the ones the editors marked avoid first.
+    var plan = events.filter(function (e) { return !SEASONAL[e.kind] && (e.severity === "avoid" || e.severity === "busy"); })
+      .sort(function (x, y) { return (y.severity === "avoid") - (x.severity === "avoid") || x.start_month - y.start_month; })
+      .slice(0, 3).sort(function (x, y) { return x.start_month - y.start_month; })
+      .map(function (e) { return "<b>" + wSpan(e.start_month, e.end_month) + "</b> · " + esc(e.name); });
+    // Busy seasons that are a draw in their own right (fall leaf season, summer peak).
+    var peak = events.filter(function (e) { return e.kind === "season" && e.severity === "busy"; })
+      .sort(function (x, y) { return wMonths(x).length - wMonths(y).length; }).slice(0, 2)
+      .sort(function (x, y) { return x.start_month - y.start_month; })
+      .map(function (e) { return "<b>" + wSpan(e.start_month, e.end_month) + "</b> · " + esc(e.name); });
+    if (best.length) lines.push(wLine("good", "Best", best));
+    if (worst.length) lines.push(wLine("avoid", "Avoid", worst));
+    if (peak.length) lines.push(wLine("busy", "Peak crowds", peak));
+    // Weather that's a risk rather than a reason to stay away (red tide, sargassum, May Gray).
+    var watch = events.filter(function (e) { return e.kind === "weather" && e.severity === "busy"; }).slice(0, 2)
+      .map(function (e) { return "<b>" + wSpan(e.start_month, e.end_month) + "</b> · " + esc(e.name); });
+    if (watch.length) lines.push(wLine("busy", "Watch for", watch));
+    if (plan.length) lines.push(wLine("busy", "Plan around", plan));
+    return lines.join("");
+  }
+  function whenStrip(events) {
+    return WMON.map(function (mn, i) { var v = wSev(events, i + 1); return '<span class="' + (v || "") + '" title="' + mn + '">' + mn[0] + "</span>"; }).join("");
+  }
+
   window.TV2 = {
     KIND: KIND, TENURE: TENURE, MON: MON, ICON: ICON, POST_COLS: POST_COLS,
     tenureBadge: tenureBadge, monthsLabel: monthsLabel, shortName: shortName,
     loadCity: loadCity, hydrate: hydrate, sortPosts: sortPosts, isSplit: isSplit, placeOf: placeOf,
-    takeHtml: takeHtml, castVote: castVote,
+    takeHtml: takeHtml, castVote: castVote, whenSummary: whenSummary, whenStrip: whenStrip, monthSeverity: wSev,
     loadQuestions: loadQuestions, qTotal: qTotal, answer: answer, qOptionsHtml: qOptionsHtml,
     prepareClaim: prepareClaim, finishClaim: finishClaim, signInForBadge: signInForBadge, saveTenure: saveTenure,
     drawShareCard: drawShareCard, shareCard: shareCard, ago: ago, answerKind: answerKind, loadPosts: loadPosts, POST_COLS_X: POST_COLS_X,
