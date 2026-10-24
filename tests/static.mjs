@@ -172,9 +172,9 @@ await test("New tables and views in migrations come with explicit grants (Supaba
 
 await test("Signed-in-nearby check: 40-mile rule, stores no coordinates, never re-marks a revoked city", async () => {
   const src = await readFile("functions/api/locate.js", "utf8");
-  const { transform } = await import("esbuild");
-  const { code } = await transform(src, { loader: "js", format: "esm" });
-  const m = await import("data:text/javascript;base64," + Buffer.from(code).toString("base64"));
+  const { build } = await import("esbuild");   // bundle so ./_supabase.js resolves
+  const out = await build({ entryPoints: ["functions/api/locate.js"], bundle: true, write: false, format: "esm", platform: "neutral" });
+  const m = await import("data:text/javascript;base64," + Buffer.from(out.outputFiles[0].text).toString("base64"));
   assert(m.band(m.miles(40.7128, -74.0060, 40.7357, -74.1724)) === "near", "Newark should count as near New York");
   assert(m.band(m.miles(40.7128, -74.0060, 39.9526, -75.1652)) === "region", "Philadelphia is region, not near, for New York");
   assert(m.band(m.miles(25.7617, -80.1918, 41.8781, -87.6298)) === "far", "Miami to Chicago is far");
@@ -182,6 +182,18 @@ await test("Signed-in-nearby check: 40-mile rule, stores no coordinates, never r
   assert(!/lat|lng|latitude|longitude|ip/i.test(rowObj.replace(/checked_at/g, "")), "saved rows must not include coordinates or IP");
   assert(/revoked\.has\(c\.city_id\)/.test(src), "revoked rows must be skipped");
   assert((await readFile("functions/api/take.js", "utf8")).includes('from "./locate.js"'), "take alerts should include the nearby check");
+});
+
+await test("Secret key goes on the apikey header only (new sb_secret keys are rejected as Bearer)", async () => {
+  for (const f of ["functions/api/locate.js", "functions/api/auth/tiktok/callback.js", "functions/api/auth/tiktok/start.js"]) {
+    const src = await readFile(f, "utf8");
+    assert(!/[Bb]earer[^\n]*SERVICE_ROLE_KEY/.test(src), `${f} sends the secret key as a Bearer token`);
+  }
+  const { transform } = await import("esbuild");
+  const { code } = await transform(await readFile("functions/api/_supabase.js", "utf8"), { loader: "js", format: "esm" });
+  const m = await import("data:text/javascript;base64," + Buffer.from(code).toString("base64"));
+  assert(!m.adminHeaders("sb_secret_x").authorization, "new secret keys must not be sent as Bearer");
+  assert(m.adminHeaders("eyJ.legacy").authorization === "Bearer eyJ.legacy", "legacy keys keep working");
 });
 
 await test("Unknown pages are real 404s; old take links redirect to /t/<id>", async () => {
