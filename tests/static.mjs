@@ -159,8 +159,8 @@ await test("Phone notifications: search-visit and new-take notifiers present, ne
 });
 
 await test("New tables and views in migrations come with explicit grants (Supabase, from Oct 30 2026)", async () => {
-  const dir = "supabase/migrations";
-  for (const f of (await readdir(dir)).filter(f => f.endsWith(".sql") && f.slice(0, 8) > "20261020")) {
+  const dirs = ["supabase/migrations", "supabase/applied-by-hand"];
+  for (const dir of dirs) for (const f of (await readdir(dir)).filter(f => f.endsWith(".sql") && f.slice(0, 8) > "20261020")) {
     const sql = (await readFile(join(dir, f), "utf8")).replace(/--.*$/gm, "");
     for (const m of sql.matchAll(/create\s+(?:or\s+replace\s+)?(?:table|view|materialized\s+view)\s+(?:if\s+not\s+exists\s+)?(?:public\.)?"?(\w+)"?/gi)) {
       const name = m[1];
@@ -194,6 +194,41 @@ await test("Secret key goes on the apikey header only (new sb_secret keys are re
   const m = await import("data:text/javascript;base64," + Buffer.from(code).toString("base64"));
   assert(!m.adminHeaders("sb_secret_x").authorization, "new secret keys must not be sent as Bearer");
   assert(m.adminHeaders("eyJ.legacy").authorization === "Bearer eyJ.legacy", "legacy keys keep working");
+});
+
+await test("Unknown pages are real 404s; old take links redirect to /t/<id>", async () => {
+  assert(await exists("dist/404.html"), "dist/404.html missing (without it Cloudflare serves the home page for every bad URL)");
+  const nf = await readFile("dist/404.html", "utf8");
+  assert(/noindex/.test(nf), "404 page must be noindex");
+  const t = await readFile("functions/t/[id].js", "utf8");
+  assert(/status: 404/.test(t), "/t/<id> must return 404 for missing takes");
+  const th = await readFile("functions/thread.js", "utf8");
+  assert(/301/.test(th) && th.includes("/t/${id}"), "thread.html?id= should 301 to /t/<id>");
+  const robots = await readFile("dist/robots.txt", "utf8");
+  assert(!/Disallow: \/thread\.html/.test(robots), "robots.txt must not block thread.html (Google needs to see the redirect)");
+});
+
+await test("Every public page has the site footer with About, Privacy and Terms", async () => {
+  assert(await exists("dist/about/index.html"), "about page missing");
+  for (const f of pages) {
+    if (/admin\.html$/.test(f)) continue;
+    const h = await readFile(f, "utf8");
+    assert((h.match(/class="site-foot"/g) || []).length === 1, `${f}: needs exactly one site footer`);
+    for (const href of ["/about/", "/privacy/", "/terms/"]) assert(h.includes(`href="${href}"`), `${f}: footer missing ${href}`);
+    assert(!/@miamitake\.com/i.test(h), `${f}: use a tripvibz.com address, not a Miami Take one`);
+  }
+});
+
+await test("Migrations are named the way the Supabase GitHub integration expects", async () => {
+  const files = (await readdir("supabase/migrations")).filter(f => f.endsWith(".sql"));
+  const seen = new Set();
+  for (const f of files) {
+    assert(/^\d{14}_[a-z0-9_]+\.sql$/.test(f), `${f}: name it YYYYMMDDHHMMSS_name.sql (see supabase/migrations/README.md)`);
+    const v = f.slice(0, 14);
+    assert(!seen.has(v), `${f}: two migrations share version ${v}`);
+    seen.add(v);
+  }
+  assert(files.length >= 23, "the 23 placeholders for already-applied migrations must stay");
 });
 
 await test("Old UI is gone (no Cosign / Add to this article)", async () => {

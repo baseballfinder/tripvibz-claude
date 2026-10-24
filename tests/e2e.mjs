@@ -110,7 +110,7 @@ const lead = slug => { const c = cities.find(x => x.slug === slug); return qs.fi
 
 await test("Home: hero, city grid, logo, request link", async () => {
   await go("/");
-  assert(/tourists get wrong/i.test(await page.textContent("h1")), "headline missing");
+  assert(/The local take on every city/i.test(await page.textContent("h1")), "headline missing");
   const n = await page.locator("#needs a").count();
   assert(n >= cities.length, `city grid shows ${n} of ${cities.length}`);
   assert(await page.locator("header .brand-mark").count() === 1, "logo missing in header");
@@ -197,7 +197,8 @@ await test("Sign in with Google: badge button opens the sign-in box", async () =
 await test("Topic page: new take cards, starters open the add page, calendar on worst times", async () => {
   await go("/nashville/what-not-to-do/");
   assert(/What not to do in Nashville/.test(await page.textContent("h1")), "headline missing");
-  assert(await page.locator(".themes a").count() === 3, "topic tabs missing");
+  assert(await page.locator(".takes .chips a.chip").count() === 4, "section chips (same as the city page) missing");
+  assert(await page.locator(".takes .chips a.chip[aria-pressed=\"true\"]").count() === 1, "current section should be selected");
   const s = await page.getAttribute(".qcard a.qopt >> nth=0", "href");
   assert(s && s.startsWith("/nashville/add/?kind=what_not_to_do"), "starter link wrong");
   assert(!(await page.content()).includes("Cosign"), "old Cosign UI is back");
@@ -237,6 +238,11 @@ await test("Sign-in options: Facebook and TikTok buttons (preview), TikTok goes 
   await page.evaluate(() => window.TV.openLogin());
   assert(await page.isVisible("#loginmodal .oauth.facebook"), "Facebook button missing");
   assert(await page.isVisible("#loginmodal [data-tiktok]"), "TikTok button missing");
+  assert(await page.isVisible("#loginmodal [data-email-form] input[type=email]"), "email sign-in field missing");
+  await page.fill("#loginmodal [data-email-form] input", "not-an-email");
+  await page.click("#loginmodal [data-email-form] button");
+  assert(/doesn't look right/.test(await page.textContent("#loginmodal [data-email-msg]")), "bad email should be caught before sending");
+  assert((await page.locator("#loginmodal .oauth.google:visible").count()) + (await page.locator("#loginmodal [data-gsi]:visible").count()) <= 1, "two Google buttons showing");
   const req = page.waitForRequest(r => r.url().includes("/api/auth/tiktok/start?next=%2Fmiami%2F"), { timeout: 5000 });
   await page.click("#loginmodal [data-tiktok]");
   await req;

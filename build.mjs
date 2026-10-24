@@ -61,6 +61,7 @@ const THEMES = {
   what_not_to_do: {
     slug: "what-not-to-do",
     nav: "What not to do",
+    chip: "What not to do",
     title: c => `What not to do in ${c}`,
     lede: c => `The mistakes visitors make in ${c}, according to people who live there. Ranked by how many locals say it's true.`,
     desc: c => `Local advice on what not to do in ${c} — the mistakes visitors make, written and ranked by people who live there.`
@@ -68,6 +69,7 @@ const THEMES = {
   worst_times: {
     slug: "worst-times-to-visit",
     nav: "Worst times to visit",
+    chip: "Worst times",
     title: c => `Worst times to visit ${c}`,
     lede: c => `The weeks, days and hours locals would tell you to avoid in ${c} — and what to do instead.`,
     desc: c => `The worst times to visit ${c}, month by month — festivals, seasons and weeks locals say to avoid.`
@@ -75,6 +77,7 @@ const THEMES = {
   hidden_gem: {
     slug: "what-locals-do",
     nav: "What locals actually do",
+    chip: "What locals do",
     title: c => `What locals actually do in ${c}`,
     lede: c => `The parts of ${c} that don't show up on the top-ten lists, from people who never left.`,
     desc: c => `What locals actually do in ${c} — the spots and habits that never make the top-ten lists.`
@@ -361,8 +364,8 @@ function articleBody(city, theme, takes, events) {
   <p class="lede">${esc(t.lede(city.name))}</p>
   <div class="by">${list.length} take${list.length === 1 ? "" : "s"}</div>
 </div>
-<div class="themes">${Object.keys(THEMES).map(k =>
-  `<a class="${k === theme ? "on" : ""}" href="/${esc(city.slug)}/${THEMES[k].slug}/">${esc(THEMES[k].nav)}</a>`).join("")}</div>
+<nav class="chips" aria-label="Show"><a class="chip" href="/${esc(city.slug)}/" aria-pressed="false">Everything</a>${Object.keys(THEMES).map(k =>
+  `<a class="chip" href="/${esc(city.slug)}/${THEMES[k].slug}/" aria-pressed="${k === theme}">${esc(THEMES[k].chip)}</a>`).join("")}</nav>
 ${entries}
 ${cal}`;
 }
@@ -462,7 +465,18 @@ const versionAssets = html => html.replace(/(["'])\/assets\/([\w.-]+)\1/g,
 // Logo / favicon links for every page (files: scripts/brand_assets.py).
 const ICON_LINKS = `<link rel="icon" href="/favicon.ico" sizes="48x48"><link rel="icon" href="/assets/brand/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><meta name="theme-color" content="#ff5630">`;
 
+// One footer on every public page (About, Privacy, Terms, contact). Pages that
+// carried their own footer get this one instead; the admin page gets none.
+const SITE_FOOTER = `<footer class="site-foot"><div class="wrap">
+<div class="sf-brand"><b>TripVibz</b><span class="tagline">The local take on every city.</span></div>
+<nav class="sf-links" aria-label="Site"><a href="/cities/">Cities</a><a href="/about/">About</a><a href="/about/#contact">Contact</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a></nav>
+<div class="sf-note">© ${new Date().getFullYear()} TripVibz · A city guide written by the people who live there.</div>
+</div></footer>`;
+
 async function emit(path, html) {
+  if (typeof html === "string" && path.endsWith(".html") && !/(^|\/)admin\.html$/.test(path) && /<\/body>/i.test(html)) {
+    html = html.replace(/<footer[\s\S]*?<\/footer>\s*/gi, "").replace(/<\/body>/i, () => SITE_FOOTER + "</body>");
+  }
   if (typeof html === "string" && path.endsWith(".html")) {
     if (!html.includes('rel="icon"')) html = html.replace(/<\/head>/i, () => ICON_LINKS + "</head>");
     html = versionAssets(html);
@@ -537,7 +551,7 @@ await emit("index.html", await minifyHtml(render(indexTpl, {
   desc: "Locals tell visitors what to avoid, when not to come, and what the guidebooks get wrong. One sentence at a time.",
   canonical: `${SITE}/`,
   image: `${SITE}/assets/og/home.jpg`,
-  og: ogCard("home.jpg", "What do tourists get wrong about your city? Locals vote.",
+  og: ogCard("home.jpg", "The local take on every city.",
     `${cities.length} cities and counting. One-tap questions like “Navy Pier: worth it, or skip it?” See what locals say before you book.`),
   body: cityGrid(cities, countsBySlug),
   mount: "needs",
@@ -545,6 +559,7 @@ await emit("index.html", await minifyHtml(render(indexTpl, {
 }), null));
 
 pages.push({ path: "/cities/", lastmod: newest(posts), priority: "0.8" });
+pages.push({ path: "/about/", lastmod: new Date().toISOString().slice(0, 10), priority: "0.3" });
 await emit("cities/index.html", await minifyHtml(render(placesTpl, {
   title: "Every city on TripVibz — local guides by residents",
   desc: "Browse cities where locals have written what visitors get wrong, when not to visit, and what residents actually do.",
@@ -641,7 +656,6 @@ Allow: /
 # lives at the clean paths listed in the sitemap.
 Disallow: /*?add=
 Disallow: /place.html
-Disallow: /thread.html
 Disallow: /admin.html
 
 Sitemap: ${SITE}/sitemap.xml
@@ -651,6 +665,8 @@ await emit("_redirects", `# Old query-param URLs -> clean paths
 /article.html  /  301
 /city.html     /cities/  301
 /places.html   /cities/  301
+/map.html      /cities/  301
+/map           /cities/  301
 `);
 
 let before = 0, after = 0;
