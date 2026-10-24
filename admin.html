@@ -56,6 +56,18 @@
   .gate{max-width:420px;margin:60px auto;text-align:center;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:34px 26px}
   .gate h2{font-size:21px;font-weight:900;margin-bottom:8px}
   .gate p{color:var(--muted);font-size:14.5px;margin:0 0 18px;line-height:1.5}
+
+  .rlm{margin:0 0 16px;border:1px solid var(--line);border-radius:14px;background:#fff}
+  .rlm summary{cursor:pointer;padding:12px 14px;font-weight:800;font-family:"Archivo"}
+  .rlm summary span{font-weight:500;font-family:"Public Sans";color:var(--muted);font-size:13px;margin-left:6px}
+  .rlm-body{padding:0 14px 14px}
+  .rlm-body p{font-size:13.5px;color:var(--muted);margin:0 0 10px}
+  .rlm-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+  .rlm-row select,.rlm textarea,.rlm-out input{border:1px solid var(--line);border-radius:10px;padding:9px 10px;font:14px "Public Sans",sans-serif;background:#fff}
+  .rlm textarea{width:100%;box-sizing:border-box;min-height:80px;margin-bottom:8px}
+  .rlm-out{display:flex;gap:8px}
+  .rlm-out input{flex:1;min-width:0;font-size:12.5px;color:var(--muted)}
+  .rlm-note{font-size:12px;color:var(--muted);margin-top:6px}
 </style>
 </head>
 <body>
@@ -153,6 +165,29 @@
 
   /* ---------- render ---------- */
 
+  // Reply link maker: pre-fills /<city>/add/ so a person who answered by email
+  // posts their own words in one tap (add.html reads ?kind= and ?text=).
+  const RLM = { open: false, city: "", kind: "hidden_gem", text: "" };
+  function replyLink(){
+    const slug = RLM.city || (Object.values(CITIES).sort((a,b)=>a.name.localeCompare(b.name))[0] || {}).slug || "";
+    if(!slug) return "";
+    const q = new URLSearchParams({ kind: RLM.kind, utm_source: "email", utm_medium: "reply", utm_campaign: "reply_link" });
+    const t = RLM.text.trim(); if(t) q.set("text", t.slice(0, 400));
+    return `https://www.tripvibz.com/${slug}/add/?${q.toString()}`;
+  }
+  function wireRlm(){
+    const d = $("#rlm"); if(!d) return;
+    d.addEventListener("toggle", ()=>{ RLM.open = d.open; });
+    const upd = ()=>{ RLM.city = $("#rlm-city").value; RLM.kind = $("#rlm-kind").value; RLM.text = $("#rlm-text").value; $("#rlm-link").value = replyLink(); };
+    ["#rlm-city","#rlm-kind"].forEach(id=>$(id).addEventListener("change", upd));
+    $("#rlm-text").addEventListener("input", upd);
+    $("#rlm-copy").addEventListener("click", async ()=>{
+      upd();
+      try { await navigator.clipboard.writeText($("#rlm-link").value); toast("Link copied"); }
+      catch(e){ $("#rlm-link").select(); toast("Select the link and copy it"); }
+    });
+  }
+
   function render(){
     const list = visible();
     const counts = STATUSES.reduce((a,s)=>(a[s]=ROWS.filter(r=>r.status===s).length,a),{});
@@ -162,6 +197,25 @@
         <h1>Submissions</h1>
         <span class="count">${ROWS.length} total · ${counts.approved} live · ${counts.hidden} hidden · ${counts.rejected} rejected</span>
       </div>
+
+      <details class="rlm" id="rlm" ${RLM.open ? "open" : ""}>
+        <summary>Reply link maker <span>turn an email reply into a one-tap "post it" link</span></summary>
+        <div class="rlm-body">
+          <p>Paste what they wrote, pick their city and the kind of take. Send them the link: it opens their city's page with their words already filled in, so they post it themselves.</p>
+          <div class="rlm-row">
+            <select id="rlm-city">${Object.values(CITIES).sort((a,b)=>a.name.localeCompare(b.name))
+              .map(c=>`<option value="${c.slug}" ${RLM.city===c.slug?"selected":""}>${escapeHtml(c.name)}</option>`).join("")}</select>
+            <select id="rlm-kind">${[["hidden_gem","Do this (their spot)"],["what_not_to_do","Don't do this"],["worst_times","When to go"],["take","It depends"]]
+              .map(([k,l])=>`<option value="${k}" ${RLM.kind===k?"selected":""}>${l}</option>`).join("")}</select>
+          </div>
+          <textarea id="rlm-text" maxlength="400" placeholder="e.g. I take everyone to Joe's Stone Crab's takeaway counter: same claws, no wait.">${escapeHtml(RLM.text)}</textarea>
+          <div class="rlm-out">
+            <input id="rlm-link" readonly value="${escapeHtml(replyLink())}">
+            <button id="rlm-copy" class="go">Copy link</button>
+          </div>
+          <div class="rlm-note">Trim it to one or two sentences: a take holds 400 characters. Nothing is posted until they tap Post.</div>
+        </div>
+      </details>
 
       <div class="filters" id="filters">
         <button data-f="all" aria-pressed="${FILTER==="all"}">All</button>
@@ -188,6 +242,7 @@
     q.addEventListener("input", ()=>{ SEARCH=q.value; const p=q.selectionStart; render(); const n=$("#q"); n.focus(); n.setSelectionRange(p,p); });
     $("#city").addEventListener("change", e=>{ CITY=e.target.value; editing=null; render(); });
     $("#rows").addEventListener("click", onAction);
+    wireRlm();
   }
 
   // "Signed in nearby" check for this author in this city (functions/api/locate.js).

@@ -231,6 +231,14 @@ await test("Migrations are named the way the Supabase GitHub integration expects
   assert(files.length >= 23, "the 23 placeholders for already-applied migrations must stay");
 });
 
+await test("Stay22: TripVibz's own affiliate ID, never Miami Take's; campaign labels use underscores", async () => {
+  const v2 = await readFile("assets/v2.js", "utf8");
+  assert(/var STAY22_AID = "tripvibz";/.test(v2), "Stay22 ID should be tripvibz");
+  for (const f of pages) assert(!/aid=miamitake|STAY22_AID = "miamitake"/i.test(await readFile(f, "utf8")), `${f}: Miami Take's Stay22 ID`);
+  assert(/\.replace\(\/-\/g, "_"\)/.test(v2), "campaign labels must not contain hyphens (Stay22 splits on them)");
+  for (const f of ["city.html", "article.html"]) assert((await readFile(f, "utf8")).includes("stay22MapHtml"), `${f}: hotel map missing`);
+});
+
 await test("Old UI is gone (no Cosign / Add to this article)", async () => {
   for (const f of pages) {
     const h = await readFile(f, "utf8");
