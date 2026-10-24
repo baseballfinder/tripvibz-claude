@@ -205,3 +205,11 @@ details.nt .nt-body{padding:0 16px 16px}
 /* chips as links (topic pages) look exactly like the city page's filter chips */
 a.chip{display:inline-flex;align-items:center;text-decoration:none}
 .city-hero.short{aspect-ratio:16/6;max-height:150px}
+
+/* Stay22 hotel placements */
+.s22{margin:24px 0 6px}
+.s22 h2{font:900 20px "Archivo",sans-serif;margin:0 0 4px;color:var(--ink)}
+.s22 p{font-size:12.5px;color:var(--muted);margin:0 0 10px}
+.s22-map{height:420px;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:#efe9dd;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px}
+.s22-map iframe{width:100%;height:100%;border:0;display:block}
+.s22-link{display:inline-flex;align-items:center;gap:6px;margin:8px 0 2px;min-height:36px;padding:0 12px;border-radius:999px;background:#eef3fb;color:#1f4fa3;font-weight:700;font-size:13px;text-decoration:none}

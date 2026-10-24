@@ -172,6 +172,7 @@
       "</div>" +
       (opts.noLink ? '<h1 class="tt" style="font-size:23px">' + esc(p.title) + "</h1>" : '<a class="tt" href="' + href + '">' + esc(p.title) + "</a>") +
       (p.body ? '<div class="more">' + esc(p.body) + "</div>" : "") +
+      (opts.city ? stay22TakeLink(p, ctx, opts.city, opts.placement || "take") : "") +
       '<div class="who">' + authorHtml(p, ctx) + "<span>· " + ago(p.created_at) + "</span></div>" +
       (opts.noBar ? "" : '<div class="bar" aria-hidden="true"><i style="width:' + pct + '%"></i></div>' +
       '<div class="tv-actions">' +
@@ -482,11 +483,98 @@
     return WMON.map(function (mn, i) { var v = wSev(events, i + 1); return '<span class="' + (v || "") + '" title="' + mn + '">' + mn[0] + "</span>"; }).join("");
   }
 
+  /* ---------- Stay22 (hotel maps + deep links) ----------
+     Paid per booking. TripVibz has its OWN Stay22 account (aid "tripvibz");
+     never use Miami Take's. Every placement carries a campaign label so the
+     Stay22 dashboard shows which page and city a booking came from:
+     tripvibz_<placement>_<city>, underscores only (Stay22 splits on hyphens). */
+  var STAY22_AID = "tripvibz";
+  var STAY22_COLOR = "c4391b";
+  function s22campaign(placement, city) {
+    return ["tripvibz", placement, city.slug].join("_").replace(/-/g, "_");
+  }
+  function s22where(city) { return city.name + (city.state ? ", " + city.state : ""); }
+  function nextDates(month) {
+    // First Friday of that month (this year, or next if it's past), 3 nights.
+    var now = new Date(), y = now.getFullYear();
+    if (month < now.getMonth() + 1 || (month === now.getMonth() + 1 && now.getDate() > 20)) y++;
+    var d = new Date(Date.UTC(y, month - 1, 1));
+    while (d.getUTCDay() !== 5) d.setUTCDate(d.getUTCDate() + 1);
+    var out = new Date(d); out.setUTCDate(out.getUTCDate() + 3);
+    var f = function (x) { return x.toISOString().slice(0, 10); };
+    return { checkin: f(d), checkout: f(out) };
+  }
+  // The first month after the ones a "when to go" take warns about.
+  function betterMonth(months) {
+    if (!months || !months.length || months.length >= 12) return null;
+    var last = Math.max.apply(null, months);
+    for (var i = 1; i <= 12; i++) { var m = ((last - 1 + i) % 12) + 1; if (months.indexOf(m) < 0) return m; }
+    return null;
+  }
+  function stay22Link(city, opts) {
+    if (!STAY22_AID || !city || !city.slug) return null;
+    opts = opts || {};
+    var q = new URLSearchParams({ aid: STAY22_AID });
+    var specific = opts.place && !/^Whole (city|island)$/i.test(opts.place);
+    if (specific) q.set("address", opts.place + ", " + s22where(city));
+    else if (city.lat && city.lng) { q.set("lat", city.lat); q.set("lng", city.lng); }
+    else q.set("address", s22where(city));
+    if (opts.checkin) { q.set("checkin", opts.checkin); q.set("checkout", opts.checkout); }
+    q.set("campaign", s22campaign(opts.placement || "link", city));
+    return "https://www.stay22.com/allez/roam?" + q.toString();
+  }
+  function stay22MapSrc(city, placement) {
+    if (!STAY22_AID || !city || !city.slug) return null;
+    var q = new URLSearchParams({ aid: STAY22_AID, maincolor: STAY22_COLOR, zoom: "12", campaign: s22campaign(placement, city) });
+    if (city.lat && city.lng) { q.set("lat", city.lat); q.set("lng", city.lng); }
+    else q.set("address", s22where(city));
+    return "https://www.stay22.com/embed/gm?" + q.toString();
+  }
+  // Map section; the iframe only loads when scrolled near, so pages stay fast.
+  function stay22MapHtml(city, placement, heading) {
+    var src = stay22MapSrc(city, placement);
+    if (!src) return "";
+    return '<section class="s22"><h2>' + esc(heading || ("Where to stay in " + city.name)) + "</h2>" +
+      "<p>Prices and availability from Booking.com, Expedia and more. TripVibz may earn a commission when you book.</p>" +
+      '<div class="s22-map" data-s22-src="' + esc(src) + '"><span>Loading hotel map…</span></div></section>';
+  }
+  function mountStay22(root) {
+    var els = (root || document).querySelectorAll("[data-s22-src]:not([data-loaded])");
+    if (!els.length) return;
+    var load = function (el) {
+      if (el.dataset.loaded) return; el.dataset.loaded = "1";
+      el.innerHTML = '<iframe title="Hotel map" loading="lazy" src="' + el.dataset.s22Src + '"></iframe>';
+    };
+    if (!("IntersectionObserver" in window)) { els.forEach(load); return; }
+    var io = new IntersectionObserver(function (ents) {
+      ents.forEach(function (e) { if (e.isIntersecting) { load(e.target); io.unobserve(e.target); } });
+    }, { rootMargin: "400px" });
+    els.forEach(function (el) { io.observe(el); });
+  }
+  // Inline hotel link on a take: dates in a better month for "when to go"
+  // takes, "hotels near <place>" for place-tagged ones.
+  function stay22TakeLink(p, ctx, city, placement) {
+    if (!STAY22_AID || !city) return "";
+    var place = placeOf(p, ctx) || "";
+    var bm = p.type === "worst_times" ? betterMonth(p.months) : null;
+    var href, label;
+    if (bm) {
+      var d = nextDates(bm);
+      href = stay22Link(city, { place: place, checkin: d.checkin, checkout: d.checkout, placement: placement });
+      label = "Hotels for " + MON[bm - 1] + " instead";
+    } else if (place && !/^Whole (city|island)$/i.test(place)) {
+      href = stay22Link(city, { place: place, placement: placement });
+      label = "Hotels near " + place;
+    } else return "";
+    return '<a class="s22-link" href="' + esc(href) + '" target="_blank" rel="sponsored noopener">' +
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-6h6v6"/></svg>' + esc(label) + "</a>";
+  }
+
   window.TV2 = {
     KIND: KIND, TENURE: TENURE, MON: MON, ICON: ICON, POST_COLS: POST_COLS,
     tenureBadge: tenureBadge, monthsLabel: monthsLabel, shortName: shortName,
     loadCity: loadCity, hydrate: hydrate, sortPosts: sortPosts, isSplit: isSplit, placeOf: placeOf,
-    takeHtml: takeHtml, castVote: castVote, whenSummary: whenSummary, whenStrip: whenStrip, monthSeverity: wSev,
+    takeHtml: takeHtml, castVote: castVote, stay22Link: stay22Link, stay22MapHtml: stay22MapHtml, mountStay22: mountStay22, whenSummary: whenSummary, whenStrip: whenStrip, monthSeverity: wSev,
     loadQuestions: loadQuestions, qTotal: qTotal, answer: answer, qOptionsHtml: qOptionsHtml,
     prepareClaim: prepareClaim, finishClaim: finishClaim, signInForBadge: signInForBadge, saveTenure: saveTenure,
     drawShareCard: drawShareCard, shareCard: shareCard, ago: ago, answerKind: answerKind, loadPosts: loadPosts, POST_COLS_X: POST_COLS_X,

@@ -138,12 +138,14 @@
         ${POSTS.length ? `
         <nav class="chips" aria-label="Show">${SECTIONS.map(([id,l]) => `<button class="chip" data-sec="${id}" aria-pressed="${SECTION===id}">${l}</button>`).join("")}</nav>
         <div class="seg" role="group" aria-label="Sort" style="margin:2px 0 12px">${[["top","Top"],["hot","Hot"],["new","New"]].map(([id,l]) => `<button data-sort="${id}" aria-pressed="${SORT===id}">${l}</button>`).join("")}</div>` : ""}
-        <div class="feed" id="feed">${list.length ? list.map(p => T2.takeHtml(p, CTX)).join("") :
+        <div class="feed" id="feed">${list.length ? list.map(p => T2.takeHtml(p, CTX, { city: CITY, placement: "city_feed" })).join("") :
           POSTS.length ? `<div class="empty2"><b>Nothing in this section yet</b>Try “Everything”, or add one below.</div>` :
           `<div class="empty2"><b>No takes yet</b>Live in ${esc(CITY.name)}? Tap an answer in the question above, or start your own topic below. The first 10 signed-in locals become founding locals.</div>`}</div>
         ${topicBox()}
-      </section>`;
+      </section>
+      ${T2.stay22MapHtml(CITY, "city_map")}`;
     wire();
+    T2.mountStay22($("#city"));
   }
 
   function wire(){
@@ -158,7 +160,7 @@
       const b = e.target.closest("[data-vote]"); if (!b) return;
       const p = POSTS.find(x => x.id === b.dataset.id); if (!p) return;
       await T2.castVote(p, CTX, Number(b.dataset.vote));
-      const card = b.closest(".take"); card.outerHTML = T2.takeHtml(p, CTX);
+      const card = b.closest(".take"); card.outerHTML = T2.takeHtml(p, CTX, { city: CITY, placement: "city_feed" });
     });
   }
 

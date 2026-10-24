@@ -218,6 +218,11 @@ await test("City page: When-to-go strip links to the month-by-month calendar", a
   assert(/Best/i.test(best) && /·\s*\S/.test(best), "Best line should name the reason (e.g. 'Mar–May · Spring')");
 });
 
+await test("Reply links: /<city>/add/?kind=&text= opens with their words filled in", async () => {
+  await go("/miami/add/?kind=hidden_gem&text=" + encodeURIComponent("I take everyone to the Venetian Pool on a weekday morning."));
+  assert((await page.inputValue("#take")).startsWith("I take everyone to the Venetian Pool"), "reply text not pre-filled");
+});
+
 await test("New topic: city page box sends a take for review (with its topic)", async () => {
   await go("/miami/");
   assert(await page.locator("#nt").count() === 1, "new-topic box missing");
