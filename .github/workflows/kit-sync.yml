@@ -1,0 +1,43 @@
+# Hourly: copy new email signups (public.email_signups) into the TripVibz Kit
+# account, tagged by city. The Kit key stays in the KIT_API_KEY repo secret;
+# the browser never sees it. Logic: scripts/kit_sync.py
+# On pull requests that touch the sync, it only checks that the Kit key works.
+
+name: Kit sync
+
+on:
+  schedule:
+    - cron: "23 * * * *"   # hourly
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "check = test the Kit key only; sync = add new signups"
+        default: sync
+        type: choice
+        options: [sync, check]
+  pull_request:
+    paths:
+      - scripts/kit_sync.py
+      - .github/workflows/kit-sync.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kit-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install --quiet "psycopg[binary]==3.2.3"
+      - name: Add new signups to Kit
+        env:
+          KIT_API_KEY: ${{ secrets.KIT_API_KEY }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          MODE="${{ github.event_name == 'pull_request' && 'check' || inputs.mode || 'sync' }}"
+          python3 scripts/kit_sync.py "$MODE"

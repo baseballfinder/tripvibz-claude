@@ -63,6 +63,11 @@ async function intercept(ctx) {
         return r.fulfill({ json: (headers.accept || "").includes("vnd.pgrst.object") ? row : [row] });
       }
     }
+    if (url.includes("/rpc/email_signup")) {   // never let a test address reach the signup list
+      let body = {}; try { body = JSON.parse(req.postData() || "{}"); } catch {}
+      writes.push({ table: "email_signup(rpc)", method: m, body });
+      return r.fulfill({ status: 204, body: "" });
+    }
     if (m === "GET" || m === "HEAD" || url.includes("/rpc/")) return r.continue({ headers });
     let body = {}; try { body = JSON.parse(req.postData() || "{}"); } catch {}
     const table = new URL(url).pathname.split("/").pop();
@@ -236,6 +241,23 @@ await test("New topic: city page box sends a take for review (with its topic)", 
   const w = writes.find(x => x.table.startsWith("posts") && x.body.topic);
   assert(w && w.body.topic === "TEST parking near South Beach" && w.body.type === "hidden_gem", "take with topic was not sent");
   assert(/Thanks, it's in/.test(await page.textContent("#nt")), "thank-you state missing");
+});
+
+await test("Email signup: city page box checks the address, sends it with the city, then thanks", async () => {
+  await go("/miami/");
+  const box = page.locator("[data-signup]");
+  assert(await box.count() === 1, "email signup box missing on city page");
+  await page.fill("[data-signup] input[type=email]", "not-an-email");
+  await page.click("[data-signup] button");
+  assert(/doesn't look right/.test(await page.textContent("[data-signup] .signup-msg")), "bad email should be caught before sending");
+  assert(!writes.some(x => x.table === "email_signup(rpc)"), "bad email was sent");
+  await page.fill("[data-signup] input[type=email]", "test@example.com");
+  await page.click("[data-signup] button");
+  await page.waitForTimeout(1200);
+  const w = writes.find(x => x.table === "email_signup(rpc)");
+  assert(w && w.body.p_email === "test@example.com" && w.body.p_city && w.body.p_source === "city_page", "signup was not sent with city and source");
+  assert(/on the list/.test(await page.textContent("[data-signup]")), "thank-you state missing");
+  await page.waitForLoadState("networkidle");   // let in-flight page fetches finish before the next test navigates
 });
 
 await test("Sign-in options: Facebook and TikTok buttons (preview), TikTok goes to the bridge", async () => {

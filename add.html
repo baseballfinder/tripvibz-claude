@@ -192,8 +192,7 @@
           <li>Your <b style="color:#fff">${esc(badge)}</b> badge instead of “Unverified”</li>
           <li>Your takes rank higher in the feed</li>
           <li>Claim a founding-local spot in ${esc(CITY.name)}${left ? ` (${left} left)` : ""}</li>
-          <li>Email updates when locals vote or reply (coming soon)</li>
-        </ul>
+                  </ul>
         <button class="bigbtn" id="claim" style="background:#fff;color:#16130e"><b>Sign in</b></button>
         <div class="fine">Takes you already posted move to your name.</div>
       </section>` : ""}
@@ -218,6 +217,8 @@
         </div>
       </section>
 
+      ${T2.emailSignupHtml(CITY, "after_post")}
+
       <section class="sect">
         ${nextQ ? `<a class="next-q" href="/${CITY.slug}/vote/?q=${nextQ.id}"><span><b>${QS.filter(x => !x.mine).length} quick question${QS.filter(x => !x.mine).length === 1 ? "" : "s"} about ${esc(CITY.name)}</b><span>One tap each.</span></span>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16130e" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>`
@@ -231,6 +232,7 @@
     $("#share").onclick = async () => { const r = await T2.shareCard(canvas, Object.assign({}, card, { url: takeUrl })); if (r === "downloaded") toast("Card saved. Post it to your story."); };
     $("#sms").onclick = () => { location.href = `sms:?&body=${encodeURIComponent(`A ${CITY.name} local says: “${p.title}” True or nope? ${takeUrl}`)}`; };
     $("#copy").onclick = async () => { try { await navigator.clipboard.writeText(takeUrl); toast("Link copied"); } catch (e) { prompt("Copy this link:", takeUrl); } };
+    T2.mountEmailSignup($("#root"), CITY);
     const claim = $("#claim"); if (claim) claim.onclick = () => T2.signInForBadge({ pending: false });
   }
 
