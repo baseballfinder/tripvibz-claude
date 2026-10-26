@@ -570,7 +570,65 @@
       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-6h6v6"/></svg>' + esc(label) + "</a>";
   }
 
+  /* ---------- email signup (newsletter) ----------
+     The box only calls the email_signup() database function. An hourly job adds
+     the address to Kit with a city tag. Pressing the button is the opt-in. */
+  var SIGNED_UP = {};
+  function emailSignupHtml(city, source) {
+    var key = (city && city.id) || "all";
+    var name = city ? city.name : "your next trip";
+    if (SIGNED_UP[key]) {
+      return '<section class="box signup" data-signup="' + esc(source) + '"><div class="signup-done"><b>You\'re on the list.</b> We\'ll email you when ' +
+        (city ? "locals add something worth knowing about " + esc(name) : "there's something worth knowing") + ".</div></section>";
+    }
+    return '<section class="box signup" data-signup="' + esc(source) + '">' +
+      '<h2>Get ' + esc(name) + ' tips from locals by email</h2>' +
+      '<div class="signup-sub">The best new takes and questions about ' + esc(name) + '. Occasional emails, unsubscribe anytime.</div>' +
+      '<form class="signup-f" novalidate>' +
+      '<input class="inp" type="email" name="email" autocomplete="email" inputmode="email" placeholder="you@example.com" aria-label="Email address" maxlength="254" required>' +
+      '<button class="signup-btn" type="submit">Sign me up</button></form>' +
+      '<div class="signup-msg" hidden></div>' +
+      '<div class="signup-fine">Your email is never shown on the site. <a href="/privacy/">Privacy</a></div></section>';
+  }
+  function mountEmailSignup(root, city) {
+    var box = root && root.querySelector("[data-signup]");
+    if (!box) return;
+    var form = box.querySelector("form");
+    if (!form) return;
+    var input = form.querySelector("input"), btn = form.querySelector("button"), msg = box.querySelector(".signup-msg");
+    try {
+      // Session is read locally (no network call); prefill only for real sign-ins.
+      TV.sb.auth.getSession().then(function (r) {
+        var u = r && r.data && r.data.session && r.data.session.user;
+        if (u && !u.is_anonymous && u.email && !input.value) input.value = u.email;
+      }).catch(function () {});
+    } catch (e) {}
+    form.onsubmit = async function (ev) {
+      ev.preventDefault();
+      var email = (input.value || "").trim();
+      msg.hidden = false; msg.className = "signup-msg";
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { msg.textContent = "That email doesn't look right."; msg.className = "signup-msg err"; input.focus(); return; }
+      btn.disabled = true; msg.textContent = "Signing you up…";
+      try {
+        await TV.auth.ensure();
+        var out = await TV.sb.rpc("email_signup", { p_email: email, p_city: city ? city.id : null, p_source: box.getAttribute("data-signup") || "site" });
+        if (out.error) throw out.error;
+        SIGNED_UP[(city && city.id) || "all"] = true;
+        track("email_signup", { city: city ? city.slug : "", source: box.getAttribute("data-signup") || "site" });
+        box.outerHTML = emailSignupHtml(city, box.getAttribute("data-signup") || "site");
+      } catch (e) {
+        console.error(e);
+        btn.disabled = false;
+        msg.className = "signup-msg err";
+        msg.textContent = /RATE_LIMITED/.test(String(e && e.message)) ? "That's enough signups for today. Try again tomorrow."
+          : /BAD_EMAIL/.test(String(e && e.message)) ? "That email doesn't look right."
+          : "That didn't go through. Try again in a minute.";
+      }
+    };
+  }
+
   window.TV2 = {
+    emailSignupHtml: emailSignupHtml, mountEmailSignup: mountEmailSignup,
     KIND: KIND, TENURE: TENURE, MON: MON, ICON: ICON, POST_COLS: POST_COLS,
     tenureBadge: tenureBadge, monthsLabel: monthsLabel, shortName: shortName,
     loadCity: loadCity, hydrate: hydrate, sortPosts: sortPosts, isSplit: isSplit, placeOf: placeOf,

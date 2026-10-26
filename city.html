@@ -143,9 +143,11 @@
           `<div class="empty2"><b>No takes yet</b>Live in ${esc(CITY.name)}? Tap an answer in the question above, or start your own topic below. The first 10 signed-in locals become founding locals.</div>`}</div>
         ${topicBox()}
       </section>
-      ${T2.stay22MapHtml(CITY, "city_map")}`;
+      ${T2.stay22MapHtml(CITY, "city_map")}
+      ${T2.emailSignupHtml(CITY, "city_page")}`;
     wire();
     T2.mountStay22($("#city"));
+    T2.mountEmailSignup($("#city"), CITY);
   }
 
   function wire(){
