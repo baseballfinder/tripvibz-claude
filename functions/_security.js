@@ -21,9 +21,10 @@
 export const CSP = [
   "default-src 'self'",
   // Site scripts (incl. the self-hosted Supabase client) + GA4, Clarity, Google sign-in.
+  // Fonts are self-hosted (build.mjs), so no font or style origin beyond Google sign-in.
   "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://*.clarity.ms https://accounts.google.com",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
-  "font-src 'self' https://fonts.gstatic.com data:",
+  "style-src 'self' 'unsafe-inline' https://accounts.google.com",
+  "font-src 'self' data:",
   // City photos (Supabase storage), sign-in avatars (Google/TikTok CDNs), share images.
   "img-src 'self' data: blob: https:",
   "connect-src 'self' https://nkxorlktzbgwqnfwmuus.supabase.co wss://nkxorlktzbgwqnfwmuus.supabase.co"

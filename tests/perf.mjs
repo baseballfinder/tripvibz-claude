@@ -40,6 +40,8 @@ const BUDGET = {
   css: 25 * KB,               // v2.css 18 KB, site.css 9 KB
   ogImage: 200 * KB,          // share cards: 110-157 KB each
   brandImage: 120 * KB,       // app icons / logos
+  fontFile: 60 * KB,          // variable woff2, latin subset: 27-35 KB each
+  fontsTotal: 120 * KB,       // 3 files, 90 KB
   sitemapUrls: 400,           // 61 today; a runaway generator would blow this
   distTotal: 40 * 1024 * KB   // 23 MB (mostly the 164 share cards)
 };
@@ -93,6 +95,31 @@ await test("City grid photos are lazy-loaded with fixed dimensions (no layout sh
     const grid = (h.match(/<img[^>]*\.photo\|\|[^>]*>/g) || []);
     assert(grid.length, `${f}: no city photo <img> found`);
     for (const img of grid) assert(/loading="lazy"/.test(img) && /width=/.test(img) && /height=/.test(img), `${f}: city photo <img> must have loading="lazy", width and height: ${img.slice(0, 80)}`);
+  }
+});
+
+await test(`Fonts: self-hosted variable woff2 ≤ ${kb(BUDGET.fontFile)} each, ≤ ${kb(BUDGET.fontsTotal)} total, inlined @font-face with swap, uprights preloaded`, async () => {
+  const fonts = await files("dist/assets/fonts", p => p.endsWith(".woff2"));
+  assert(fonts.length >= 2, "font files missing from dist/assets/fonts");
+  let total = 0;
+  for (const f of fonts) { const s = await size(f); assert(s <= BUDGET.fontFile, `${f} is ${kb(s)}`); total += s; }
+  assert(total <= BUDGET.fontsTotal, `fonts total ${kb(total)}`);
+  for (const f of ["dist/index.html", "dist/miami/index.html", "dist/about/index.html"]) {
+    const h = await readFile(f, "utf8");
+    assert(/<style>[^<]*@font-face\{[^<]*font-display:swap/.test(h), `${f}: inlined @font-face with font-display:swap missing`);
+    assert((h.match(/<link rel="preload"[^>]*as="font"[^>]*crossorigin>/g) || []).length >= 2, `${f}: the two upright fonts should be preloaded`);
+    assert(!/<link[^>]*href="https:\/\/fonts\./.test(h), `${f}: no Google Fonts stylesheet`);
+  }
+});
+
+await test("Nothing non-essential blocks first paint: analytics is deferred, no external render-blocking requests", async () => {
+  for (const f of await files("dist", p => p.endsWith(".html"))) {
+    const h = await readFile(f, "utf8");
+    const head = (h.match(/<head>[\s\S]*?<\/head>/) || [""])[0];
+    for (const m of head.matchAll(/<script[^>]*src="([^"]+)"[^>]*>/g))
+      if (/analytics\.js/.test(m[1])) assert(/\bdefer\b|\basync\b/.test(m[0]), `${f}: analytics.js must be defer/async`);
+    for (const m of head.matchAll(/<link[^>]*rel="stylesheet"[^>]*href="([^"]+)"/g))
+      assert(m[1].startsWith("/"), `${f}: external render-blocking stylesheet ${m[1]}`);
   }
 });
 

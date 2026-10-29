@@ -4,12 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TripVibz · Places</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://nkxorlktzbgwqnfwmuus.supabase.co" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Public+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<!--fonts-->
 <link rel="stylesheet" href="/assets/site.css">
-<script src="/assets/analytics.js"></script>
+<script src="/assets/analytics.js" defer></script>
 <style>
   /* places-only layout */
   .head{padding:26px 0 4px}
@@ -23,7 +21,7 @@
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:18px;margin-bottom:10px}
   .city-card{display:block;background:#fff;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;text-decoration:none;transition:transform .1s ease,box-shadow .12s ease}
   a.city-card:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(22,20,15,.1)}
-  .city-card.is-thin .city-foot{color:var(--coral)}
+  .city-card.is-thin .city-foot{color:var(--coral-ink)}
   .city-top{height:104px;position:relative;overflow:hidden;display:flex;align-items:flex-start;justify-content:flex-end;padding:10px}
   .city-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
   /* renamed from .state so it doesn't collide with the shared empty-state block */
@@ -51,7 +49,7 @@
   .req .meter{height:5px;border-radius:3px;background:#3a352c;margin-top:7px;overflow:hidden}
   .req .meter i{display:block;height:100%;background:var(--coral)}
   .req .cnt{font-size:12px;color:#b8b2a4;margin-top:4px}
-  .req button{flex:none;min-height:44px;padding:0 16px;border-radius:999px;border:none;background:var(--coral);color:#fff;font:800 14px "Archivo",sans-serif;cursor:pointer}
+  .req button{flex:none;min-height:44px;padding:0 16px;border-radius:999px;border:none;background:var(--coral-btn);color:#fff;font:800 14px "Archivo",sans-serif;cursor:pointer}
   .req button[disabled]{background:#3a352c;color:#cfc8b8;cursor:default}
   .req .none{color:#b8b2a4;font-size:14px;padding:6px 2px}
 </style>
@@ -74,11 +72,11 @@
   <div class="search"><input id="search" type="search" placeholder="Search a city or state…" autocomplete="off"></div>
 
   <div id="live-wrap">
-    <div class="section-label" id="live-label" hidden>Live now</div>
+    <h2 class="section-label" id="live-label" hidden>Live now</h2>
     <div class="grid" id="live-grid"></div>
   </div>
   <div id="soon-wrap">
-    <div class="section-label" id="soon-label" hidden>Coming soon</div>
+    <h2 class="section-label" id="soon-label" hidden>Coming soon</h2>
     <div class="grid" id="soon-grid"></div>
   </div>
   <section class="req" id="request" aria-labelledby="req-h">

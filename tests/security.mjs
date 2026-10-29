@@ -83,8 +83,8 @@ await test("withSecurityHeaders() adds every header to a Function response witho
 
 /* ---------------- what the browser loads ---------------- */
 
-await test("Every script and stylesheet is same-origin (Google Fonts is the only outside stylesheet); Supabase client is vendored", async () => {
-  const styleAllow = new Set(["fonts.googleapis.com"]);
+await test("Every script, stylesheet and font is same-origin (fonts and the Supabase client are self-hosted)", async () => {
+  const styleAllow = new Set();
   for (const f of pages) {
     const h = await readFile(f, "utf8");
     for (const m of h.matchAll(/<script[^>]+src=["']([^"']+)["']/g))
@@ -93,6 +93,7 @@ await test("Every script and stylesheet is same-origin (Google Fonts is the only
       if (/^(https?:)?\/\//i.test(m[1])) assert(styleAllow.has(new URL(m[1], "https://x").hostname), `${f}: third-party stylesheet ${m[1]}`);
     }
     assert(!h.includes("cdn.jsdelivr.net") && !h.includes("unpkg.com") && !h.includes("cdnjs.cloudflare.com"), `${f}: still references a public CDN`);
+    assert(!h.includes("fonts.googleapis.com") && !h.includes("fonts.gstatic.com"), `${f}: fonts must be self-hosted (build.mjs), not Google Fonts`);
   }
   assert(await exists("dist/assets/supabase.js"), "dist/assets/supabase.js (bundled from the pinned npm package) missing");
   const vendored = await readFile("dist/assets/supabase.js", "utf8");
