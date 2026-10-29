@@ -105,7 +105,7 @@ async function fetchTable(name, query = "") {
 async function loadContent() {
   try {
     const [cities, posts, events] = await Promise.all([
-      fetchTable("cities", "select=id,name,state,slug,photo&order=sort"),
+      fetchTable("cities", "select=id,name,state,slug,photo,lat,lng&order=sort"),
       fetchTable("posts", "select=id,title,body,type,ups,downs,created_at,city_id"),
       fetchTable("city_events", "select=id,name,blurb,kind,severity,start_month,end_month,city_id")
     ]);
@@ -264,17 +264,29 @@ function breadcrumbLd(items) {
   };
 }
 
-function cityLd(city, url) {
-  return ld({
-    "@context": "https://schema.org",
-    "@graph": [
-      breadcrumbLd([
-        { name: "TripVibz", url: `${SITE}/` },
-        { name: "Cities", url: `${SITE}/cities/` },
-        { name: city.name, url }
-      ])
-    ]
-  });
+function cityLd(city, url, takes = []) {
+  const graph = [
+    breadcrumbLd([
+      { name: "TripVibz", url: `${SITE}/` },
+      { name: "Cities", url: `${SITE}/cities/` },
+      { name: city.name, url }
+    ])
+  ];
+  // Populated city pages: the ranked takes as an ItemList (same order as the page).
+  const ranked = takes.slice().sort((a, b) => (b.ups - b.downs) - (a.ups - a.downs));
+  if (ranked.length) {
+    graph.push({
+      "@type": "ItemList",
+      "@id": `${url}#takes`,
+      name: `What locals say about ${city.name}`,
+      numberOfItems: ranked.length,
+      itemListOrder: "https://schema.org/ItemListOrderDescending",
+      itemListElement: ranked.map((t, i) => ({
+        "@type": "ListItem", position: i + 1, name: t.title, url: `${SITE}/t/${t.id}`
+      }))
+    });
+  }
+  return ld({ "@context": "https://schema.org", "@graph": graph });
 }
 
 function articleLd(city, theme, takes, url, cfg, image) {
@@ -394,8 +406,50 @@ function cityList(cities, countsBySlug) {
   }).join("");
 }
 
-// Crawler-readable version of the city feed; the page script replaces it.
-function cityBody(city, counts, takes) {
+/* ---------------- editorial intros + nearby cities ----------------
+   Empty city pages get a short intro clearly labeled as written by the
+   TripVibz editors (never presented as a local's take). Sources are kept in
+   the growth log, not on the page. Shown until the city has 3+ takes. */
+const INTRO_MIN_TAKES = 3;
+// Trim to a whole word under n characters for meta descriptions.
+function clip(text, n) {
+  const t = String(text).replace(/\s+/g, " ").trim();
+  if (t.length <= n) return t;
+  return t.slice(0, n - 1).replace(/[\s,;:.]+\S*$/, "") + "…";
+}
+function editorsHtml(city, intro) {
+  if (!intro) return "";
+  return `<section class="editors" id="tv-editors" aria-label="From the TripVibz editors">
+<div class="editors-k">From the TripVibz editors</div>
+<p>${esc(intro)}</p>
+<div class="editors-note">Written by TripVibz, not by locals. Live in ${esc(city.name)}? <a href="/${esc(city.slug)}/add/">Add your take</a> and tell visitors what we missed.</div>
+</section>`;
+}
+
+const toRad = d => d * Math.PI / 180;
+function miles(a, b) {
+  if (a.lat == null || b.lat == null) return Infinity;
+  const dLat = toRad(b.lat - a.lat), dLng = toRad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 3959 * 2 * Math.asin(Math.sqrt(h));
+}
+// Same state first, then by distance. Internal links so no city page is a dead end.
+function nearbyCities(city, cities, n = 4) {
+  return cities.filter(c => c.slug !== city.slug)
+    .map(c => ({ c, same: c.state && c.state === city.state ? 0 : 1, d: miles(city, c) }))
+    .sort((x, y) => x.same - y.same || x.d - y.d)
+    .slice(0, n).map(x => x.c);
+}
+function nearbyHtml(list) {
+  if (!list.length) return "";
+  return `<nav class="nearby" id="tv-nearby" aria-label="Nearby on TripVibz"><h2>Nearby on TripVibz</h2><div class="nearby-list">${
+    list.map(c => `<a href="/${esc(c.slug)}/">${esc(c.name)}${c.state ? `<span>${esc(c.state)}</span>` : ""}</a>`).join("")
+  }</div></nav>`;
+}
+
+// Crawler-readable version of the city feed; the page script replaces it
+// (keeping the editors' intro and nearby links, see city.html).
+function cityBody(city, counts, takes, intro = "", nearby = []) {
   const ranked = takes.slice().sort((a, b) => (b.ups - b.downs) - (a.ups - a.downs));
   return `<a class="back" href="/cities/">← All cities</a>
 <div class="kicker">${esc(city.name)}${city.state ? ", " + esc(city.state) : ""}</div>
@@ -404,7 +458,9 @@ function cityBody(city, counts, takes) {
     `<a class="chip" href="/${esc(city.slug)}/${THEMES[k].slug}/">${esc(THEMES[k].nav)}${counts[k] ? ` (${counts[k]})` : ""}</a>`).join("")}</nav>
 <div class="feed">${ranked.length ? ranked.map(p => `<article class="take"><a class="tt" href="/t/${esc(p.id)}">${esc(p.title)}</a>${
     p.body ? `<div class="more">${esc(p.body)}</div>` : ""}<div class="who">${p.ups} true · ${p.downs} nope</div></article>`).join("")
-  : `<div class="empty2"><b>No takes here yet</b>Live in ${esc(city.name)}? <a href="/${esc(city.slug)}/add/">Tell visitors what they get wrong.</a></div>`}</div>`;
+  : `<div class="empty2"><b>No takes here yet</b>Live in ${esc(city.name)}? <a href="/${esc(city.slug)}/add/">Tell visitors what they get wrong.</a></div>`}</div>
+${editorsHtml(city, intro)}
+${nearbyHtml(nearby)}`;
 }
 
 /* ---------------- minify ---------------- */
@@ -528,6 +584,10 @@ const { cities, posts, events } = await loadContent();
 cities.forEach(c => { if (c.photo) PHOTO_BY_SLUG[c.slug] = c.photo; });
 console.log(`  ${cities.length} cities · ${posts.length} posts · ${events.length} events`);
 
+let INTROS = {};
+try { INTROS = JSON.parse(await readFile("data/editorial/intros.json", "utf8")); }
+catch { console.warn("  (no data/editorial/intros.json — city pages build without editor intros)"); }
+
 const articleTpl = await readFile("article.html", "utf8");
 const cityTpl = await readFile("city.html", "utf8");
 const voteTpl = await readFile("vote.html", "utf8");
@@ -577,22 +637,28 @@ for (const city of cities) {
   const cityEvents = events.filter(e => e.city_id === city.id);
   const counts = {};
   cityPosts.forEach(p => { counts[p.type] = (counts[p.type] || 0) + 1; });
+  const feedTakes = cityPosts.filter(p => THEMES[p.type]);
+  const intro = cityPosts.length < INTRO_MIN_TAKES && typeof INTROS[city.slug] === "string" ? INTROS[city.slug] : "";
+  // Indexable once there's something real: the editors' intro or 3+ takes.
+  const cityIndexable = !!intro || cityPosts.length >= INTRO_MIN_TAKES;
 
   await emit(`${city.slug}/index.html`, await minifyHtml(render(cityTpl, {
     title: `${city.name}${city.state ? ", " + city.state : ""} — what locals say`,
-    desc: `Local guides for ${city.name}: what not to do, the worst times to visit, and what residents actually do.`,
+    // A city-specific description (from the editors' intro) beats one template
+    // line repeated across 27 pages.
+    desc: intro ? clip(intro, 155) : `Local guides for ${city.name}: what not to do, the worst times to visit, and what residents actually do.`,
     canonical: `${SITE}/${city.slug}/`,
     image: shareCard(city) ? shareCard(city).image : photo(city.slug),
     og: shareCard(city) || undefined,
-    body: cityBody(city, counts, cityPosts.filter(p => THEMES[p.type])),
+    body: cityBody(city, counts, feedTakes, intro, nearbyCities(city, cities)),
     mount: "city",
-    jsonLd: cityLd(city, `${SITE}/${city.slug}/`),
+    jsonLd: cityLd(city, `${SITE}/${city.slug}/`, feedTakes),
     // Empty pages stay reachable for people (links, email, social) but out of
-    // Google until there is something real on them. Thin pages drag the
-    // whole site's quality down.
-    noindex: !cityPosts.length
+    // Google until there is something real on them: the editors' intro or
+    // 3+ takes. Thin pages drag the whole site's quality down.
+    noindex: !cityIndexable
   }), null));
-  if (cityPosts.length) pages.push({ path: `/${city.slug}/`, lastmod: newest(cityPosts), priority: "0.8" });
+  if (cityIndexable) pages.push({ path: `/${city.slug}/`, lastmod: cityPosts.length ? newest(cityPosts) : new Date().toISOString().slice(0, 10), priority: "0.8" });
   cityCount++;
 
   // App pages: one-tap voting (email links land here) and posting. Not for Google.
