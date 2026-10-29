@@ -3,7 +3,9 @@
    Mobile-first single column; loaded after site.css.
    ========================================================================== */
 
-.v2{max-width:640px;margin:0 auto;padding:0 16px 120px}
+/* min-height: the page script adds the question card and takes after load; without
+   a floor the footer sits in view on short (empty-city) pages and jumps down. */
+.v2{max-width:640px;margin:0 auto;padding:0 16px 120px;min-height:100vh}
 .v2 .kicker{font-family:"Archivo";font-weight:700;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#a8361a}
 .v2 h1{font-weight:900;font-size:clamp(26px,6vw,34px);line-height:1.08;margin:6px 0}
 .v2 .stats{display:flex;gap:14px;flex-wrap:wrap;font-size:13.5px;color:var(--muted);font-weight:600}
@@ -13,7 +15,7 @@
 .chips{display:flex;gap:8px;overflow-x:auto;padding:4px 0 10px;scrollbar-width:none}
 .chips::-webkit-scrollbar{display:none}
 .chip{flex:none;min-height:40px;padding:0 14px;border-radius:999px;font:700 13.5px "Public Sans",sans-serif;cursor:pointer;border:1.5px solid #d9d1c2;background:#fff;color:#3f3a31}
-.chip[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:#fff}
+.chip[aria-pressed="true"],.chip[aria-current="page"]{border-color:var(--ink);background:var(--ink);color:#fff}
 .chip.dashed{border-style:dashed;background:transparent}
 .seg{display:inline-flex;background:#ece6da;border-radius:999px;padding:3px}
 .seg button{min-height:36px;padding:0 14px;border:none;border-radius:999px;font:700 13px "Public Sans",sans-serif;cursor:pointer;background:transparent;color:#5f5a50}

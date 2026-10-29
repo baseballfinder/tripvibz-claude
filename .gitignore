@@ -26,3 +26,6 @@ city-photos-out/
 
 # Python bytecode
 __pycache__/
+
+# Lighthouse CI output (tests)
+.lighthouseci/

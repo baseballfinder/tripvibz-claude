@@ -30,6 +30,11 @@ const json = (body, status = 200) =>
 // "Miami Beach" vs "miami beach" vs "Miami-Beach" should all match.
 const norm = (s) => (s || "").toLowerCase().replace(/[^a-z]/g, "");
 
+// Input limits (mirrored by CHECK constraints in the database).
+export const TITLE_MAX = 200, BODY_MAX = 2000;
+export const TYPES = new Set(["what_not_to_do", "hidden_gem", "take", "worst_times"]);
+const UUID = /^[0-9a-f-]{36}$/i;
+
 import { notify, where } from "./_notify.js";
 import { locate } from "./locate.js";
 
@@ -52,6 +57,14 @@ export async function onRequestPost(context) {
   if (!title || !type || !city_id) {
     return json({ error: "missing_fields" }, 400);
   }
+  // Shape and size checks before anything reaches the database. The page caps
+  // a take at 400 characters (title ≤ 160); these ceilings are deliberately
+  // above that so a UI change never trips them, and the database enforces the
+  // same limits (migration 20261029_security_hardening) for anyone bypassing this.
+  if (typeof title !== "string" || title.trim().length < 3 || title.length > TITLE_MAX) return json({ error: "bad_title" }, 400);
+  if (body != null && (typeof body !== "string" || body.length > BODY_MAX)) return json({ error: "bad_body" }, 400);
+  if (!TYPES.has(type)) return json({ error: "bad_type" }, 400);
+  if (!UUID.test(String(city_id)) || (place_id != null && !UUID.test(String(place_id)))) return json({ error: "bad_id" }, 400);
 
   // Geo comes from the edge. Absent when running locally or behind some
   // proxies — in that case we record nothing rather than guessing.
