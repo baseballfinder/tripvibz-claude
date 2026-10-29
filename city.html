@@ -45,6 +45,10 @@
 
   const SECTIONS = [["all","Everything"],["what_not_to_do","What not to do"],["worst_times","Worst times"],["hidden_gem","What locals do"]];
   let CITY = null, POSTS = [], CTX = null, QS = [], EVENTS = [], SECTION = "all", SORT = "top";
+  // Pre-rendered by the build: the TripVibz editors' intro (empty cities only)
+  // and nearby-city links. Grab them before the first render replaces #city.
+  const keep = id => { const el = document.getElementById(id); return el ? el.outerHTML : ""; };
+  const EDITORS_HTML = keep("tv-editors"), NEARBY_HTML = keep("tv-nearby");
   const NT = { kind: "what_not_to_do", topic: "", text: "", busy: false, sent: false, err: "", open: false };
   const NT_KINDS = [["what_not_to_do","Don’t do this"],["hidden_gem","Do this"],["take","It depends"],["worst_times","When to go"]];
 
@@ -132,6 +136,7 @@
       <div style="height:14px"></div>
       ${questionCard()}
       ${whenCard()}
+      ${POSTS.length < 3 ? EDITORS_HTML : ""}
       <section class="takes" aria-labelledby="takes-h">
         <div class="takes-h"><h2 id="takes-h">Local takes${POSTS.length ? ` <span>${POSTS.length}</span>` : ""}</h2>
           <span class="founders">${CTX.founderCount} of 10 founding local spots taken</span></div>
@@ -144,7 +149,8 @@
         ${topicBox()}
       </section>
       ${T2.stay22MapHtml(CITY, "city_map")}
-      ${T2.emailSignupHtml(CITY, "city_page")}`;
+      ${T2.emailSignupHtml(CITY, "city_page")}
+      ${NEARBY_HTML}`;
     wire();
     T2.mountStay22($("#city"));
     T2.mountEmailSignup($("#city"), CITY);

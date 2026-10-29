@@ -255,6 +255,31 @@ await test("Structured data: theme pages link each take; take pages carry Discus
   assert(!/thread\.html\?id=/.test(b), "crawlable links should use /t/<id>");
 });
 
+await test("City pages: editors' intro is labeled, never a take; index rule = intro or 3+ takes; nearby links", async () => {
+  const intros = JSON.parse(await readFile("data/editorial/intros.json", "utf8"));
+  const posts = await api("posts?select=city_id");
+  const sm = await readFile("dist/sitemap.xml", "utf8");
+  const descs = new Set();
+  for (const c of cities) {
+    const html = await readFile(join("dist", c.slug, "index.html"), "utf8");
+    const n = posts.filter(p => p.city_id === c.id).length;
+    const hasIntro = n < 3 && typeof intros[c.slug] === "string";
+    if (hasIntro) {
+      assert(html.includes('id="tv-editors"') && html.includes("From the TripVibz editors"), `${c.slug}: intro box missing or unlabeled`);
+      assert(html.includes("Written by TripVibz, not by locals"), `${c.slug}: intro must say it is not from locals`);
+      assert(!/class="take"[^>]*>[^<]*From the TripVibz editors/.test(html), `${c.slug}: intro rendered as a take`);
+    } else assert(!html.includes('id="tv-editors"'), `${c.slug}: intro shown on a city with 3+ takes`);
+    const indexable = hasIntro || n >= 3;
+    assert(/name="robots" content="noindex/.test(html) === !indexable, `${c.slug}: robots tag doesn't match the intro-or-3-takes rule`);
+    assert(sm.includes(`/${c.slug}/</loc>`) === indexable, `${c.slug}: sitemap doesn't match the index rule`);
+    assert((html.match(/id="tv-nearby"[\s\S]*?<\/nav>/) || [""])[0].split("<a ").length - 1 >= 3, `${c.slug}: fewer than 3 nearby-city links`);
+    const d = (html.match(/<meta name="description" content="([^"]*)"/) || [])[1];
+    if (indexable) { assert(d && !descs.has(d), `${c.slug}: description missing or duplicated`); descs.add(d); }
+  }
+  const city = await readFile("city.html", "utf8");
+  assert(city.includes('keep("tv-editors")') && city.includes("EDITORS_HTML"), "city.html must keep the editors' intro after hydration");
+});
+
 await test("Sitemap and robots point at www", async () => {
   const sm = await readFile("dist/sitemap.xml", "utf8"), rb = await readFile("dist/robots.txt", "utf8");
   assert(sm.includes("https://www.tripvibz.com/"), "sitemap not on www");
