@@ -7,9 +7,25 @@ Both suites read the live Supabase data, so they test the real cities, questions
 and takes. **They never write to it**: the browser tests intercept every post,
 vote, reply, city request and anonymous sign-in and answer them locally.
 
-Run locally: `node build.mjs && node tests/static.mjs && node tests/e2e.mjs`
+Run locally: `node build.mjs && node tests/static.mjs && node tests/security.mjs && node tests/perf.mjs && node tests/e2e.mjs && node tests/csp.mjs`
 (first time: `npm ci && npx playwright install chromium`). To test a Cloudflare
-preview instead of the local build: `BASE=https://<branch>.tripvibz.pages.dev node tests/e2e.mjs`.
+preview instead of the local build: `BASE=https://<branch>.tripvibz.pages.dev node tests/e2e.mjs`
+(same for `tests/csp.mjs`, which on a preview also exercises GA4, Clarity and the Stay22 map).
+Lighthouse: `npx lhci autorun` (needs Chrome; reports land in `.lighthouseci/`).
+The database lint needs the database URL: `psql "$SUPABASE_DB_URL" -f tests/db-security.sql`.
+
+## Suites
+
+| Suite | What | Needs |
+|---|---|---|
+| `static.mjs` | Pages, links, share cards, questions, sitemap, private files, migration names | build |
+| `security.mjs` | Security headers + CSP (one source: `functions/_security.js`), no third-party scripts, no secrets in the repo, workflow hygiene, API input rejection, open-redirect guard, SECURITY DEFINER search_path | build |
+| `perf.mjs` | Size budgets: pages, scripts, styles, share images, lazy-loaded grid photos, sitemap size | build |
+| `e2e.mjs` | Every feature in a real browser, writes intercepted | build + Chromium |
+| `csp.mjs` | Every page type loads with the Content-Security-Policy enforced, no violations | build + Chromium |
+| `lighthouserc.json` | Lighthouse: performance ≥ 85, accessibility/best-practices/SEO ≥ 90, LCP ≤ 4 s, CLS ≤ 0.1, TBT ≤ 300 ms, resource budgets on 5 page types | build + Chrome |
+| `db-security.sql` | Read-only database lint: RLS everywhere, no open write policies, SECURITY DEFINER allow-list and search_path, tamper guards from migration 20261029174500 | `SUPABASE_DB_URL` |
+| `npm audit` (workflow step) | Dependencies with high/critical advisories | — |
 
 ## Features and what covers them
 
@@ -38,6 +54,11 @@ preview instead of the local build: `BASE=https://<branch>.tripvibz.pages.dev no
 | Logo | favicon.ico, SVG favicon, app icons, manifest, logo files | static |
 | Old UI | No "Cosign", "Add to this article", "Add my take" or "Back to feed" anywhere; no old add button on city pages | static |
 | Private files | `data/`, `scripts/`, `tests/` are not published | static |
+| Security headers | CSP, HSTS, frame-ancestors, nosniff, Referrer-Policy, Permissions-Policy in `_headers` and on Function HTML | security |
+| Supply chain | No third-party `<script>` (Supabase client bundled from the pinned package), no secrets committed, `npm audit` | security + workflow |
+| API hardening | `/api/take` rejects oversize/malformed input, `/api/hit` ignores bots, TikTok bridge rejects bad state and open redirects | security |
+| Database rules | RLS on every table, no open write policies, authors can't edit counts/status/badges, visitor calendar entries wait for review | db-security.sql |
+| Speed | Lighthouse scores and Core Web Vitals; file-size budgets | lighthouse + perf |
 | Tooling | Python scripts compile, workflow files parse | static |
 
 ## Not covered automatically (check by hand when they change)
@@ -54,4 +75,7 @@ preview instead of the local build: `BASE=https://<branch>.tripvibz.pages.dev no
   and confirm no error; an issue only appears when a city has 5 asks.
 - **Nightly backup.** Check Actions → Nightly database backup shows green.
 - **Database rules** (rate limits, verified badges, claims). Changed only by SQL migrations;
-  re-test with a rolled-back transaction before running a migration.
+  re-test with a rolled-back transaction before running a migration. `tests/db-security.sql`
+  checks the rules exist; it does not exercise them as a user.
+- **Lighthouse on the live site.** CI measures the local build (same HTML, same assets) with
+  GA4/Clarity/Stay22 off. Check PageSpeed Insights on www after a change to third-party scripts.

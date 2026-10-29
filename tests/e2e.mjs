@@ -203,7 +203,7 @@ await test("Topic page: new take cards, starters open the add page, calendar on 
   await go("/nashville/what-not-to-do/");
   assert(/What not to do in Nashville/.test(await page.textContent("h1")), "headline missing");
   assert(await page.locator(".takes .chips a.chip").count() === 4, "section chips (same as the city page) missing");
-  assert(await page.locator(".takes .chips a.chip[aria-pressed=\"true\"]").count() === 1, "current section should be selected");
+  assert(await page.locator(".takes .chips a.chip[aria-current=\"page\"]").count() === 1, "current section should be selected");
   const s = await page.getAttribute(".qcard a.qopt >> nth=0", "href");
   assert(s && s.startsWith("/nashville/add/?kind=what_not_to_do"), "starter link wrong");
   assert(!(await page.content()).includes("Cosign"), "old Cosign UI is back");

@@ -17,6 +17,7 @@
 const SB = "https://nkxorlktzbgwqnfwmuus.supabase.co";
 const KEY = "sb_publishable_5UOevsS8KmWWGrQYNWsabg_0sVOIPmB";
 const SITE = "https://www.tripvibz.com";
+import { withSecurityHeaders } from "../_security.js";
 
 const esc = s => String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -38,7 +39,7 @@ export async function onRequestGet({ params, request, env }) {
   // indexing an empty page (hidden takes aren't readable with the public key).
   const notFound = async () => {
     const nf = await env.ASSETS.fetch(new URL("/404.html", request.url));
-    return new Response(nf.body, { status: 404, headers: { "content-type": "text/html; charset=utf-8" } });
+    return withSecurityHeaders(new Response(nf.body, { status: 404, headers: { "content-type": "text/html; charset=utf-8" } }));
   };
   if (!/^[0-9a-f-]{36}$/i.test(id)) return notFound();
 
@@ -47,8 +48,8 @@ export async function onRequestGet({ params, request, env }) {
     post = await read(`posts?select=title,body,type,ups,downs,city_id,created_at,author_verified&id=eq.${id}`);
     if (!post) return notFound();
     city = await read(`cities?select=name,state,slug&id=eq.${post.city_id}`);
-  } catch (e) { return page; /* database hiccup: serve the page, which loads it itself */ }
-  if (!city) return page;
+  } catch (e) { return withSecurityHeaders(page); /* database hiccup: serve the page, which loads it itself */ }
+  if (!city) return withSecurityHeaders(page);
 
   const title = `“${post.title}” — a ${city.name} local`;
   const votes = post.ups + post.downs;
@@ -135,5 +136,5 @@ ${comments.map(c => plain(c.body) ? `<p class="reply"><b>${local(c.author_verifi
     .transform(page);
   const headers = new Headers(out.headers);
   headers.set("cache-control", "public, max-age=300");
-  return new Response(out.body, { status: 200, headers });
+  return withSecurityHeaders(new Response(out.body, { status: 200, headers }));
 }

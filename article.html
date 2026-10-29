@@ -78,6 +78,7 @@
   .ev-gate{text-align:center;padding:6px 0 2px}
   .ev-gate p{font-size:13.5px;color:var(--muted);margin:0 0 12px}
 
+  .thanks{background:#e6f4ea;border:1px solid #b7dfc3;color:#1e5e35;font-size:13.5px;border-radius:9px;padding:11px 13px;margin:0 0 12px;line-height:1.45}
   .reject{background:#ffe7e0;border:1px solid #f5c4b6;color:#a52d15;font-size:13.5px;font-weight:600;border-radius:9px;padding:11px 13px;margin:0 0 12px;line-height:1.45}
   main{padding-bottom:110px}
 </style>
@@ -101,7 +102,7 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/supabase.js"></script>
 <script src="/assets/tv.js"></script>
 <script src="/assets/v2.js"></script>
 <script>
@@ -239,7 +240,7 @@
         <div class="takes-h"><h2 id="takes-h">Local takes${list.length ? ` <span>${list.length}</span>` : ""}</h2>
           <span class="founders">${CTX.founderCount} of 10 founding local spots taken</span></div>
         <nav class="chips" aria-label="Show">${SECTION_CHIPS.map(([k, l]) =>
-          `<a class="chip" href="${k === "all" ? routes.city(CITY.slug) : routes.article(CITY.slug, k)}" aria-pressed="${k === THEME}">${escapeHtml(l)}</a>`).join("")}</nav>
+          `<a class="chip" href="${k === "all" ? routes.city(CITY.slug) : routes.article(CITY.slug, k)}" ${k === THEME ? 'aria-current="page"' : ""}>${escapeHtml(l)}</a>`).join("")}</nav>
         <div class="feed" id="entries">
           ${list.length ? list.map(p => T2.takeHtml(p, CTX, { city: CITY, placement: PLACEMENT })).join("") :
             `<div class="empty2"><b>No takes yet</b>Live in ${escapeHtml(CITY.name)}? One sentence is enough, and the first 10 signed-in locals become founding locals.</div>`}
@@ -393,9 +394,12 @@
 
     if(name.length < 3){ toast("Give the event a name"); $("#ev-name").focus(); return; }
 
-    btn.disabled = true; btn.textContent = "Adding…";
+    btn.disabled = true; btn.textContent = "Sending…";
     try{
-      const { data, error } = await sb.from("city_events").insert({
+      // A visitor's entry waits for the editors (database: city_events_guard
+      // sets it to 'pending'), so it isn't readable back here and isn't shown
+      // on the calendar until an editor approves it.
+      const { error } = await sb.from("city_events").insert({
         city_id: CITY.id,
         name,
         blurb: blurb || null,
@@ -403,13 +407,11 @@
         start_month: parseInt($("#ev-start").value, 10),
         end_month: parseInt($("#ev-end").value, 10),
         author_id: auth.me.id
-      }).select("id,name,blurb,kind,severity,start_month,end_month").single();
+      });
       if(error) throw error;
 
-      EVENTS.push(data);
-      SEL_MONTH = data.start_month;
-      render();
-      toast("Added to the calendar");
+      evSlot(`<div class="thanks"><b>Thanks — got it.</b> The TripVibz editors check every calendar entry before it shows, so it may take a few days to appear.</div>`);
+      toast("Sent to the editors");
     }catch(e){
       console.error(e);
       btn.disabled = false; btn.textContent = "Add to calendar";
