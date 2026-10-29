@@ -224,9 +224,25 @@ const ORG = {
   name: "TripVibz",
   url: `${SITE}/`,
   logo: `${SITE}/assets/brand/icon-512.png`,
-  description: "Local guides to what visitors get wrong, when not to come, and what residents actually do.",
-  sameAs: []
+  description: "Local guides to what visitors get wrong, when not to come, and what residents actually do."
 };
+const WEBSITE = {
+  "@type": "WebSite",
+  "@id": `${SITE}/#website`,
+  url: `${SITE}/`,
+  name: "TripVibz",
+  publisher: { "@id": `${SITE}/#org` },
+  inLanguage: "en-US"
+};
+// Every page's JSON-LD graph carries the Organization and WebSite nodes, so a
+// crawler reading one page can resolve the {"@id": …/#org} author/publisher
+// references without having seen the home page. Google validates per page.
+const siteGraph = (...nodes) => ({ "@context": "https://schema.org", "@graph": [ORG, WEBSITE, ...nodes.filter(Boolean)] });
+// When a page has no dated content yet, use the date the current site went
+// live rather than the build time, so a rebuild never "republishes" everything.
+const CONTENT_EPOCH = "2026-10-17";
+const isoDay = d => (d ? String(d) : CONTENT_EPOCH).slice(0, 10);
+const placeOf = city => ({ "@type": "Place", name: `${city.name}${city.state ? ", " + city.state : ""}` });
 
 function ld(obj) {
   // JSON in a script tag: escape </ so a "</script>" in data can't break out.
@@ -235,21 +251,46 @@ function ld(obj) {
     `</script>`;
 }
 
-function homeLd() {
-  return ld({
-    "@context": "https://schema.org",
-    "@graph": [
-      ORG,
-      {
-        "@type": "WebSite",
-        "@id": `${SITE}/#website`,
-        url: `${SITE}/`,
-        name: "TripVibz",
-        publisher: { "@id": `${SITE}/#org` },
-        inLanguage: "en-US"
-      }
-    ]
-  });
+function homeLd(cities, lastmod) {
+  return ld(siteGraph({
+    "@type": "WebPage",
+    "@id": `${SITE}/#webpage`,
+    url: `${SITE}/`,
+    name: "TripVibz — what locals know that travel sites don't",
+    isPartOf: { "@id": `${SITE}/#website` },
+    about: { "@id": `${SITE}/#org` },
+    dateModified: isoDay(lastmod),
+    inLanguage: "en-US"
+  }));
+}
+
+// /cities/ — the directory of every city page.
+function citiesLd(cities, countsBySlug, lastmod) {
+  const url = `${SITE}/cities/`;
+  return ld(siteGraph(
+    {
+      "@type": "CollectionPage",
+      "@id": `${url}#webpage`,
+      url,
+      name: "Every city on TripVibz — local guides by residents",
+      description: "Browse cities where locals have written what visitors get wrong, when not to visit, and what residents actually do.",
+      isPartOf: { "@id": `${SITE}/#website` },
+      breadcrumb: { "@id": `${url}#breadcrumb` },
+      mainEntity: { "@id": `${url}#cities` },
+      dateModified: isoDay(lastmod),
+      inLanguage: "en-US"
+    },
+    { ...breadcrumbLd([{ name: "TripVibz", url: `${SITE}/` }, { name: "Cities", url }]), "@id": `${url}#breadcrumb` },
+    {
+      "@type": "ItemList",
+      "@id": `${url}#cities`,
+      name: "Cities on TripVibz",
+      numberOfItems: cities.length,
+      itemListElement: cities.map((c, i) => ({
+        "@type": "ListItem", position: i + 1, name: `${c.name}${c.state ? ", " + c.state : ""}`, url: `${SITE}/${c.slug}/`
+      }))
+    }
+  ));
 }
 
 function breadcrumbLd(items) {
@@ -264,34 +305,48 @@ function breadcrumbLd(items) {
   };
 }
 
-function cityLd(city, url, takes = []) {
-  const graph = [
-    breadcrumbLd([
-      { name: "TripVibz", url: `${SITE}/` },
-      { name: "Cities", url: `${SITE}/cities/` },
-      { name: city.name, url }
-    ])
-  ];
-  // Populated city pages: the ranked takes as an ItemList (same order as the page).
+function cityLd(city, url, takes = [], { title, desc, intro = "", nearby = [], lastmod } = {}) {
   const ranked = takes.slice().sort((a, b) => (b.ups - b.downs) - (a.ups - a.downs));
-  if (ranked.length) {
-    graph.push({
-      "@type": "ItemList",
-      "@id": `${url}#takes`,
-      name: `What locals say about ${city.name}`,
-      numberOfItems: ranked.length,
-      itemListOrder: "https://schema.org/ItemListOrderDescending",
-      itemListElement: ranked.map((t, i) => ({
-        "@type": "ListItem", position: i + 1, name: t.title, url: `${SITE}/t/${t.id}`
-      }))
-    });
-  }
-  return ld({ "@context": "https://schema.org", "@graph": graph });
+  const page = {
+    "@type": "CollectionPage",
+    "@id": `${url}#webpage`,
+    url,
+    name: title,
+    description: desc,
+    // The editors' intro is the page's own text, written by TripVibz (never a
+    // local's take), so it is the page abstract with the Organization as author.
+    ...(intro ? { abstract: intro, author: { "@id": `${SITE}/#org` } } : {}),
+    isPartOf: { "@id": `${SITE}/#website` },
+    publisher: { "@id": `${SITE}/#org` },
+    about: placeOf(city),
+    breadcrumb: { "@id": `${url}#breadcrumb` },
+    ...(ranked.length ? { mainEntity: { "@id": `${url}#takes` } } : {}),
+    ...(nearby.length ? { relatedLink: nearby.map(c => `${SITE}/${c.slug}/`) } : {}),
+    dateModified: isoDay(lastmod),
+    inLanguage: "en-US"
+  };
+  const crumbs = { ...breadcrumbLd([
+    { name: "TripVibz", url: `${SITE}/` },
+    { name: "Cities", url: `${SITE}/cities/` },
+    { name: city.name, url }
+  ]), "@id": `${url}#breadcrumb` };
+  // Populated city pages: the ranked takes as an ItemList (same order as the page).
+  const list = ranked.length ? {
+    "@type": "ItemList",
+    "@id": `${url}#takes`,
+    name: `What locals say about ${city.name}`,
+    numberOfItems: ranked.length,
+    itemListOrder: "https://schema.org/ItemListOrderDescending",
+    itemListElement: ranked.map((t, i) => ({
+      "@type": "ListItem", position: i + 1, name: t.title, url: `${SITE}/t/${t.id}`
+    }))
+  } : null;
+  return ld(siteGraph(page, crumbs, list));
 }
 
 function articleLd(city, theme, takes, url, cfg, image) {
   const dates = takes.map(t => t.created_at).filter(Boolean).sort();
-  const published = dates[0] || new Date().toISOString();
+  const published = dates[0] || CONTENT_EPOCH;
   const modified = dates[dates.length - 1] || published;
 
   const graph = [
@@ -301,13 +356,14 @@ function articleLd(city, theme, takes, url, cfg, image) {
       headline: cfg.title(city.name),
       description: cfg.desc(city.name),
       mainEntityOfPage: url,
+      isPartOf: { "@id": `${SITE}/#website` },
       inLanguage: "en-US",
       datePublished: published,
       dateModified: modified,
       image: image ? [image] : undefined,
       author: { "@id": `${SITE}/#org` },
       publisher: { "@id": `${SITE}/#org` },
-      about: { "@type": "Place", name: `${city.name}${city.state ? ", " + city.state : ""}` }
+      about: placeOf(city)
     },
     breadcrumbLd([
       { name: "TripVibz", url: `${SITE}/` },
@@ -336,7 +392,7 @@ function articleLd(city, theme, takes, url, cfg, image) {
     });
   }
 
-  return ld({ "@context": "https://schema.org", "@graph": graph });
+  return ld(siteGraph(...graph));
 }
 
 /* ---------------- article body ---------------- */
@@ -466,6 +522,8 @@ ${nearbyHtml(nearby)}`;
 /* ---------------- minify ---------------- */
 
 async function minifyHtml(html, label) {
+  // Self-hosted fonts go in before comments are stripped (the marker is a comment).
+  html = html.replace("<!--fonts-->", () => FONT_HEAD);
   let out = html;
   for (const m of [...out.matchAll(/<script(?![^>]*\bsrc=)([^>]*)>([\s\S]*?)<\/script>/g)]) {
     const [full, attrs, code] = m;
@@ -528,6 +586,34 @@ const SUPABASE_BUNDLE = (await bundle({
   platform: "browser", write: false, logLevel: "silent", legalComments: "none"
 })).outputFiles[0].text;
 ASSET_VERSION["supabase.js"] = createHash("sha256").update(SUPABASE_BUNDLE).digest("hex").slice(0, 10);
+
+/* ---------------- self-hosted fonts ----------------
+   Archivo and Public Sans used to come from Google Fonts: a render-blocking
+   stylesheet from a third-party origin (~300 ms on every page in Lighthouse),
+   plus a second origin for the font files. They are now the variable-font
+   builds from npm (@fontsource-variable/*, pinned in package-lock.json),
+   latin subset only, served from /assets/fonts/ with a content hash in the
+   name so they can be cached for a year. The @font-face rules are inlined into
+   every page's <head> at the <!--fonts--> marker, so there is no font CSS
+   request at all, and the two upright files are preloaded. */
+const LATIN = "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD";
+const FONT_FILES = [
+  { family: "Archivo",     style: "normal", from: "node_modules/@fontsource-variable/archivo/files/archivo-latin-wght-normal.woff2",         preload: true },
+  { family: "Public Sans", style: "normal", from: "node_modules/@fontsource-variable/public-sans/files/public-sans-latin-wght-normal.woff2", preload: true },
+  { family: "Public Sans", style: "italic", from: "node_modules/@fontsource-variable/public-sans/files/public-sans-latin-wght-italic.woff2", preload: false }
+];
+const FONTS = [];
+for (const f of FONT_FILES) {
+  const data = await readFile(f.from);
+  const hash = createHash("sha256").update(data).digest("hex").slice(0, 10);
+  const name = `${f.family.toLowerCase().replace(/\s+/g, "-")}-${f.style}-${hash}.woff2`;
+  FONTS.push({ ...f, data, path: `assets/fonts/${name}`, url: `/assets/fonts/${name}` });
+}
+const FONT_HEAD =
+  FONTS.filter(f => f.preload).map(f => `<link rel="preload" href="${f.url}" as="font" type="font/woff2" crossorigin>`).join("") +
+  `<style>${FONTS.map(f =>
+    `@font-face{font-family:"${f.family}";font-style:${f.style};font-weight:100 900;font-display:swap;src:url(${f.url}) format("woff2-variations"),url(${f.url}) format("woff2");unicode-range:${LATIN}}`
+  ).join("")}</style>`;
 const versionAssets = html => html.replace(/(["'])\/assets\/([\w.-]+)\1/g,
   (m, q, f) => ASSET_VERSION[f] ? `${q}/assets/${f}?v=${ASSET_VERSION[f]}${q}` : m);
 
@@ -592,6 +678,7 @@ await rm(OUT, { recursive: true, force: true });
 await mkdir(OUT, { recursive: true });
 await walk(SRC);
 await emit("assets/supabase.js", SUPABASE_BUNDLE);
+for (const f of FONTS) await emit(f.path, f.data);
 report.push(["assets/supabase.js (vendor)", SUPABASE_BUNDLE.length, SUPABASE_BUNDLE.length]);
 
 /* ---------------- _headers ----------------
@@ -614,6 +701,11 @@ ${secLines}
 /assets/*
   ! Cache-Control
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+# Font files have the content hash in their name: a changed font is a new URL.
+/assets/fonts/*
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
 
 /*.webp
   ! Cache-Control
@@ -660,11 +752,11 @@ await emit("index.html", await minifyHtml(render(indexTpl, {
     `${cities.length} cities and counting. One-tap questions like “Navy Pier: worth it, or skip it?” See what locals say before you book.`),
   body: cityGrid(cities, countsBySlug),
   mount: "needs",
-  jsonLd: homeLd()
+  jsonLd: homeLd(cities, newest(posts))
 }), null));
 
 pages.push({ path: "/cities/", lastmod: newest(posts), priority: "0.8" });
-pages.push({ path: "/about/", lastmod: new Date().toISOString().slice(0, 10), priority: "0.3" });
+pages.push({ path: "/about/", lastmod: CONTENT_EPOCH, priority: "0.3" });
 await emit("cities/index.html", await minifyHtml(render(placesTpl, {
   title: "Every city on TripVibz — local guides by residents",
   desc: "Browse cities where locals have written what visitors get wrong, when not to visit, and what residents actually do.",
@@ -674,6 +766,8 @@ await emit("cities/index.html", await minifyHtml(render(placesTpl, {
     `Locals in ${cities.length} cities vote on what visitors get wrong. Don't see yours? One tap to ask for it.`),
   body: cityList(cities, countsBySlug),
   mount: "live-grid"
+,
+  jsonLd: citiesLd(cities, countsBySlug, newest(posts))
 }), null));
 
 let cityCount = 0, articleCount = 0;
@@ -687,23 +781,29 @@ for (const city of cities) {
   // Indexable once there's something real: the editors' intro or 3+ takes.
   const cityIndexable = !!intro || cityPosts.length >= INTRO_MIN_TAKES;
 
+  const cityTitle = `${city.name}${city.state ? ", " + city.state : ""} — what locals say`;
+  // A city-specific description (from the editors' intro) beats one template
+  // line repeated across 27 pages.
+  const cityDesc = intro ? clip(intro, 155) : `Local guides for ${city.name}: what not to do, the worst times to visit, and what residents actually do.`;
+  const nearby = nearbyCities(city, cities);
+  // Last change: the newest take, else the date the intros were last edited
+  // (data/editorial/intros.json "_updated"), never the build time.
+  const cityLastmod = cityPosts.length ? newest(cityPosts) : isoDay(INTROS._updated);
   await emit(`${city.slug}/index.html`, await minifyHtml(render(cityTpl, {
-    title: `${city.name}${city.state ? ", " + city.state : ""} — what locals say`,
-    // A city-specific description (from the editors' intro) beats one template
-    // line repeated across 27 pages.
-    desc: intro ? clip(intro, 155) : `Local guides for ${city.name}: what not to do, the worst times to visit, and what residents actually do.`,
+    title: cityTitle,
+    desc: cityDesc,
     canonical: `${SITE}/${city.slug}/`,
     image: shareCard(city) ? shareCard(city).image : photo(city.slug),
     og: shareCard(city) || undefined,
-    body: cityBody(city, counts, feedTakes, intro, nearbyCities(city, cities)),
+    body: cityBody(city, counts, feedTakes, intro, nearby),
     mount: "city",
-    jsonLd: cityLd(city, `${SITE}/${city.slug}/`, feedTakes),
+    jsonLd: cityLd(city, `${SITE}/${city.slug}/`, feedTakes, { title: cityTitle, desc: cityDesc, intro, nearby, lastmod: cityLastmod }),
     // Empty pages stay reachable for people (links, email, social) but out of
     // Google until there is something real on them: the editors' intro or
     // 3+ takes. Thin pages drag the whole site's quality down.
     noindex: !cityIndexable
   }), null));
-  if (cityIndexable) pages.push({ path: `/${city.slug}/`, lastmod: cityPosts.length ? newest(cityPosts) : new Date().toISOString().slice(0, 10), priority: "0.8" });
+  if (cityIndexable) pages.push({ path: `/${city.slug}/`, lastmod: cityLastmod, priority: "0.8" });
   cityCount++;
 
   // App pages: one-tap voting (email links land here) and posting. Not for Google.

@@ -7,7 +7,7 @@ Both suites read the live Supabase data, so they test the real cities, questions
 and takes. **They never write to it**: the browser tests intercept every post,
 vote, reply, city request and anonymous sign-in and answer them locally.
 
-Run locally: `node build.mjs && node tests/static.mjs && node tests/security.mjs && node tests/perf.mjs && node tests/e2e.mjs && node tests/csp.mjs`
+Run locally: `node build.mjs && node tests/static.mjs && node tests/security.mjs && node tests/perf.mjs && node tests/schema.mjs && node tests/e2e.mjs && node tests/csp.mjs`
 (first time: `npm ci && npx playwright install chromium`). To test a Cloudflare
 preview instead of the local build: `BASE=https://<branch>.tripvibz.pages.dev node tests/e2e.mjs`
 (same for `tests/csp.mjs`, which on a preview also exercises GA4, Clarity and the Stay22 map).
@@ -20,7 +20,8 @@ The database lint needs the database URL: `psql "$SUPABASE_DB_URL" -f tests/db-s
 |---|---|---|
 | `static.mjs` | Pages, links, share cards, questions, sitemap, private files, migration names | build |
 | `security.mjs` | Security headers + CSP (one source: `functions/_security.js`), no third-party scripts, no secrets in the repo, workflow hygiene, API input rejection, open-redirect guard, SECURITY DEFINER search_path | build |
-| `perf.mjs` | Size budgets: pages, scripts, styles, share images, lazy-loaded grid photos, sitemap size | build |
+| `perf.mjs` | Size budgets: pages, scripts, styles, fonts, share images, lazy-loaded grid photos, sitemap size; analytics deferred, no external render-blocking requests | build |
+| `schema.mjs` | Structured data: every type/property is real schema.org (live vocabulary) and allowed on its type, `@id` references resolve on the same page, Google's required fields for Article / Breadcrumb / ItemList / DiscussionForumPosting / Organization / WebSite, canonical matches; also renders `/t/<id>` for a real take | build (+ network for the vocabulary) |
 | `e2e.mjs` | Every feature in a real browser, writes intercepted | build + Chromium |
 | `csp.mjs` | Every page type loads with the Content-Security-Policy enforced, no violations | build + Chromium |
 | `lighthouserc.json` | Lighthouse: performance ≥ 85, accessibility/best-practices/SEO ≥ 90, LCP ≤ 4 s, CLS ≤ 0.1, TBT ≤ 300 ms, resource budgets on 5 page types | build + Chrome |
@@ -58,7 +59,9 @@ The database lint needs the database URL: `psql "$SUPABASE_DB_URL" -f tests/db-s
 | Supply chain | No third-party `<script>` (Supabase client bundled from the pinned package), no secrets committed, `npm audit` | security + workflow |
 | API hardening | `/api/take` rejects oversize/malformed input, `/api/hit` ignores bots, TikTok bridge rejects bad state and open redirects | security |
 | Database rules | RLS on every table, no open write policies, authors can't edit counts/status/badges, visitor calendar entries wait for review | db-security.sql |
-| Speed | Lighthouse scores and Core Web Vitals; file-size budgets | lighthouse + perf |
+| Speed | Lighthouse scores and Core Web Vitals; render-blocking ≤ 250 ms; file-size budgets | lighthouse + perf |
+| Accessibility | Lighthouse accessibility ≥ 90 and zero colour-contrast failures, valid ARIA | lighthouse |
+| Structured data | Valid, self-contained schema.org on every page type | schema |
 | Tooling | Python scripts compile, workflow files parse | static |
 
 ## Not covered automatically (check by hand when they change)

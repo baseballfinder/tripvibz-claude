@@ -106,12 +106,13 @@ export async function onRequestGet({ params, request, env }) {
         { "@type": "InteractionCounter", interactionType: "https://schema.org/DislikeAction", userInteractionCount: post.downs },
         { "@type": "InteractionCounter", interactionType: "https://schema.org/CommentAction", userInteractionCount: comments.length }
       ],
-      comment: comments.filter(c => plain(c.body)).map(c => ({
+      // Only when there are replies: an empty comment array is invalid noise to validators.
+      ...(comments.some(c => plain(c.body)) ? { comment: comments.filter(c => plain(c.body)).map(c => ({
         "@type": "Comment",
         text: plain(c.body),
         datePublished: c.created_at,
         author: { "@type": "Person", name: local(c.author_verified) }
-      }))
+      })) } : {})
     }, {
       "@type": "BreadcrumbList",
       itemListElement: [

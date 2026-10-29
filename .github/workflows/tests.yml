@@ -55,8 +55,11 @@ jobs:
       - name: Security checks (headers, CSP, no secrets, workflows, API input handling)
         run: node tests/security.mjs
 
-      - name: Performance budgets (page, script, style and image sizes)
+      - name: Performance budgets (page, script, style, font and image sizes; nothing blocks first paint)
         run: node tests/perf.mjs
+
+      - name: Structured data (schema.org types/properties, Google rich-result fields, same-page references)
+        run: node tests/schema.mjs
 
       - name: End-to-end (every feature in a real browser, writes intercepted)
         run: node tests/e2e.mjs

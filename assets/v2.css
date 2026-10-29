@@ -6,7 +6,7 @@
 /* min-height: the page script adds the question card and takes after load; without
    a floor the footer sits in view on short (empty-city) pages and jumps down. */
 .v2{max-width:640px;margin:0 auto;padding:0 16px 120px;min-height:100vh}
-.v2 .kicker{font-family:"Archivo";font-weight:700;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#a8361a}
+.v2 .kicker{font-family:"Archivo";font-weight:700;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--coral-ink)}
 .v2 h1{font-weight:900;font-size:clamp(26px,6vw,34px);line-height:1.08;margin:6px 0}
 .v2 .stats{display:flex;gap:14px;flex-wrap:wrap;font-size:13.5px;color:var(--muted);font-weight:600}
 .v2 .back{display:inline-flex;align-items:center;gap:6px;min-height:44px;font-weight:700;font-size:14px;text-decoration:none;color:var(--ink)}
