@@ -32,7 +32,7 @@ jobs:
     env:
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install pg_dump 17 (must match the server's Postgres 17)
         run: |
           sudo install -d /usr/share/postgresql-common/pgdg
