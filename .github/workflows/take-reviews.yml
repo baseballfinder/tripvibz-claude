@@ -26,10 +26,11 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - run: pip install --quiet "psycopg[binary]==3.2.3"
+      - run: pip install --quiet -r scripts/requirements.txt
       - name: Open a review issue for each new topic
         env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          # The limited bot role (supabase/migrations/20261030010000_bot_role.sql); full URL until BOT_DB_URL is set.
+          SUPABASE_DB_URL: ${{ secrets.BOT_DB_URL || secrets.SUPABASE_DB_URL }}
           BING_WM_API_KEY: ${{ secrets.BING_WM_API_KEY }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 scripts/take_review_bot.py notify
@@ -40,10 +41,11 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - run: pip install --quiet "psycopg[binary]==3.2.3"
+      - run: pip install --quiet -r scripts/requirements.txt
       - name: Approve or reject the take
         env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          # The limited bot role (supabase/migrations/20261030010000_bot_role.sql); full URL until BOT_DB_URL is set.
+          SUPABASE_DB_URL: ${{ secrets.BOT_DB_URL || secrets.SUPABASE_DB_URL }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           LABEL: ${{ github.event.label.name }}

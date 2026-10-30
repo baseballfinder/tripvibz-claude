@@ -33,3 +33,18 @@ grant select, insert, update, delete on public.my_table to service_role;
 Grant only what the site uses (a bot-only table gets `service_role` alone).
 New views need `grant select ... to anon, authenticated` the same way.
 `tests/static.mjs` fails if a new migration creates a table or view without a grant for it.
+
+## The repo's copy of the schema
+
+`supabase/schema.sql` is a schema-only dump of the live `public` schema (tables, policies,
+triggers, functions, grants), refreshed by `.github/workflows/schema-snapshot.yml` (weekly or
+on demand) through a pull request whenever it changes. It exists because the early migrations
+here are placeholders. To rebuild a database from git: `psql "$NEW_DB_URL" -f supabase/schema.sql`,
+then apply migrations newer than the date in the file's header.
+
+## Bot role
+
+The GitHub bots run as `tripvibz_bot` (migration `20261030010000_bot_role.sql`): read/write only
+on the tables the three scripts use, row security still on. After the migration: set its password
+in the SQL editor and add the `BOT_DB_URL` repo secret; the workflows fall back to `SUPABASE_DB_URL`
+until then. Backups and nightly maintenance keep the full connection.
