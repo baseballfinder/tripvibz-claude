@@ -638,8 +638,8 @@ function gridImg(city, i, sizes, { cls = "", width, height } = {}) {
   const remote = photo(city.slug);
   const srcAttrs = base
     ? `src="/assets/city/${esc(base)}-800.webp" srcset="${PHOTO_SIZES.map(w => `/assets/city/${esc(base)}-${w}.webp ${w}w`).join(", ")}" sizes="${esc(sizes)}" data-fallback="${esc(remote)}"`
-      + ` onerror="if(this.dataset.fallback){this.srcset='';this.src=this.dataset.fallback;delete this.dataset.fallback}else this.remove()"`
-    : `src="${esc(remote)}" onerror="this.remove()"`;
+      + ` data-err="remove"`
+    : `src="${esc(remote)}" data-err="remove"`;
   return `<img${cls ? ` class="${cls}"` : ""} ${srcAttrs} alt="${esc(city.name)}" width="${width}" height="${height}" loading="${i < EAGER_TILES ? "eager" : "lazy"}"${i < PRIORITY_TILES ? ` fetchpriority="high"` : ""} decoding="async">`;
 }
 
@@ -649,8 +649,8 @@ function heroImg(city, { short = false } = {}) {
   const src = heroSources(city, { short });
   const attrs = src.srcset
     ? `src="${esc(src.href)}" srcset="${esc(src.srcset)}" sizes="${esc(src.sizes)}" data-fallback="${esc(photo(city.slug))}"`
-      + ` onerror="if(this.dataset.fallback){this.srcset='';this.src=this.dataset.fallback;delete this.dataset.fallback}else this.remove()"`
-    : `src="${esc(src.href)}" onerror="this.remove()"`;
+      + ` data-err="remove"`
+    : `src="${esc(src.href)}" data-err="remove"`;
   return `<img class="city-hero${short ? " short" : ""}" id="tv-hero" ${attrs} alt="${esc(city.name)}" width="800" height="${short ? 300 : 500}" fetchpriority="high" decoding="async">`;
 }
 
@@ -757,6 +757,23 @@ const versionAssets = html => html.replace(/(["'])\/assets\/([\w.-]+)\1/g,
   (m, q, f) => ASSET_VERSION[f] ? `${q}/assets/${f}?v=${ASSET_VERSION[f]}${q}` : m);
 
 // Logo / favicon links for every page (files: scripts/brand_assets.py).
+/* ---------------- inline script hashes (CSP without 'unsafe-inline') ----------------
+   Every page's inline <script> is hashed as it is emitted; the set goes into
+   the Content-Security-Policy (dist/_headers via functions/_security.js, and
+   functions/_inline-hashes.js for the Functions that render HTML). A script
+   the hash list doesn't cover does not run — tests/csp.mjs loads every page
+   type with the policy enforced, so a new inline script shows up there first.
+   Inline on*= handlers are not allowed at all, so photo fallbacks use data-
+   attributes and this one head script (one hash for all pages). */
+const IMG_ERROR_SCRIPT = `<script>document.addEventListener("error",function(e){var t=e.target;if(!t||t.tagName!=="IMG")return;if(t.dataset.fallback){t.srcset="";t.src=t.dataset.fallback;delete t.dataset.fallback;return}if(t.dataset.err==="remove")t.remove();else if(t.dataset.err==="hide")t.style.visibility="hidden"},true)</script>`;
+const INLINE_SCRIPT_HASHES = new Set();
+function collectInlineHashes(html) {
+  for (const m of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
+    if (/\bsrc\s*=/i.test(m[1]) || /ld\+json/i.test(m[1])) continue;   // external scripts: by origin; JSON-LD: never executed
+    INLINE_SCRIPT_HASHES.add(`'sha256-${createHash("sha256").update(m[2]).digest("base64")}'`);
+  }
+}
+
 const ICON_LINKS = `<link rel="icon" href="/favicon.ico" sizes="48x48"><link rel="icon" href="/assets/brand/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><meta name="theme-color" content="#ff5630">`;
 
 // One footer on every public page (About, Privacy, Terms, contact). Pages that
@@ -773,7 +790,12 @@ async function emit(path, html) {
   }
   if (typeof html === "string" && path.endsWith(".html")) {
     if (!html.includes('rel="icon"')) html = html.replace(/<\/head>/i, () => ICON_LINKS + "</head>");
+    // Photo fallback handler first in <head>, before any <img> can fail.
+    if (!html.includes(IMG_ERROR_SCRIPT)) html = /<meta charset=[^>]*>/i.test(html)
+      ? html.replace(/<meta charset=[^>]*>/i, m => m + IMG_ERROR_SCRIPT)
+      : html.replace(/<head>/i, () => "<head>" + IMG_ERROR_SCRIPT);
     html = versionAssets(html);
+    collectInlineHashes(html);
   }
   const full = join(OUT, path);
   await mkdir(dirname(full), { recursive: true });
@@ -820,49 +842,6 @@ await emit("assets/supabase.js", SUPABASE_BUNDLE);
 for (const f of FONTS) await emit(f.path, f.data);
 report.push(["assets/supabase.js (vendor)", SUPABASE_BUNDLE.length, SUPABASE_BUNDLE.length]);
 
-/* ---------------- _headers ----------------
-   Security headers come from functions/_security.js (shared with the Functions
-   that render HTML). Cloudflare combines every matching rule, so the more
-   specific cache rules detach ("! Cache-Control") the generic one first —
-   otherwise assets were served with two contradictory Cache-Control values. */
-const { SECURITY_HEADERS } = await import("./functions/_security.js");
-const secLines = Object.entries(SECURITY_HEADERS).map(([k, v]) => `  ${k}: ${v}`).join("\n");
-await emit("_headers", `# Generated by build.mjs — edit functions/_security.js, not this file.
-# Note: city photos come from Supabase, so their cache-control is set there.
-
-# Every page and asset: security headers + a short HTML cache so pre-rendered
-# content updates propagate on rebuild.
-/*
-${secLines}
-  Cache-Control: public, max-age=600, must-revalidate
-
-# Same-origin assets carry ?v=<content hash> in page HTML, so they can be kept a day.
-/assets/*
-  ! Cache-Control
-  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
-
-# Scripts and stylesheets are always linked with ?v=<content hash>, fonts carry
-# the hash in their name: a changed file is a new URL, so these can live a year.
-/assets/*.js
-  ! Cache-Control
-  Cache-Control: public, max-age=31536000, immutable
-
-/assets/*.css
-  ! Cache-Control
-  Cache-Control: public, max-age=31536000, immutable
-
-/assets/fonts/*
-  ! Cache-Control
-  Cache-Control: public, max-age=31536000, immutable
-
-/*.webp
-  ! Cache-Control
-  Cache-Control: public, max-age=604800
-
-/*.svg
-  ! Cache-Control
-  Cache-Control: public, max-age=604800
-`);
 
 console.log("\n  fetching content…");
 const { cities, posts, events } = await loadContent();
@@ -1012,6 +991,60 @@ ${pages.map(p => `  <url>
   </url>`).join("\n")}
 </urlset>
 `;
+/* ---------------- CSP inline-script hashes ----------------
+   Written before functions/_security.js is imported below, so dist/_headers and
+   the Functions carry the same list. Committed to git (Pages bundles functions/
+   from the checkout); tests/security.mjs fails when it is stale. */
+const hashList = [...INLINE_SCRIPT_HASHES].sort();
+await writeFile("functions/_inline-hashes.js", `// Generated by build.mjs — sha256 of every inline <script> in the built pages.
+// Do not edit: run \`node build.mjs\` after changing a page template.
+export const INLINE_SCRIPT_HASHES = ${JSON.stringify(hashList, null, 2)};
+`);
+
+/* ---------------- _headers ----------------
+   Security headers come from functions/_security.js (shared with the Functions
+   that render HTML). Cloudflare combines every matching rule, so the more
+   specific cache rules detach ("! Cache-Control") the generic one first —
+   otherwise assets were served with two contradictory Cache-Control values. */
+const { SECURITY_HEADERS } = await import("./functions/_security.js");
+const secLines = Object.entries(SECURITY_HEADERS).map(([k, v]) => `  ${k}: ${v}`).join("\n");
+await emit("_headers", `# Generated by build.mjs — edit functions/_security.js, not this file.
+# Note: city photos come from Supabase, so their cache-control is set there.
+
+# Every page and asset: security headers + a short HTML cache so pre-rendered
+# content updates propagate on rebuild.
+/*
+${secLines}
+  Cache-Control: public, max-age=600, must-revalidate
+
+# Same-origin assets carry ?v=<content hash> in page HTML, so they can be kept a day.
+/assets/*
+  ! Cache-Control
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+# Scripts and stylesheets are always linked with ?v=<content hash>, fonts carry
+# the hash in their name: a changed file is a new URL, so these can live a year.
+/assets/*.js
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*.css
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/fonts/*
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.webp
+  ! Cache-Control
+  Cache-Control: public, max-age=604800
+
+/*.svg
+  ! Cache-Control
+  Cache-Control: public, max-age=604800
+`);
+
 await emit("sitemap.xml", sitemap);
 
 await emit("robots.txt", `User-agent: *

@@ -99,6 +99,17 @@ with the first two tiles at `fetchpriority="high"`; the scripts then refresh cou
 grid `data-hydrated="inplace"` (e2e asserts it). Rebuilding the grid moved different photos into view a
 second time, and that late paint — not the hero — was the page's LCP (~3.5 s on a phone in CI).
 
+## Content-Security-Policy
+
+`script-src` has no `'unsafe-inline'`. `build.mjs` hashes every inline `<script>` as it emits a page
+(one per page template, plus one small head script that handles photo fallbacks) and writes the list to
+`functions/_inline-hashes.js`, which `functions/_security.js` reads for both `dist/_headers` and the
+Functions that render HTML. The generated file is committed; the security test fails when it is stale
+("run `node build.mjs` and commit it"). Inline `on*=` handlers are not allowed at all: images carry
+`data-fallback` (swap to the Supabase original) or `data-err="remove|hide"`, handled by that head script
+(e2e tests it). `tests/csp.mjs` loads every page type with the policy enforced, so a new inline script
+that isn't in the list shows up there first.
+
 ## Scripts
 
 `/assets/supabase.js` is bundled by `build.mjs` from `lib/supabase-client.mjs`: the PostgREST and Auth
