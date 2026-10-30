@@ -6,7 +6,8 @@
 -- After this migration is applied, one step by hand (the password never goes
 -- in git):
 --   1. Supabase → SQL editor:   alter role tripvibz_bot with password '<long random>';
---   2. GitHub → repo secrets:   BOT_DB_URL = postgresql://tripvibz_bot:<password>@<host>:5432/postgres
+--   2. GitHub → repo secrets:   BOT_DB_URL = the SUPABASE_DB_URL value with the user changed to
+--      tripvibz_bot and the password to the one from step 1
 --      (same host as SUPABASE_DB_URL; for the session pooler the user is tripvibz_bot.<project ref>)
 -- The bot workflows use BOT_DB_URL when it exists and fall back to SUPABASE_DB_URL
 -- until then. Backups and nightly maintenance keep the full connection (pg_dump
