@@ -111,7 +111,7 @@ await test("Inline scripts: functions/_inline-hashes.js matches the built pages;
   await walk("dist");
   for (const f of htmlFiles) {
     const h = await readFile(f, "utf8");
-    for (const m of h.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)) {
+    for (const m of h.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\b[^>]*>/gi)) {
       if (/\bsrc\s*=/i.test(m[1]) || /ld\+json/i.test(m[1])) continue;
       want.add(`'sha256-${createHash("sha256").update(m[2]).digest("base64")}'`);
     }
