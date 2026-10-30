@@ -208,6 +208,18 @@ await test("Locals' top 3 restaurants: section pre-rendered on every city page; 
   assert(/moderation_guard\(\)/.test(mig) && /moderation_violation\(new\.why\)/.test(mig), "names and whys must go through the content screen");
   assert(/n >= 10 then raise exception 'RATE_LIMITED'/.test(mig), "new restaurant rows must be rate-limited per person");
   assert((await readFile("admin.html", "utf8")).includes('from("restaurants").update(patch)'), "admin page must be able to hide/rename/merge restaurants");
+  // The places catalogue: searched from the picker, written only by the bot/service role; a catalogue
+  // pick becomes a restaurant row server-side so clients never supply address/phone.
+  assert(/rpc\("search_places"/.test(city) && /rpc\("ensure_restaurant_from_place"/.test(city), "picker must search the catalogue and create catalogue picks through the database function");
+  assert(/create table if not exists public\.places_catalog/.test(mig) && /grant select on public\.places_catalog to anon, authenticated/.test(mig)
+    && /grant select, insert, update, delete on public\.places_catalog to tripvibz_bot/.test(mig) && !/grant[^;]*on public\.places_catalog to authenticated/.test(mig.replace(/grant select on public\.places_catalog to anon, authenticated/, "")),
+    "places_catalog: readable by all, writable by the bot and service role only");
+  assert(/revoke execute on function public\.ensure_restaurant_from_place\(text\) from public, anon/.test(mig), "ensure_restaurant_from_place must not be callable anonymously");
+  assert(/insert \(city_id, name, neighborhood, created_by\) on public\.restaurants to authenticated/.test(mig), "clients may insert only name/neighborhood on restaurants (address, phone, place_id come from the catalogue)");
+  const loader = await readFile("scripts/places_catalog.py", "utf8");
+  assert(/overturemaps-us-west-2/.test(loader) && /CDLA-Permissive/.test(loader) && /operating_status/.test(loader), "catalogue loader must read Overture places and note the licence");
+  assert((await readFile(".github/workflows/places-catalog.yml", "utf8")).includes("scripts/places_catalog.py"), "monthly catalogue workflow missing");
+  for (const c of cities.slice(0, 3)) assert((await readFile(join("dist", c.slug, "index.html"), "utf8")).includes("overturemaps.org"), `${c.slug}: Overture attribution missing from the section`);
 });
 
 await test("How-we-verify-locals page: exists, linked, describes the method without the exact thresholds", async () => {

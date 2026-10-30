@@ -2,3 +2,4 @@
 psycopg[binary]==3.3.6
 pillow==13.0.0
 pyyaml==6.0.3
+duckdb==2.0.0

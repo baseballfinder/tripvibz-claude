@@ -138,7 +138,8 @@ await test("CSP covers every outside origin the site code talks to", async () =>
   const origins = new Set([...src.matchAll(/https:\/\/([a-z0-9.-]+\.[a-z]{2,})/gi)].map(m => m[1].toLowerCase()));
   // Navigation-only and server-side origins never need to be in the CSP.
   const notLoaded = new Set(["www.tripvibz.com", "tripvibz.com", "tripvibz.pages.dev", "schema.org", "www.sitemaps.org", "miamitake.com",
-    "ntfy.sh", "open.tiktokapis.com", "www.tiktok.com", "www.facebook.com", "twitter.com", "wa.me", "developers.facebook.com"]);
+    "ntfy.sh", "open.tiktokapis.com", "www.tiktok.com", "www.facebook.com", "twitter.com", "wa.me", "developers.facebook.com",
+    "www.google.com", "overturemaps.org", "overturemaps-us-west-2.s3.us-west-2.amazonaws.com"]);   // link targets / build-time data, never loaded by the page
   const inCsp = o => csp.includes(`https://${o}`) || csp.includes(`https://*.${o.split(".").slice(-2).join(".")}`) || csp.includes(`https://*.${o.split(".").slice(1).join(".")}`);
   for (const o of origins) if (!notLoaded.has(o)) assert(inCsp(o), `origin ${o} is used in the code but not allowed by the CSP (functions/_security.js)`);
 });

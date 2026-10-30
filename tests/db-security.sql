@@ -52,7 +52,7 @@ begin
      where grantee = 'tripvibz_bot'
        and table_schema || '.' || table_name not in (
          'public.email_signups', 'public.city_requests', 'public.city_candidates', 'public.cities',
-         'public.questions', 'public.posts', 'public.take_reviews', 'supabase_migrations.schema_migrations');
+         'public.questions', 'public.posts', 'public.take_reviews', 'public.places_catalog', 'supabase_migrations.schema_migrations');
     if v_rows is not null then v_fail := v_fail || E'\n  tripvibz_bot has grants beyond its allow-list: ' || v_rows; end if;
     if exists (select 1 from pg_roles where rolname = 'tripvibz_bot' and (rolsuper or rolbypassrls or rolcreaterole or rolcreatedb)) then
       v_fail := v_fail || E'\n  tripvibz_bot must have no superuser/bypassrls/createrole/createdb attribute';
