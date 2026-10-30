@@ -586,7 +586,23 @@
     return !!(auth.me && !auth.me.is_anonymous);
   }
 
+  /* City photos: resized copies served from this site (build.mjs writes
+     /assets/city/<name>-480.webp and -800.webp). The Supabase original is the
+     fallback if a copy is missing, swapped in by the onerror handler. */
+  var PHOTO_REMOTE = SUPABASE_URL + "/storage/v1/object/public/city-photos/";
+  function cityPhotoName(city) { return city.photo || city.slug + ".webp"; }
+  function cityPhoto(city, w) { return "/assets/city/" + encodeURIComponent(cityPhotoName(city).replace(/\.[a-z0-9]+$/i, "")) + "-" + w + ".webp"; }
+  // src/srcset/sizes + fallback attributes for an <img> of this city's photo.
+  function cityPhotoAttrs(city, sizes) {
+    var set = [256, 360, 480, 640, 720, 800].map(function (w) { return cityPhoto(city, w) + " " + w + "w"; }).join(", ");
+    return 'src="' + cityPhoto(city, 800) + '" srcset="' + set + '" sizes="' + escapeHtml(sizes) + '"' +
+      ' data-fallback="' + escapeHtml(PHOTO_REMOTE + encodeURIComponent(cityPhotoName(city))) + '"' +
+      " onerror=\"if(this.dataset.fallback){this.srcset='';this.src=this.dataset.fallback;delete this.dataset.fallback}else this.remove()\"";
+  }
+
   window.TV = { tidy: tidyText,
+    cityPhoto: cityPhoto,
+    cityPhotoAttrs: cityPhotoAttrs,
     sb: sb,
     persistVote: persistVote,
     routes: routes,

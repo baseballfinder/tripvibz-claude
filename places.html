@@ -109,16 +109,15 @@
     if(c.take_count>0) return `${c.take_count} local take${c.take_count===1?'':'s'}`;
     return `Needs locals — be the first`;
   }
-  const IMG_BASE = "https://nkxorlktzbgwqnfwmuus.supabase.co/storage/v1/object/public/city-photos";
 
-  function card(c){
+  function card(c, i){
     // Every city is reachable. The articles exist for all of them, and an
     // empty one is an invitation to contribute rather than a dead end —
     // gating on place_count made 14 of 18 cities unclickable.
     const live = c.take_count > 0;
     const inner = `
       <div class="city-top" style="background:${band(c.name)}">
-        <img class="city-img" src="${IMG_BASE}/${encodeURIComponent(c.photo || c.slug + ".webp")}" alt="${escapeHtml(c.name)}" width="232" height="104" loading="lazy" decoding="async" onerror="this.remove()">
+        <img class="city-img" ${TV.cityPhotoAttrs(c, "(max-width: 640px) calc(100vw - 42px), 256px")} alt="${escapeHtml(c.name)}" width="232" height="104" loading="${i < 8 ? "eager" : "lazy"}" decoding="async">
         <span class="pin">📍</span>
         <span class="city-state">${escapeHtml(c.state||"US")}</span>
       </div>

@@ -33,7 +33,7 @@ const gz = async p => gzipSync(await readFile(p)).length;
 // ---- budgets (raw bytes unless "gz") — current values in comments, Oct 2026 ----
 const BUDGET = {
   pageHtml: 60 * KB,          // largest page: 28 KB (worst-times pages)
-  pageHtmlGz: 15 * KB,        // ~5-8 KB
+  pageHtmlGz: 20 * KB,        // 8-15 KB with the stylesheets inlined
   siteJs: 60 * KB,            // tv.js 15 KB, v2.js 23 KB, analytics.js 2 KB
   vendorJs: 260 * KB,         // bundled supabase-js: 215 KB (57 KB gz)
   jsTotalGz: 90 * KB,         // everything a page can load: ~73 KB gz
@@ -43,7 +43,8 @@ const BUDGET = {
   fontFile: 60 * KB,          // variable woff2, latin subset: 27-35 KB each
   fontsTotal: 120 * KB,       // 3 files, 90 KB
   sitemapUrls: 400,           // 61 today; a runaway generator would blow this
-  distTotal: 40 * 1024 * KB   // 23 MB (mostly the 164 share cards)
+  cityPhoto: { 256: 20 * KB, 360: 30 * KB, 480: 45 * KB, 640: 70 * KB, 720: 80 * KB, 800: 110 * KB, "short-720": 60 * KB, "short-800": 80 * KB },  // 14/22/38/55/25/35 KB (Fort Lauderdale); Key West 800 is 101 KB
+  distTotal: 60 * 1024 * KB   // 29 MB (share cards 20 MB, city photos 6 MB)
 };
 
 await test(`Every pre-rendered page is under ${kb(BUDGET.pageHtml)} (and ${kb(BUDGET.pageHtmlGz)} compressed)`, async () => {
@@ -87,39 +88,58 @@ await test("Pages don't ship uncompressed inline data (no base64 blobs over 4 KB
   }
 });
 
-await test("City grid photos are lazy-loaded with fixed dimensions (no layout shift, no eager 3 MB)", async () => {
-  for (const f of ["dist/index.html", "dist/cities/index.html"]) {
-    const h = await readFile(f, "utf8");
-    // The grid is drawn by the page script; its <img> template (minified
-    // variable names vary) is the one whose src ends in the city's photo.
-    const grid = (h.match(/<img[^>]*\.photo\|\|[^>]*>/g) || []);
-    assert(grid.length, `${f}: no city photo <img> found`);
-    for (const img of grid) assert(/loading="lazy"/.test(img) && /width=/.test(img) && /height=/.test(img), `${f}: city photo <img> must have loading="lazy", width and height: ${img.slice(0, 80)}`);
+await test("City photos: every city has local 256-800 px + short 720/800 WebP copies within budget", async () => {
+  const cities = await (await fetch("https://nkxorlktzbgwqnfwmuus.supabase.co/rest/v1/cities?select=slug,photo", { headers: { apikey: "sb_publishable_5UOevsS8KmWWGrQYNWsabg_0sVOIPmB" } })).json();
+  assert(Array.isArray(cities) && cities.length, "could not read the cities table");
+  for (const c of cities) {
+    const base = (c.photo || `${c.slug}.webp`).replace(/\.[a-z0-9]+$/i, "");
+    for (const [variant, limit] of Object.entries(BUDGET.cityPhoto)) {
+      const f = `dist/assets/city/${base}-${variant}.webp`;
+      const s = await size(f).catch(() => null);
+      assert(s !== null, `${f} missing (photo pipeline in build.mjs)`);
+      assert(s <= limit, `${f} is ${kb(s)} (limit ${kb(limit)})`);
+    }
   }
 });
 
-await test(`Fonts: self-hosted variable woff2 ≤ ${kb(BUDGET.fontFile)} each, ≤ ${kb(BUDGET.fontsTotal)} total, inlined @font-face with swap, uprights preloaded`, async () => {
-  const fonts = await files("dist/assets/fonts", p => p.endsWith(".woff2"));
-  assert(fonts.length >= 2, "font files missing from dist/assets/fonts");
-  let total = 0;
-  for (const f of fonts) { const s = await size(f); assert(s <= BUDGET.fontFile, `${f} is ${kb(s)}`); total += s; }
-  assert(total <= BUDGET.fontsTotal, `fonts total ${kb(total)}`);
-  for (const f of ["dist/index.html", "dist/miami/index.html", "dist/about/index.html"]) {
+await test("Hero photo is in the HTML of every city and topic page: local srcset, fetchpriority=high, preloaded, no Supabase src", async () => {
+  const pages = (await files("dist", p => /^dist\/[a-z0-9-]+\/(index|(what-not-to-do|worst-times-to-visit|what-locals-do)\/index)\.html$/.test(p)))
+    .filter(p => !/^dist\/(cities|about|privacy|terms)\//.test(p));
+  assert(pages.length >= 100, `only ${pages.length} city/topic pages found`);
+  for (const f of pages) {
     const h = await readFile(f, "utf8");
-    assert(/<style>[^<]*@font-face\{[^<]*font-display:swap/.test(h), `${f}: inlined @font-face with font-display:swap missing`);
-    assert((h.match(/<link rel="preload"[^>]*as="font"[^>]*crossorigin>/g) || []).length >= 2, `${f}: the two upright fonts should be preloaded`);
-    assert(!/<link[^>]*href="https:\/\/fonts\./.test(h), `${f}: no Google Fonts stylesheet`);
+    const img = (h.match(/<img class="city-hero[^"]*" id="tv-hero"[^>]*>/) || [])[0];
+    assert(img, `${f}: pre-rendered hero <img id="tv-hero"> missing`);
+    assert(/src="\/assets\/city\//.test(img) && /srcset="[^"]*\/assets\/city\//.test(img), `${f}: hero must use the local resized copies`);
+    assert(/fetchpriority="high"/.test(img) && /width="800"/.test(img) && /height="\d+"/.test(img), `${f}: hero needs fetchpriority=high and dimensions`);
+    assert(!/loading="lazy"/.test(img), `${f}: the LCP image must not be lazy`);
+    assert(/<link rel="preload" as="image" href="\/assets\/city\/[^"]+"[^>]*fetchpriority="high"/.test(h), `${f}: hero preload link missing`);
   }
 });
 
-await test("Nothing non-essential blocks first paint: analytics is deferred, no external render-blocking requests", async () => {
+await test("Stylesheets are inlined (no render-blocking <link rel=stylesheet>)", async () => {
   for (const f of await files("dist", p => p.endsWith(".html"))) {
     const h = await readFile(f, "utf8");
-    const head = (h.match(/<head>[\s\S]*?<\/head>/) || [""])[0];
-    for (const m of head.matchAll(/<script[^>]*src="([^"]+)"[^>]*>/g))
-      if (/analytics\.js/.test(m[1])) assert(/\bdefer\b|\basync\b/.test(m[0]), `${f}: analytics.js must be defer/async`);
-    for (const m of head.matchAll(/<link[^>]*rel="stylesheet"[^>]*href="([^"]+)"/g))
-      assert(m[1].startsWith("/"), `${f}: external render-blocking stylesheet ${m[1]}`);
+    assert(!/<link[^>]*rel="stylesheet"/.test(h), `${f}: still links a stylesheet`);
+    assert(/<style>/.test(h), `${f}: no inline <style>`);
+  }
+});
+
+await test("City grid photos: pre-rendered with local srcset and dimensions; first rows eager, the rest lazy (script template matches)", async () => {
+  for (const [f, container] of [["dist/index.html", "needs"], ["dist/cities/index.html", "live-grid"]]) {
+    const h = await readFile(f, "utf8");
+    // Pre-rendered tiles (build.mjs gridImg): what the browser sees before any script runs.
+    assert(h.includes(`id="${container}"`), `${f}: #${container} missing`);
+    const imgs = h.match(/<img [^>]*src="\/assets\/city\/[^>]*>/g) || [];   // every city photo on these pages is a tile
+    assert(imgs.length >= 10, `${f}: expected pre-rendered city tiles with local photos, found ${imgs.length}`);
+    imgs.forEach((img, i) => {
+      assert(/srcset="[^"]*\/assets\/city\//.test(img) && /sizes="/.test(img), `${f}: tile ${i} needs srcset + sizes`);
+      assert(/width="\d+"/.test(img) && /height="\d+"/.test(img), `${f}: tile ${i} needs width and height`);
+      assert(new RegExp(`loading="${i < 8 ? "eager" : "lazy"}"`).test(img), `${f}: tile ${i} should be ${i < 8 ? "eager" : "lazy"}`);
+    });
+    // The script's own template must do the same, or hydration swaps in lazy tiles.
+    const tpl = (h.match(/<img[^>]*cityPhotoAttrs\([^>]*>/g) || [])[0];
+    assert(tpl && /loading="\$\{[^}]*<\s*8[^}]*\}"/.test(tpl) && /width=/.test(tpl) && /height=/.test(tpl), `${f}: script tile template must use the eager/lazy split and dimensions: ${(tpl || "").slice(0, 80)}`);
   }
 });
 

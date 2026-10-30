@@ -114,7 +114,10 @@
               }
             ],
             "font-display": "error",
-            "aria-allowed-attr": "error"
+            "aria-allowed-attr": "error",
+            "uses-responsive-images": "warn",
+            "prioritize-lcp-image": "error",
+            "lcp-lazy-loaded": "error"
           }
         },
         {
@@ -124,13 +127,13 @@
             "resource-summary:image:size": [
               "error",
               {
-                "maxNumericValue": 4000000
+                "maxNumericValue": 1500000
               }
             ],
             "resource-summary:total:size": [
               "error",
               {
-                "maxNumericValue": 4500000
+                "maxNumericValue": 2000000
               }
             ]
           }

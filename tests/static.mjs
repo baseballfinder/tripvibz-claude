@@ -54,7 +54,8 @@ await test("No links to the dead apex domain (tripvibz.com without www)", async 
 await test("Asset links resolve (every /assets/ file a page references exists)", async () => {
   for (const f of pages) {
     const h = await readFile(f, "utf8");
-    for (const m of h.matchAll(/["'](\/assets\/[^"'?#]+)/g))
+    // Plain src/href values and every candidate inside a srcset ("… 480w, …").
+    for (const m of h.matchAll(/(?:["']|,\s*)(\/assets\/[^"'?#\s,]+)/g))
       assert(await exists(join("dist", m[1])), `${f} -> ${m[1]} missing`);
   }
 });

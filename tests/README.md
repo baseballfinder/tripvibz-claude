@@ -11,7 +11,7 @@ Run locally: `node build.mjs && node tests/static.mjs && node tests/security.mjs
 (first time: `npm ci && npx playwright install chromium`). To test a Cloudflare
 preview instead of the local build: `BASE=https://<branch>.tripvibz.pages.dev node tests/e2e.mjs`
 (same for `tests/csp.mjs`, which on a preview also exercises GA4, Clarity and the Stay22 map).
-Lighthouse: `npx lhci autorun` (needs Chrome; reports land in `.lighthouseci/`).
+Lighthouse: `npx lhci autorun` (desktop) and `npx lhci autorun --config=lighthouserc.mobile.json` (mobile); needs Chrome; reports land in `.lighthouseci/`.
 The database lint needs the database URL: `psql "$SUPABASE_DB_URL" -f tests/db-security.sql`.
 
 ## Suites
@@ -24,7 +24,8 @@ The database lint needs the database URL: `psql "$SUPABASE_DB_URL" -f tests/db-s
 | `schema.mjs` | Structured data: every type/property is real schema.org (live vocabulary) and allowed on its type, `@id` references resolve on the same page, Google's required fields for Article / Breadcrumb / ItemList / DiscussionForumPosting / Organization / WebSite, canonical matches; also renders `/t/<id>` for a real take | build (+ network for the vocabulary) |
 | `e2e.mjs` | Every feature in a real browser, writes intercepted | build + Chromium |
 | `csp.mjs` | Every page type loads with the Content-Security-Policy enforced, no violations | build + Chromium |
-| `lighthouserc.json` | Lighthouse: performance ≥ 85, accessibility/best-practices/SEO ≥ 90, LCP ≤ 4 s, CLS ≤ 0.1, TBT ≤ 300 ms, resource budgets on 5 page types | build + Chrome |
+| `lighthouserc.json` | Lighthouse, desktop: performance ≥ 85, accessibility/best-practices/SEO ≥ 90, LCP ≤ 4 s, CLS ≤ 0.1, TBT ≤ 300 ms, zero contrast failures, render-blocking ≤ 250 ms, resource budgets on 5 page types | build + Chrome |
+| `lighthouserc.mobile.json` | Lighthouse, mobile (PageSpeed's phone emulation): performance ≥ 85, LCP ≤ 3.5 s, FCP ≤ 2 s, TBT ≤ 300 ms, CLS ≤ 0.1, responsive images, LCP image preloaded and not lazy, on the Fort Lauderdale, home and a topic page | build + Chrome |
 | `db-security.sql` | Read-only database lint: RLS everywhere, no open write policies, SECURITY DEFINER allow-list and search_path, tamper guards from migration 20261029174500 | `SUPABASE_DB_URL` |
 | `npm audit` (workflow step) | Dependencies with high/critical advisories | — |
 
@@ -82,3 +83,14 @@ The database lint needs the database URL: `psql "$SUPABASE_DB_URL" -f tests/db-s
   checks the rules exist; it does not exercise them as a user.
 - **Lighthouse on the live site.** CI measures the local build (same HTML, same assets) with
   GA4/Clarity/Stay22 off. Check PageSpeed Insights on www after a change to third-party scripts.
+
+## Photos
+
+City photos live in Supabase storage (`city-photos/<slug>.webp`, 800×500). `build.mjs` downloads each
+one and writes resized WebP copies to `dist/assets/city/`: `<slug>-{256,360,480,640,720,800}.webp` and
+8:3 crops `<slug>-short-{720,800}.webp` for topic-page heroes. Pages reference these with `srcset`/`sizes`
+measured from the real layout (grid tiles 171–256 CSS px on desktop and full/half width on phones;
+heroes 608 px on desktop and 650–720 device px on phones). The hero is pre-rendered in the HTML with
+`fetchpriority="high"` and a `<link rel="preload">`, and kept across hydration (`id="tv-hero"`).
+If a photo can't be downloaded at build time the page falls back to the Supabase URL. When a photo
+changes in storage, the next build picks it up; no cache to clear.

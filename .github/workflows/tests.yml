@@ -68,14 +68,18 @@ jobs:
         run: node tests/csp.mjs
 
       # ---- performance: Lighthouse scores, Core Web Vitals and resource budgets ----
-      - name: Lighthouse (lighthouserc.json; uses the runner's Chrome)
+      - name: Lighthouse, desktop (lighthouserc.json; uses the runner's Chrome)
         run: npx lhci autorun
+      - name: Lighthouse, mobile (lighthouserc.mobile.json; PageSpeed's phone emulation)
+        run: npx lhci autorun --config=lighthouserc.mobile.json
       - name: Keep the Lighthouse reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: lighthouse-reports
-          path: .lighthouseci/*.html
+          path: |
+            .lighthouseci/*.html
+            .lighthouseci/mobile/*.html
           retention-days: 14
 
       # ---- security: database rules (read-only catalog lint, needs the DB URL secret) ----
