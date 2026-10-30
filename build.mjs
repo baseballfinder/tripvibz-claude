@@ -572,10 +572,22 @@ function eatsHtml(city, { eats, picks, localChecks, pickers }) {
       .sort((a, b) => (verified.has(b.user_id) - verified.has(a.user_id)) || a.rank - b.rank)[0];
     return w ? `<div class="eat-why">“${esc(w.why)}” <span class="eat-by">— ${esc(shortName(profile[w.user_id]))}${verified.has(w.user_id) ? " ✓" : ""}</span></div>` : "";
   };
+  // Directions / call / website / hotels-near, only what the row has (city.html eatLinks mirrors this).
+  const links = r => {
+    const parts = [];
+    if (r.lat && r.lng) parts.push(`<a href="https://www.google.com/maps/dir/?api=1&amp;destination=${encodeURIComponent(r.lat + "," + r.lng)}" target="_blank" rel="noopener">Directions</a>`);
+    else if (r.address) parts.push(`<a href="https://www.google.com/maps/dir/?api=1&amp;destination=${encodeURIComponent(r.name + ", " + r.address + ", " + city.name)}" target="_blank" rel="noopener">Directions</a>`);
+    if (r.phone) parts.push(`<a href="tel:${esc(String(r.phone).replace(/[^+\d]/g, ""))}">Call</a>`);
+    if (r.website) parts.push(`<a href="${esc(r.website)}" target="_blank" rel="noopener nofollow">Website</a>`);
+    const hotels = new URLSearchParams({ aid: "tripvibz", address: `${r.name}, ${city.name}${city.state ? ", " + city.state : ""}`, campaign: `tripvibz_top3_${city.slug}`.replace(/-/g, "_") });
+    parts.push(`<a href="https://www.stay22.com/allez/roam?${esc(hotels.toString())}" target="_blank" rel="noopener sponsored">Hotels near</a>`);
+    return `<div class="eat-links">${parts.join("")}</div>`;
+  };
   const list = rows.length ? `<ol class="eats-list">${rows.map(r => `<li>
-      <div class="eat-main"><b class="eat-name">${esc(r.name)}</b>${r.neighborhood ? `<span class="eat-nb">${esc(r.neighborhood)}</span>` : ""}
+      <div class="eat-main"><b class="eat-name">${esc(r.name)}</b>${r.address ? `<span class="eat-nb">${esc(r.address)}${r.neighborhood ? ", " + esc(r.neighborhood) : ""}</span>` : r.neighborhood ? `<span class="eat-nb">${esc(r.neighborhood)}</span>` : ""}
       <div class="eat-meta">${r.picks} local${r.picks === 1 ? "" : "s"}${r.verified_picks ? ` · ${r.verified_picks} verified ✓` : ""}${r.firsts ? ` · #1 for ${r.firsts}` : ""}</div>
-      ${whyFor(r.restaurant_id)}</div></li>`).join("")}</ol>`
+      ${whyFor(r.restaurant_id)}${links(r)}</div></li>`).join("")}</ol>
+<div class="eats-attrib">Addresses and phone numbers from <a href="https://overturemaps.org/" target="_blank" rel="noopener">Overture Maps</a> (open data); please <a href="/about/#contact">tell us</a> if one is wrong.</div>`
     : `<div class="empty2"><b>No picks yet</b>Live in ${esc(city.name)}? Be the first to name the three places you'd actually send a visitor.</div>`;
   return `<section class="eats" id="tv-eats" aria-labelledby="eats-h">
 <div class="eats-h"><h2 id="eats-h">Locals' top 3 restaurants</h2>${people ? `<span class="eats-n">${people} local${people === 1 ? "" : "s"} picked</span>` : ""}</div>

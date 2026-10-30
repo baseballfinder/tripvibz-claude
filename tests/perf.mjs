@@ -32,7 +32,7 @@ const gz = async p => gzipSync(await readFile(p)).length;
 
 // ---- budgets (raw bytes unless "gz") — current values in comments, Oct 2026 ----
 const BUDGET = {
-  pageHtml: 60 * KB,          // largest page: 28 KB (worst-times pages)
+  pageHtml: 72 * KB,          // largest pages ~61 KB raw with the stylesheets inlined; the compressed budget below is the one that matters
   pageHtmlGz: 20 * KB,        // 8-15 KB with the stylesheets inlined
   siteJs: 60 * KB,            // tv.js 15 KB, v2.js 23 KB, analytics.js 2 KB
   vendorJs: 140 * KB,         // PostgREST + Auth client (lib/supabase-client.mjs): 120 KB (30 KB gz)

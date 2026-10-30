@@ -1,0 +1,46 @@
+# Loads eat-and-drink places near every TripVibz city into places_catalog from
+# Overture Maps' open places data (CDLA-Permissive 2.0), so the top-3 picker
+# offers real names with address, phone, website and coordinates. Monthly,
+# after Overture's release (third week), and on demand. Logic: scripts/places_catalog.py
+#
+# First run after the migration lands: Actions → "Places catalogue" → Run workflow.
+
+name: Places catalogue
+
+on:
+  schedule:
+    - cron: "17 10 25 * *"   # 25th of the month, 6:17 am Eastern (daylight time)
+  workflow_dispatch:
+    inputs:
+      city:
+        description: "One city slug (blank = every city)"
+        required: false
+        default: ""
+      release:
+        description: "Overture release, e.g. 2026-10-21.0 (blank = latest)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: places-catalog
+  cancel-in-progress: false
+
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet -r scripts/requirements.txt
+      - name: Load places for each city
+        env:
+          # The limited bot role (supabase/migrations/20261030010000_bot_role.sql); full URL until BOT_DB_URL is set.
+          SUPABASE_DB_URL: ${{ secrets.BOT_DB_URL || secrets.SUPABASE_DB_URL }}
+          PLACES_RELEASE: ${{ inputs.release }}
+        run: python3 scripts/places_catalog.py ${{ inputs.city }}
