@@ -35,6 +35,31 @@
     }
   } catch (e) { /* never block analytics */ }
 
+  /* ---- errors → James's phone (functions/api/error.js) ----
+     Only errors from this site's own scripts are reported (the function
+     checks the stack), at most 3 per page view, each message once. */
+  (function () {
+    var sent = {}, n = 0;
+    function report(message, source, stack) {
+      try {
+        message = String(message || "").slice(0, 300);
+        if (!message || sent[message] || n >= 3) return;
+        sent[message] = true; n++;
+        var body = JSON.stringify({ message: message, source: String(source || "").slice(0, 200), stack: String(stack || "").slice(0, 600), page: location.pathname });
+        if (!(navigator.sendBeacon && navigator.sendBeacon("/api/error", new Blob([body], { type: "application/json" }))))
+          fetch("/api/error", { method: "POST", headers: { "content-type": "application/json" }, body: body, keepalive: true });
+      } catch (e) { /* never throw from the error reporter */ }
+    }
+    window.addEventListener("error", function (e) {
+      var src = e.filename ? e.filename + ":" + e.lineno : "";
+      report(e.message, src, e.error && e.error.stack);
+    });
+    window.addEventListener("unhandledrejection", function (e) {
+      var r = e.reason || {};
+      report(r.message || String(r), "", r.stack);
+    });
+  })();
+
   /* ---- Google Analytics 4 ---- */
   // gtag() is defined now so events fired before the tag loads queue in the
   // dataLayer; the tag itself (177 KB) and Clarity load after the page is

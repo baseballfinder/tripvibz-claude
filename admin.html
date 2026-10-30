@@ -31,6 +31,9 @@
   .row .b{font-size:14px;color:#57534a;margin-top:6px;white-space:pre-wrap;line-height:1.5}
   .row .meta{font-size:12px;color:var(--muted);margin-top:9px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
   .row .meta a{color:var(--ocean);font-weight:600;text-decoration:none}
+  .evq{margin:0 0 22px;padding:14px 16px;border:1px solid #f0cfc4;background:#fff8f5;border-radius:12px}
+  .evq h2{font-size:17px;margin:0 0 6px}
+  .row.ev .actions{display:flex;gap:8px;margin-top:10px}
   .st{font-family:"Archivo";font-weight:700;font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:999px}
   .st-approved{background:#dff3ec;color:#0c6b5e}
   .st-hidden{background:var(--sand);color:#5b5448}
@@ -93,7 +96,7 @@
   "use strict";
   const { sb, $, TYPE_LABEL, escapeHtml, timeAgo, toast, auth, openLogin, isSignedIn, routes } = window.TV;
 
-  let ROWS = [], CITIES = {}, PROFILES = {}, CHECKS = {};
+  let ROWS = [], EVENTS = [], CITIES = {}, PROFILES = {}, CHECKS = {};
   let FILTER = "all", CITY = "", SEARCH = "", editing = null;
 
   const STATUSES = ["approved","hidden","rejected"];
@@ -132,6 +135,11 @@
     ]);
     ROWS = rows || [];
     (cities||[]).forEach(c => { CITIES[c.id] = c; });
+    // Visitors' calendar entries wait here (city_events_guard sets them pending).
+    const { data: evs } = await sb.from("city_events")
+      .select("id,name,blurb,kind,severity,start_month,end_month,source,status,created_at,author_id,city_id")
+      .eq("status", "pending").order("created_at", { ascending: false });
+    EVENTS = evs || [];
 
     const ids = [...new Set(ROWS.map(r => r.author_id).filter(Boolean))];
     if(ids.length){
@@ -186,6 +194,30 @@
     });
   }
 
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  function eventRow(e){
+    const city = CITIES[e.city_id] || {};
+    const span = e.start_month === e.end_month ? MONTHS[e.start_month-1] : `${MONTHS[e.start_month-1]}–${MONTHS[e.end_month-1]}`;
+    return `<article class="row ev" data-ev="${e.id}">
+      <div class="top"><span class="st st-${e.severity === "avoid" ? "rejected" : e.severity === "good" ? "approved" : "hidden"}">${escapeHtml(e.severity)}</span><span class="st st-hidden">${escapeHtml(span)}</span>
+        <a href="/${escapeHtml(city.slug||"")}/worst-times-to-visit/" target="_blank" rel="noopener"><b>${escapeHtml(city.name||"?")}</b></a>
+        <span class="count">${new Date(e.created_at).toLocaleDateString()}</span></div>
+      <div class="t">${escapeHtml(e.name)}</div>
+      ${e.blurb ? `<div class="b">${escapeHtml(e.blurb)}</div>` : ""}
+      ${e.source ? `<div class="meta"><a href="${escapeHtml(e.source)}" target="_blank" rel="noopener">source</a></div>` : ""}
+      <div class="actions"><button data-evact="approved" class="go">Approve</button><button data-evact="rejected">Reject</button></div>
+    </article>`;
+  }
+  async function onEventAction(e){
+    const btn = e.target.closest("button[data-evact]"); if(!btn) return;
+    const id = btn.closest(".row").dataset.ev;
+    const { error } = await sb.from("city_events").update({ status: btn.dataset.evact }).eq("id", id);
+    if(error){ toast("Couldn't update: " + (error.message||"")); return; }
+    EVENTS = EVENTS.filter(x => x.id !== id);
+    toast(btn.dataset.evact === "approved" ? "On the calendar at the next build" : "Rejected");
+    render();
+  }
+
   function render(){
     const list = visible();
     const counts = STATUSES.reduce((a,s)=>(a[s]=ROWS.filter(r=>r.status===s).length,a),{});
@@ -215,6 +247,12 @@
         </div>
       </details>
 
+      ${EVENTS.length ? `<section class="evq" id="evq">
+        <h2>Calendar suggestions <span class="count">${EVENTS.length} waiting</span></h2>
+        <p class="rlm-note">Entries visitors added to a city's "Worst times to visit" calendar. Approved ones appear after the next site build.</p>
+        <div id="evrows">${EVENTS.map(eventRow).join("")}</div>
+      </section>` : ""}
+
       <div class="filters" id="filters">
         <button data-f="all" aria-pressed="${FILTER==="all"}">All</button>
         ${STATUSES.map(s=>`<button data-f="${s}" aria-pressed="${FILTER===s}">${s} (${counts[s]})</button>`).join("")}
@@ -240,6 +278,7 @@
     q.addEventListener("input", ()=>{ SEARCH=q.value; const p=q.selectionStart; render(); const n=$("#q"); n.focus(); n.setSelectionRange(p,p); });
     $("#city").addEventListener("change", e=>{ CITY=e.target.value; editing=null; render(); });
     $("#rows").addEventListener("click", onAction);
+    const evq = $("#evrows"); if(evq) evq.addEventListener("click", onEventAction);
     wireRlm();
   }
 

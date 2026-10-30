@@ -113,7 +113,7 @@
   async function send(){
     const body = window.TV.tidy(($("#reply").value || "").trim());
     if (body.length < 2) { toast("Write something first"); return; }
-    if (!auth.me) await auth.ensure();
+    if (!(await auth.session())) { toast("That didn't go through. Try again."); return; }
     const id = crypto.randomUUID();
     const label = id.replace(/-/g, "");
     const path = REPLY_TO ? REPLY_TO + "." + label : label;

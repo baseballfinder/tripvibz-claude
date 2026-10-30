@@ -182,7 +182,7 @@
   }
   async function ask(slug){
     const c = CANDS.find(x => x.slug === slug); if (!c) return;
-    await auth.ensure();
+    if (!(await auth.session())) { toast("That didn't go through. Try again."); return; }
     const { error } = await sb.from("city_requests").insert({ city_slug: slug });
     if (error && error.code !== "23505") {
       toast(/RATE_LIMITED/.test(error.message) ? "That's plenty of asks for today" : "That didn't go through. Try again.");

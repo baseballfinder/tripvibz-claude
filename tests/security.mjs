@@ -212,6 +212,40 @@ await test("/api/hit ignores bots and non-search referrers without notifying", a
   assert(calls.length === 0, "no notification for bots or non-search visits");
 });
 
+await test("/api/event validates every field before the database; /api/health and /api/error behave (no spam from foreign scripts)", async () => {
+  const ev = await import("../functions/api/event.js");
+  const id = "11111111-1111-1111-1111-111111111111";
+  const good = { city_id: id, city_name: "Miami", name: "Art Basel", blurb: "Hotels fill", severity: "busy", start_month: 12, end_month: 12 };
+  const call = async (body, auth = "Bearer t") => {
+    const calls = [];
+    const res = await withMockFetch(calls, () => ev.onRequestPost({
+      request: new Request("https://www.tripvibz.com/api/event", { method: "POST", headers: { ...(auth ? { authorization: auth } : {}), "content-type": "application/json" }, body: JSON.stringify(body) }),
+      env: {}, waitUntil: () => {}
+    }));
+    return { status: res.status, error: (await res.json()).error, dbCalls: calls.length };
+  };
+  const bad = async (patch, error) => { const r = await call({ ...good, ...patch }); assert(r.status === 400 && r.error === error && r.dbCalls === 0, `${JSON.stringify(patch)} -> ${r.status} ${r.error} (${r.dbCalls} db calls), wanted 400 ${error}`); };
+  assert((await call(good, null)).status === 401, "no token -> 401");
+  await bad({ city_id: "x" }, "bad_id"); await bad({ name: "ab" }, "bad_name"); await bad({ name: "x".repeat(121) }, "bad_name");
+  await bad({ severity: "meh" }, "bad_severity"); await bad({ start_month: 13 }, "bad_months"); await bad({ blurb: "x".repeat(401) }, "bad_blurb");
+  const ok = await call(good); assert(ok.status === 200 && ok.dbCalls === 1, "a valid entry is inserted");
+
+  const health = await import("../functions/api/health.js");
+  const up = await withMockFetch([], () => health.onRequestGet({}));
+  assert(up.status === 200 && (await up.json()).ok === true, "health: 200 when the database answers");
+  const real = globalThis.fetch; globalThis.fetch = async () => { throw new Error("down"); };
+  try { const down = await health.onRequestGet({}); assert(down.status === 503, "health: 503 when the database is unreachable"); } finally { globalThis.fetch = real; }
+
+  const er = await import("../functions/api/error.js");
+  const beacon = async body => { const calls = []; const res = await withMockFetch(calls, () => er.onRequestPost({ request: new Request("https://www.tripvibz.com/api/error", { method: "POST", body: JSON.stringify(body) }), env: { NTFY_TOPIC: "t" }, waitUntil: p => p })); await new Promise(r => setTimeout(r, 10)); return { status: res.status, notified: calls.some(c => c.url.includes("ntfy.sh")) }; };
+  const foreign = await beacon({ message: "x is not defined", source: "chrome-extension://abc/content.js:1", stack: "at chrome-extension://abc/content.js:1", page: "/miami/" });
+  assert(foreign.status === 204 && !foreign.notified, "an extension's error must not notify");
+  const own = await beacon({ message: "TypeError: boom", source: "https://www.tripvibz.com/assets/tv.js?v=abc:12", stack: "TypeError: boom\n at https://www.tripvibz.com/assets/tv.js?v=abc:12:3", page: "/miami/" });
+  assert(own.status === 204 && own.notified, "our own script's error notifies");
+  const nopage = await beacon({ message: "boom", stack: "https://www.tripvibz.com/assets/tv.js", page: "javascript:alert(1)" });
+  assert(!nopage.notified, "a non-path page value is dropped");
+});
+
 await test("/t/<id> returns a real 404 with security headers for a malformed id", async () => {
   const mod = await import("../functions/t/[id].js");
   const env = { ASSETS: { fetch: async () => new Response("<html><head><title>x</title></head><body><main id=\"root\"></main></body></html>", { headers: { "content-type": "text/html" } }) } };

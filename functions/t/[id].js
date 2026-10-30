@@ -18,6 +18,7 @@ const SB = "https://nkxorlktzbgwqnfwmuus.supabase.co";
 const KEY = "sb_publishable_5UOevsS8KmWWGrQYNWsabg_0sVOIPmB";
 const SITE = "https://www.tripvibz.com";
 import { withSecurityHeaders } from "../_security.js";
+import { reportError } from "../api/_notify.js";
 
 const esc = s => String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -32,7 +33,16 @@ const THEME = { what_not_to_do: "what-not-to-do", worst_times: "worst-times-to-v
 const ld = obj => `<script type="application/ld+json">${JSON.stringify(obj).replace(/</g, "\\u003c")}</script>`;
 const plain = s => String(s || "").replace(/\s+/g, " ").trim();
 
-export async function onRequestGet({ params, request, env }) {
+export async function onRequestGet(context) {
+  try { return await takePage(context); }
+  catch (e) {
+    context.waitUntil?.(reportError(context.env, context.request, "/t/<id>", e));
+    // Serve the plain page (it loads the take itself) rather than a 500.
+    return withSecurityHeaders(await context.env.ASSETS.fetch(new URL("/thread", context.request.url)));
+  }
+}
+
+async function takePage({ params, request, env }) {
   const page = await env.ASSETS.fetch(new URL("/thread", request.url));
   const id = String(params.id || "");
   // A real 404 for bad or removed takes, so Google drops them instead of

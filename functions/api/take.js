@@ -35,7 +35,7 @@ export const TITLE_MAX = 200, BODY_MAX = 2000;
 export const TYPES = new Set(["what_not_to_do", "hidden_gem", "take", "worst_times"]);
 const UUID = /^[0-9a-f-]{36}$/i;
 
-import { notify, where } from "./_notify.js";
+import { notify, where, reportError } from "./_notify.js";
 import { locate } from "./locate.js";
 
 export async function onRequestPost(context) {
@@ -78,7 +78,9 @@ export async function onRequestPost(context) {
     city_match = norm(submitted_city) === norm(city_name);
   }
 
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/posts`, {
+  let res;
+  try {
+    res = await fetch(`${SUPABASE_URL}/rest/v1/posts`, {
     method: "POST",
     headers: {
       apikey: SUPABASE_KEY,
@@ -102,6 +104,10 @@ export async function onRequestPost(context) {
       city_match
     })
   });
+  } catch (e) {
+    context.waitUntil(reportError(context.env, request, "/api/take", e));
+    return json({ error: "upstream_unreachable" }, 502);
+  }
 
   const text = await res.text();
   if (!res.ok) {
