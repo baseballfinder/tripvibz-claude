@@ -221,7 +221,7 @@ await test("Locals' top 3 restaurants: section pre-rendered on every city page; 
   const loader = await readFile("scripts/places_catalog.py", "utf8");
   assert(/overturemaps-us-west-2/.test(loader) && /CDLA-Permissive/.test(loader) && /operating_status/.test(loader), "catalogue loader must read Overture places and note the licence");
   assert((await readFile(".github/workflows/places-catalog.yml", "utf8")).includes("scripts/places_catalog.py"), "monthly catalogue workflow missing");
-  for (const c of cities.slice(0, 3)) assert((await readFile(join("dist", c.slug, "index.html"), "utf8")).includes("overturemaps.org"), `${c.slug}: Overture attribution missing from the section`);
+  for (const c of cities.slice(0, 3)) assert(/<a href="https:\/\/overturemaps\.org\/"[^>]*>Overture Maps<\/a>/.test(await readFile(join("dist", c.slug, "index.html"), "utf8")), `${c.slug}: Overture attribution missing from the section`);
 });
 
 await test("How-we-verify-locals page: exists, linked, describes the method without the exact thresholds", async () => {

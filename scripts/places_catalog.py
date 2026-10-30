@@ -22,7 +22,7 @@ names (no misspellings) with address, phone, website and coordinates.
     PLACES_RELEASE=2026-10-21.0 python3 ...      # pin a release (default: latest)
 """
 import os, re, sys, math, json, time, urllib.request, urllib.parse
-from datetime import datetime, timezone
+
 
 import duckdb
 import psycopg
