@@ -47,6 +47,7 @@
 .top3-sugg button b{display:block;font-weight:700}
 .top3-sugg button small{display:block;color:var(--muted);font-size:12.5px;margin-top:1px}
 .top3-sugg button.typed{color:#4e5a55}
+.sugg-k{font:800 11px "Archivo",sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 12px 2px}
 .top3-picked{font-size:12.5px;color:#0b5c4c;margin:5px 2px 0;font-weight:600}
 .top3-picked.plain{color:var(--muted);font-weight:500}
 .eat-links{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:13px;font-weight:700}
@@ -263,17 +264,30 @@
     </div>`;
   }
 
-  EATS.sugg = {}; EATS.timers = {};
+  EATS.sugg = {}; EATS.timers = {}; EATS.popular = null;
+  // One suggestion row: name, address, and how well known it is (reviews, or TripVibz picks).
+  const suggItem = (r, rank) => `<button type="button" data-pick="${esc(r.id)}" data-rank="${rank}"><b>${esc(r.name)}</b><small>${esc([r.address, r.locality].filter(Boolean).join(", "))}${
+    r.review_count ? ` · ${Number(r.review_count).toLocaleString()} reviews` : r.picks ? ` · picked by ${r.picks} local${r.picks === 1 ? "" : "s"}` : ""}${r.status === "closed" ? " · may be closed" : ""}</small></button>`;
+  // Before typing: the city's best-known places (popular_places), one tap away.
+  async function showPopular(rank){
+    const box = $(`#top3-s${rank}`); if (!box) return;
+    if (EATS.popular === null) { const { data } = await sb.rpc("popular_places", { p_city: CITY.id }); EATS.popular = data || []; }
+    const cur = $(`#top3-n${rank}`); if (!cur || cur.value.trim() || !EATS.popular.length) return;
+    EATS.sugg[rank] = EATS.popular;
+    box.innerHTML = `<div class="sugg-k">Best known in ${esc(CITY.name)}</div>` + EATS.popular.map(r => suggItem(r, rank)).join("");
+    box.hidden = false;
+  }
   function suggest(rank, text){
     clearTimeout(EATS.timers[rank]);
     const box = $(`#top3-s${rank}`); if (!box) return;
     const q = (text || "").trim();
+    if (!q) { showPopular(rank); return; }
     if (q.length < 2) { box.hidden = true; box.innerHTML = ""; return; }
     EATS.timers[rank] = setTimeout(async () => {
       const { data } = await sb.rpc("search_places", { p_city: CITY.id, p_q: q });
       const cur = $(`#top3-n${rank}`); if (!cur || cur.value.trim() !== q) return;   // they kept typing
       EATS.sugg[rank] = data || [];
-      const items = EATS.sugg[rank].map(r => `<button type="button" data-pick="${esc(r.id)}" data-rank="${rank}"><b>${esc(r.name)}</b><small>${esc([r.address, r.locality].filter(Boolean).join(", "))}${r.status === "closed" ? " · may be closed" : ""}</small></button>`);
+      const items = EATS.sugg[rank].map(r => suggItem(r, rank));
       items.push(`<button type="button" class="typed" data-pick="typed" data-rank="${rank}">Use “${esc(q)}” as typed<small>${EATS.sugg[rank].length ? "Not one of these?" : "Not in our list yet"} — we'll add it.</small></button>`);
       box.innerHTML = items.join(""); box.hidden = false;
     }, 220);
@@ -393,6 +407,10 @@
       const picked = inp.parentNode.querySelector(".top3-picked"); if (picked) picked.remove();
       suggest(rank, inp.value);
     }));
+    $("#city").querySelectorAll("[data-top3^='n']").forEach(inp => {
+      inp.addEventListener("focus", () => { if (!inp.value.trim()) showPopular(Number(inp.dataset.top3.slice(1))); });
+      inp.addEventListener("blur", () => setTimeout(() => { const b = $(`#top3-s${inp.dataset.top3.slice(1)}`); if (b && !b.matches(":hover")) { b.hidden = true; } }, 150));
+    });
     $("#city").querySelectorAll(".top3-sugg").forEach(box => box.addEventListener("click", e => {
       const b = e.target.closest("button[data-pick]"); if (!b) return;
       const rank = Number(b.dataset.rank);

@@ -377,6 +377,7 @@ await test("Locals' top 3 restaurants: section on city pages; anonymous sees sig
     const headers = { ...req.headers() }; delete headers.authorization;
     // The places catalogue search and the server-side "restaurant from catalogue" call, faked.
     if (url.includes("/rpc/search_places")) { let b = {}; try { b = JSON.parse(req.postData() || "{}"); } catch {} ; return r.fulfill({ json: /salty/i.test(b.p_q || "") ? [PLACE, { ...PLACE, id: "overture-test-place-2", name: "Salty Flats Cafe", address: "1 Ocean Dr", locality: "Miami Beach" }] : [] }); }
+    if (url.includes("/rpc/popular_places")) return r.fulfill({ json: [{ ...PLACE, id: "overture-test-place-3", name: "Joe's Stone Crab", address: "11 Washington Ave", locality: "Miami Beach", review_count: 12840, picks: 0 }, { ...PLACE, review_count: null, picks: 2 }] });
     if (url.includes("/rpc/ensure_restaurant_from_place")) { let b = {}; try { b = JSON.parse(req.postData() || "{}"); } catch {} ; writes.push({ table: "ensure_restaurant_from_place(rpc)", method: m, body: b, who: me }); return r.fulfill({ json: ENSURED }); }
     if (m === "GET" || m === "HEAD" || url.includes("/rpc/")) return r.continue({ headers });
     let body = {}; try { body = JSON.parse(req.postData() || "{}"); } catch {}
@@ -400,6 +401,11 @@ await test("Locals' top 3 restaurants: section on city pages; anonymous sees sig
   assert((await p2.inputValue("#top3-n1")) === "The Salty Donut", "picking a suggestion should fill the exact catalogue name");
   assert(/50 NW 23rd St/.test(await p2.textContent("#top3")), "picked place should show its address under the field");
   await p2.fill("#top3-w1", "Get the guava and cheese, go before 10.");
+  // Row 2: focusing the empty field offers the city's best-known places, most reviewed first.
+  await p2.focus("#top3-n2"); await p2.waitForTimeout(400);
+  const pop = await p2.textContent("#top3-s2");
+  assert(/Best known in Miami/.test(pop) && /Joe's Stone Crab/.test(pop) && /12,840 reviews/.test(pop) && /picked by 2 locals/.test(pop), `before typing, the best-known list should show review counts and pick counts: ${pop.slice(0, 160)}`);
+  assert(pop.indexOf("Joe's Stone Crab") < pop.indexOf("The Salty Donut"), "most reviewed should come first");
   // Rows 2 and 3 typed by hand (not in the catalogue).
   await p2.fill("#top3-n2", "La Camaronera");
   await p2.fill("#top3-n3", "la camaronera");   // same place twice, typed differently

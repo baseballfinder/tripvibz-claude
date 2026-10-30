@@ -133,8 +133,8 @@ def main():
         for city in cities:
             t = time.time()
             rows = fetch_city(con, files, city, cities_all)
-            with pg.transaction():
-                pg.executemany(
+            with pg.transaction(), pg.cursor() as cur:
+                cur.executemany(
                     """insert into public.places_catalog
                          (id, city_id, name, category, address, locality, postcode, lat, lng, phone, website, instagram, confidence, status, release, updated_at)
                        values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
@@ -145,7 +145,8 @@ def main():
                          confidence = excluded.confidence, status = excluded.status, release = excluded.release, updated_at = now()""",
                     [r + (release,) for r in rows])
                 # Places that left the release for this city (closed, merged, removed) leave the picker.
-                gone = pg.execute("delete from public.places_catalog where city_id = %s and release <> %s", (city["id"], release)).rowcount
+                cur.execute("delete from public.places_catalog where city_id = %s and release <> %s", (city["id"], release))
+                gone = cur.rowcount
             total += len(rows)
             print(f"  {city['name']:<18} {len(rows):>6} places  (-{gone} gone)  {time.time() - t:.1f}s")
         print(f"done: {total} places across {len(cities)} cities · Overture {release}")
