@@ -62,3 +62,7 @@ jobs:
             Review the diff; merging keeps the repo's copy of the schema current. Nothing in this PR changes the database.
           labels: automated
           delete-branch: true
+      - name: Explain the one-time repo setting if GitHub refused the pull request
+        if: failure()
+        run: |
+          echo "::error::If the step above says 'GitHub Actions is not permitted to create or approve pull requests': the branch schema-snapshot was still pushed, so open the PR from it by hand this time, and tick Settings → Actions → General → Workflow permissions → 'Allow GitHub Actions to create and approve pull requests' so the weekly run can open it itself."

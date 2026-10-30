@@ -29,6 +29,9 @@ concurrency:
 
 jobs:
   sync:
+    # Pull requests from Dependabot (and forks) run without the repo's secrets,
+    # so the key check there can only fail; the "test" check still covers them.
+    if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

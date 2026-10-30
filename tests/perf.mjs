@@ -35,8 +35,8 @@ const BUDGET = {
   pageHtml: 60 * KB,          // largest page: 28 KB (worst-times pages)
   pageHtmlGz: 20 * KB,        // 8-15 KB with the stylesheets inlined
   siteJs: 60 * KB,            // tv.js 15 KB, v2.js 23 KB, analytics.js 2 KB
-  vendorJs: 260 * KB,         // bundled supabase-js: 215 KB (57 KB gz)
-  jsTotalGz: 90 * KB,         // everything a page can load: ~73 KB gz
+  vendorJs: 140 * KB,         // PostgREST + Auth client (lib/supabase-client.mjs): 120 KB (30 KB gz)
+  jsTotalGz: 60 * KB,         // everything a page can load: ~45 KB gz
   css: 25 * KB,               // v2.css 18 KB, site.css 9 KB
   ogImage: 200 * KB,          // share cards: 110-157 KB each
   brandImage: 120 * KB,       // app icons / logos
@@ -136,6 +136,7 @@ await test("City grid photos: pre-rendered with local srcset and dimensions; fir
       assert(/srcset="[^"]*\/assets\/city\//.test(img) && /sizes="/.test(img), `${f}: tile ${i} needs srcset + sizes`);
       assert(/width="\d+"/.test(img) && /height="\d+"/.test(img), `${f}: tile ${i} needs width and height`);
       assert(new RegExp(`loading="${i < 8 ? "eager" : "lazy"}"`).test(img), `${f}: tile ${i} should be ${i < 8 ? "eager" : "lazy"}`);
+      assert(/fetchpriority="high"/.test(img) === (i < 2), `${f}: tile ${i} ${i < 2 ? "should" : "should not"} be fetchpriority=high (the first two are the LCP candidates on a phone)`);
     });
     // The script's own template must do the same, or hydration swaps in lazy tiles.
     const tpl = (h.match(/<img[^>]*cityPhotoAttrs\([^>]*>/g) || [])[0];

@@ -97,7 +97,8 @@ await test("Every script, stylesheet and font is same-origin (fonts and the Supa
   }
   assert(await exists("dist/assets/supabase.js"), "dist/assets/supabase.js (bundled from the pinned npm package) missing");
   const vendored = await readFile("dist/assets/supabase.js", "utf8");
-  assert(vendored.includes("createClient") && vendored.length > 50_000, "vendored Supabase client looks wrong");
+  assert(vendored.includes("createClient") && vendored.includes("rest/v1") && vendored.includes("auth/v1") && vendored.length > 50_000, "vendored Supabase client looks wrong");
+  assert(!vendored.includes("realtime/v1") && !vendored.includes("storage/v1"), "vendored Supabase client carries Realtime/Storage code the site never uses (lib/supabase-client.mjs)");
 });
 
 await test("CSP covers every outside origin the site code talks to", async () => {

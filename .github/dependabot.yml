@@ -7,6 +7,8 @@ updates:
     schedule: { interval: weekly, day: monday, time: "06:00", timezone: America/New_York }
     groups:
       dev-tooling: { patterns: ["esbuild", "playwright", "@lhci/*", "sharp", "@fontsource-variable/*"] }
+      # The client is bundled from these three at one version (lib/supabase-client.mjs); bump them together.
+      supabase: { patterns: ["@supabase/*"] }
     open-pull-requests-limit: 5
   - package-ecosystem: pip
     directory: /scripts

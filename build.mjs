@@ -53,8 +53,8 @@ const SUPABASE_KEY = "sb_publishable_5UOevsS8KmWWGrQYNWsabg_0sVOIPmB";
 const SKIP = new Set([
   "dist", "node_modules", ".git", "supabase", ".github", "functions",
   "build.mjs", "package.json", "package-lock.json", "lighthouserc.json", "lighthouserc.mobile.json",
-  // Maintenance scripts and docs are not site content; never publish them.
-  "scripts", "data", "tests", "README.md", "vote.html", "add.html"
+  // Maintenance scripts, bundle sources and docs are not site content; never publish them.
+  "scripts", "lib", "data", "tests", "README.md", "vote.html", "add.html"
 ]);
 
 const THEMES = {
@@ -105,8 +105,8 @@ async function fetchTable(name, query = "") {
 async function loadContent() {
   try {
     const [cities, posts, events] = await Promise.all([
-      fetchTable("cities", "select=id,name,state,slug,photo,lat,lng&order=sort"),
-      fetchTable("posts", "select=id,title,body,type,ups,downs,created_at,city_id"),
+      fetchTable("cities", "select=id,name,state,slug,photo,blurb,lat,lng&order=sort"),
+      fetchTable("posts", "select=id,title,body,type,ups,downs,created_at,city_id,author_id"),
       fetchTable("city_events", "select=id,name,blurb,kind,severity,start_month,end_month,city_id")
     ]);
     return { cities, posts, events };
@@ -177,12 +177,13 @@ function injectInto(html, id, content) {
 // Replace the shell's <title> and inject metadata + pre-rendered body.
 // The shell's own description is stripped FIRST, so it can't delete the one
 // we then inject (that ordering bug shipped pages with no description).
-function render(template, { title, desc, canonical, image, body, mount = "root", jsonLd, noindex, og, preloadImage }) {
+function render(template, { title, desc, canonical, image, body, mount = "root", mounts = {}, jsonLd, noindex, og, preloadImage }) {
   let out = template.replace(/<meta name="description"[^>]*>\s*/g, "");
   const headOut = head({ title, desc, canonical, image, noindex, og, preloadImage });
   out = out.replace(/<title>[\s\S]*?<\/title>/, () => headOut);
   if (jsonLd) out = out.replace(/<\/head>/, () => jsonLd + "</head>");
   if (body) out = injectInto(out, mount, body);
+  for (const [id, html] of Object.entries(mounts)) out = injectInto(out, id, html);
   return out;
 }
 
@@ -443,28 +444,63 @@ ${cal}`;
 // Without these, every city and article page is orphaned: the home page and
 // city index build their grids in JS, so a crawler following links finds
 // nothing beyond the two shells. Pre-render real <a> tags.
+//
+// The markup and ORDER here match what the page scripts produce, so when the
+// live data arrives the scripts update text in place instead of replacing the
+// grid. (Replacing it moved different photos into the viewport a second time,
+// and that late paint — not the hero — became the page's Largest Contentful
+// Paint, ~3.5 s on a phone.) The first two tiles are the LCP candidates on
+// phones, so they are fetched at high priority.
+
+// Home: every city, emptiest first — the gap is the invitation (index.html renderNeeds).
 function cityGrid(cities, countsBySlug) {
-  return cities.map((c, i) => {
+  const ordered = cities.slice().sort((a, b) => (countsBySlug[a.slug] || 0) - (countsBySlug[b.slug] || 0) || a.name.localeCompare(b.name));
+  return ordered.map((c, i) => {
     const n = countsBySlug[c.slug] || 0;
-    return `<a class="need" href="/${esc(c.slug)}/what-not-to-do/">
+    return `<a class="need" href="/${esc(c.slug)}/what-not-to-do/" data-slug="${esc(c.slug)}">
       ${gridImg(c, i, "(max-width: 640px) calc(50vw - 22px), 180px", { width: 336, height: 132 })}
       <span class="scrim"></span>
       <span class="txt"><b>${esc(c.name)}</b>
       <span class="s">${esc(c.state || "")}</span>
-      <span class="n">${n ? `${n} take${n === 1 ? "" : "s"}` : "Be the first"}</span></span></a>`;
+      <span class="n${n ? "" : " thin"}">${n ? `${n} take${n === 1 ? "" : "s"}` : "Be the first"}</span></span></a>`;
   }).join("");
 }
 
-function cityList(cities, countsBySlug) {
-  return cities.map((c, i) => {
-    const n = countsBySlug[c.slug] || 0;
-    return `<a class="city-card" href="/${esc(c.slug)}/">
-      <div class="city-top">${gridImg(c, i, "(max-width: 640px) calc(100vw - 42px), 256px", { cls: "city-img", width: 232, height: 104 })}<span class="city-state">${esc(c.state || "US")}</span></div>
-      <div class="city-body"><h3>${esc(c.name)}</h3>
-      <p>${esc(c.state || "")}</p>
-      <div class="city-foot">${n ? `${n} local take${n === 1 ? "" : "s"}` : "Needs locals"}</div>
+// Home: the three counters above the grid (index.html renderStats).
+function homeStats(cities, posts) {
+  const locals = new Set(posts.map(p => p.author_id).filter(Boolean)).size;
+  return `<div class="stat"><b>${posts.length}</b><span>local takes</span></div>
+      <div class="stat"><b>${locals}</b><span>contributors</span></div>
+      <div class="stat"><b>${cities.length}</b><span>cities open</span></div>`;
+}
+
+// /cities/: the same card places.html draws (its card()), split into the
+// "Live now" and "Open for locals" grids the way its render() does.
+function hueFor(name) { let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360; return h; }
+function cityCard(c, i, n) {
+  const live = n > 0, h = hueFor(c.name);
+  return `<a class="city-card${live ? "" : " is-thin"}" href="/${esc(c.slug)}/" data-slug="${esc(c.slug)}">
+      <div class="city-top" style="background:linear-gradient(135deg, hsl(${h} 55% 52%), hsl(${(h + 38) % 360} 60% 42%))">
+        ${gridImg(c, i, "(max-width: 640px) calc(100vw - 42px), 256px", { cls: "city-img", width: 232, height: 104 })}
+        <span class="pin">📍</span>
+        <span class="city-state">${esc(c.state || "US")}</span>
+      </div>
+      <div class="city-body">
+        <h3>${esc(c.name)}</h3>
+        <p>${esc(c.blurb || "")}</p>
+        <div class="city-foot${live ? "" : " soon"}">${live ? `${n} local take${n === 1 ? "" : "s"}` : "Needs locals — be the first"}</div>
       </div></a>`;
-  }).join("");
+}
+function cityLists(cities, countsBySlug) {
+  const live = cities.filter(c => (countsBySlug[c.slug] || 0) > 0);
+  const soon = cities.filter(c => !((countsBySlug[c.slug] || 0) > 0));
+  // Tile index runs across both grids: the first rows on the page are eager whichever grid they sit in.
+  let i = 0;
+  return {
+    live: live.map(c => cityCard(c, i++, countsBySlug[c.slug] || 0)).join(""),
+    soon: soon.map(c => cityCard(c, i++, countsBySlug[c.slug] || 0)).join(""),
+    hasLive: live.length > 0, hasSoon: soon.length > 0
+  };
 }
 
 /* ---------------- editorial intros + nearby cities ----------------
@@ -594,6 +630,9 @@ function heroSources(city, { short = false } = {}) {
 // script's re-render reuses the already-loaded files. The first rows are eager
 // (one of them is usually the largest thing on the page); the rest lazy.
 const EAGER_TILES = 8;
+// On a phone the grid is two columns, so the first two tiles are the ones that
+// can be the Largest Contentful Paint: ask for them first.
+const PRIORITY_TILES = 2;
 function gridImg(city, i, sizes, { cls = "", width, height } = {}) {
   const base = LOCAL_PHOTO[city.slug];
   const remote = photo(city.slug);
@@ -601,7 +640,7 @@ function gridImg(city, i, sizes, { cls = "", width, height } = {}) {
     ? `src="/assets/city/${esc(base)}-800.webp" srcset="${PHOTO_SIZES.map(w => `/assets/city/${esc(base)}-${w}.webp ${w}w`).join(", ")}" sizes="${esc(sizes)}" data-fallback="${esc(remote)}"`
       + ` onerror="if(this.dataset.fallback){this.srcset='';this.src=this.dataset.fallback;delete this.dataset.fallback}else this.remove()"`
     : `src="${esc(remote)}" onerror="this.remove()"`;
-  return `<img${cls ? ` class="${cls}"` : ""} ${srcAttrs} alt="${esc(city.name)}" width="${width}" height="${height}" loading="${i < EAGER_TILES ? "eager" : "lazy"}" decoding="async">`;
+  return `<img${cls ? ` class="${cls}"` : ""} ${srcAttrs} alt="${esc(city.name)}" width="${width}" height="${height}" loading="${i < EAGER_TILES ? "eager" : "lazy"}"${i < PRIORITY_TILES ? ` fetchpriority="high"` : ""} decoding="async">`;
 }
 
 // The hero <img>: in the HTML (discoverable at once, fetchpriority=high) and
@@ -674,11 +713,14 @@ for (const e of await readdir("assets", { withFileTypes: true })) {
 /* ---------------- vendored Supabase client ----------------
    The pages used to load supabase-js from a CDN at a floating "@2" version with
    no integrity hash: whatever the CDN served ran on every page, the admin page
-   included. It is bundled here instead from the pinned npm dependency
+   included. It is bundled here instead from the pinned npm dependencies
    (package-lock.json), served as /assets/supabase.js with the same content-hash
-   versioning as the site's own scripts, and the CDN is no longer in the CSP. */
+   versioning as the site's own scripts, and the CDN is no longer in the CSP.
+   lib/supabase-client.mjs builds the client from the PostgREST and Auth
+   packages only — the Realtime, Storage and Functions clients the pages never
+   call stayed out, halving the script (57 → 28 KB gzipped). */
 const SUPABASE_BUNDLE = (await bundle({
-  stdin: { contents: 'export * from "@supabase/supabase-js";', resolveDir: process.cwd(), loader: "js" },
+  entryPoints: ["lib/supabase-client.mjs"],
   bundle: true, format: "iife", globalName: "supabase", minify: true, target: "es2020",
   platform: "browser", write: false, logLevel: "silent", legalComments: "none"
 })).outputFiles[0].text;
@@ -859,11 +901,13 @@ await emit("index.html", await minifyHtml(render(indexTpl, {
     `${cities.length} cities and counting. One-tap questions like “Navy Pier: worth it, or skip it?” See what locals say before you book.`),
   body: cityGrid(cities, countsBySlug),
   mount: "needs",
+  mounts: { stats: homeStats(cities, posts) },
   jsonLd: homeLd(cities, newest(posts))
 }), null));
 
 pages.push({ path: "/cities/", lastmod: newest(posts), priority: "0.8" });
 pages.push({ path: "/about/", lastmod: CONTENT_EPOCH, priority: "0.3" });
+const lists = cityLists(cities, countsBySlug);
 await emit("cities/index.html", await minifyHtml(render(placesTpl, {
   title: "Every city on TripVibz — local guides by residents",
   desc: "Browse cities where locals have written what visitors get wrong, when not to visit, and what residents actually do.",
@@ -871,11 +915,12 @@ await emit("cities/index.html", await minifyHtml(render(placesTpl, {
   image: `${SITE}/assets/og/cities.jpg`,
   og: ogCard("cities.jpg", "Pick your city: what do tourists get wrong there?",
     `Locals in ${cities.length} cities vote on what visitors get wrong. Don't see yours? One tap to ask for it.`),
-  body: cityList(cities, countsBySlug),
-  mount: "live-grid"
-,
+  mounts: { "live-grid": lists.live, "soon-grid": lists.soon },
   jsonLd: citiesLd(cities, countsBySlug, newest(posts))
-}), null));
+})
+  // Section labels: shown for the grids that have cities, worded as the script words them.
+  .replace(/<h2 class="section-label" id="live-label" hidden>/, lists.hasLive ? `<h2 class="section-label" id="live-label">` : `<h2 class="section-label" id="live-label" hidden>`)
+  .replace(/<h2 class="section-label" id="soon-label" hidden>[^<]*<\/h2>/, `<h2 class="section-label" id="soon-label"${lists.hasSoon ? "" : " hidden"}>Open for locals</h2>`), null));
 
 let cityCount = 0, articleCount = 0;
 for (const city of cities) {
