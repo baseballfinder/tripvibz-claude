@@ -113,6 +113,19 @@ only `verified`/`revoked`; the day counts are admin-only (`admin_local_checks`).
 the ✓. The public explanation is `/how-we-verify-locals/`; the static test checks it describes the
 method but not the exact numbers, and `tests/db-security.sql` checks the grants and the trigger.
 
+## Locals' top 3 restaurants
+
+Migration `20261030140000_top3_restaurants.sql`: `restaurants` (one row per place per city; `name_key`
+folds spelling so "The Salty Donut" and "salty donut" are one row; admins hide/rename/merge in
+admin.html) and `top3_picks` (one ranked list per signed-in person per city, optional one-line why).
+Anonymous sessions can't write either (`jwt_is_verified()`); names and whys go through the same
+content screen as takes; a person can add at most 10 new restaurant rows a day. The
+`city_top_restaurants` view rolls picks up (#1 = 3 points, #2 = 2, #3 = 1) with verified locals'
+points first; `build.mjs eatsHtml` pre-renders it on every city page and `city.html` refreshes it in
+place, then shows the picker to signed-in people. The e2e test drives the picker with a fake
+signed-in session and checks the writes (restaurants with `created_by`, list cleared then inserted as
+ranks 1–3); the static test checks the section, the RLS conditions and the rate limit.
+
 ## Content-Security-Policy
 
 `script-src` has no `'unsafe-inline'`. `build.mjs` hashes every inline `<script>` as it emits a page

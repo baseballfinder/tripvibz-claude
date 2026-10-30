@@ -9,6 +9,39 @@
 <link rel="stylesheet" href="/assets/site.css">
 <link rel="stylesheet" href="/assets/v2.css">
 <script src="/assets/analytics.js" defer></script>
+<style>
+/* Locals' top 3 restaurants (city pages only; build.mjs eatsHtml mirrors the markup) */
+.eats{margin:22px 0 6px}
+.eats-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.eats-h h2{font:900 20px "Archivo",sans-serif;margin:0;color:var(--ink)}
+.eats-n{font-size:12.5px;font-weight:600;color:var(--muted)}
+.eats-list{list-style:none;counter-reset:eat;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.eats-list li{counter-increment:eat;display:flex;gap:12px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.eats-list li::before{content:counter(eat);flex:none;width:28px;height:28px;border-radius:999px;background:var(--ink);color:#fff;font:800 13px/28px "Archivo",sans-serif;text-align:center}
+.eat-main{min-width:0;flex:1}
+.eat-name{font:800 16px "Archivo",sans-serif;color:var(--ink)}
+.eat-nb{font-size:12.5px;color:var(--muted);margin-left:8px}
+.eat-meta{font-size:12.5px;color:var(--muted);margin-top:3px}
+.eat-why{font-size:14px;line-height:1.45;color:#2b2720;margin-top:6px}
+.eat-by{color:var(--muted);font-size:12.5px;white-space:nowrap}
+.eats-add{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px}
+.btn2{display:inline-flex;align-items:center;min-height:40px;padding:0 14px;border-radius:10px;background:var(--ink);color:#fff;font:800 14px "Public Sans",sans-serif;text-decoration:none;border:0;cursor:pointer}
+.btn2.ghost{background:#fff;color:var(--ink);border:1.5px solid var(--ink)}
+.eats-note{font-size:12.5px;color:var(--muted)}
+.eats-note a{color:inherit}
+/* the picker */
+.top3{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-top:10px}
+.top3 h3{font:800 15px "Archivo",sans-serif;margin:0 0 4px;color:var(--ink)}
+.top3 p{font-size:13.5px;color:var(--muted);margin:0 0 10px}
+.top3-row{display:grid;grid-template-columns:28px 1fr;gap:8px 10px;align-items:start;margin-bottom:10px}
+.top3-row .n{width:28px;height:28px;border-radius:999px;background:#ece6da;color:var(--ink);font:800 13px/28px "Archivo",sans-serif;text-align:center;margin-top:7px}
+.top3-row input{width:100%;box-sizing:border-box;border:1.5px solid #d9d1c2;border-radius:12px;padding:10px 12px;font:16px/1.4 "Public Sans",sans-serif;background:var(--paper,#faf8f4);color:var(--ink)}
+.top3-row input+input{margin-top:6px;font-size:14px}
+.top3-row input:focus{outline:2px solid var(--ink);outline-offset:1px;background:#fff}
+.top3-acts{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:4px}
+.top3 .err{color:#a52d15;font-size:13.5px;font-weight:600;margin:4px 0}
+.top3 .ok{color:#0c6b5e;font-size:13.5px;font-weight:600;margin:4px 0}
+</style>
 </head>
 <body>
 
@@ -49,6 +82,8 @@
   // The hero photo is pre-rendered too (build.mjs heroImg: local resized copies,
   // fetchpriority=high) so it is the first thing the browser fetches.
   const HERO_HTML = keep("tv-hero");
+  // Locals' top 3 is pre-rendered too; shown as-is until its data arrives.
+  const EATS_HTML = keep("tv-eats");
   const NT = { kind: "what_not_to_do", topic: "", text: "", busy: false, sent: false, err: "", open: false };
   const NT_KINDS = [["what_not_to_do","Don’t do this"],["hidden_gem","Do this"],["take","It depends"],["worst_times","When to go"]];
 
@@ -122,6 +157,136 @@
       <div class="when-go">Month-by-month calendar →</div></a>`;
   }
 
+  /* ---------- Locals' top 3 restaurants ----------
+     Data: restaurants + top3_picks (migration 20261030140000), rolled up by the
+     city_top_restaurants view. Markup matches build.mjs eatsHtml, so the
+     pre-rendered section is refreshed in place. Anyone signed in (not an
+     anonymous session) keeps one ranked list per city; verified locals lead. */
+  const EATS = { rows: [], picks: [], rests: [], profiles: {}, verified: new Set(), mine: [], open: false, busy: false, err: "", saved: false, ready: false, draft: {} };
+  const nameKey = n => String(n || "").toLowerCase().replace(/^\s*the\s+/, "").replace(/[^a-z0-9]+/g, " ").trim();   // mirrors restaurants.name_key
+  const signedInUser = () => auth.me && !auth.me.is_anonymous ? auth.me : null;
+
+  async function loadEats(){
+    const [r, p, rs] = await Promise.all([
+      sb.from("city_top_restaurants").select("*").eq("city_id", CITY.id),
+      sb.from("top3_picks").select("user_id,rank,restaurant_id,why").eq("city_id", CITY.id),
+      sb.from("restaurants").select("id,name,neighborhood,hidden,merged_into").eq("city_id", CITY.id)
+    ]);
+    EATS.rows = (r.data || []).sort((a, b) => b.verified_points - a.verified_points || b.points - a.points || b.firsts - a.firsts || a.name.localeCompare(b.name)).slice(0, 10);
+    EATS.picks = p.data || []; EATS.rests = rs.data || [];
+    const ids = [...new Set(EATS.picks.map(x => x.user_id))];
+    if (ids.length) {
+      const [pr, lc] = await Promise.all([
+        sb.from("profiles").select("id,display_name,username").in("id", ids),
+        sb.from("local_checks").select("user_id,verified,revoked").eq("city_id", CITY.id).in("user_id", ids)
+      ]);
+      (pr.data || []).forEach(x => { EATS.profiles[x.id] = x; });
+      EATS.verified = new Set((lc.data || []).filter(x => x.verified && !x.revoked).map(x => x.user_id));
+    }
+    const me = signedInUser();
+    EATS.mine = me ? EATS.picks.filter(x => x.user_id === me.id).sort((a, b) => a.rank - b.rank) : [];
+    EATS.ready = true;
+  }
+
+  function eatsHtml(){
+    const whyFor = id => {
+      const w = EATS.picks.filter(x => x.restaurant_id === id && x.why).sort((a, b) => (EATS.verified.has(b.user_id) - EATS.verified.has(a.user_id)) || a.rank - b.rank)[0];
+      return w ? `<div class="eat-why">“${esc(w.why)}” <span class="eat-by">— ${esc(T2.shortName(EATS.profiles[w.user_id]))}${EATS.verified.has(w.user_id) ? " ✓" : ""}</span></div>` : "";
+    };
+    const people = new Set(EATS.picks.map(x => x.user_id)).size;
+    const list = EATS.rows.length ? `<ol class="eats-list">${EATS.rows.map(r => `<li>
+      <div class="eat-main"><b class="eat-name">${esc(r.name)}</b>${r.neighborhood ? `<span class="eat-nb">${esc(r.neighborhood)}</span>` : ""}
+      <div class="eat-meta">${r.picks} local${r.picks === 1 ? "" : "s"}${r.verified_picks ? ` · ${r.verified_picks} verified ✓` : ""}${r.firsts ? ` · #1 for ${r.firsts}` : ""}</div>
+      ${whyFor(r.restaurant_id)}</div></li>`).join("")}</ol>`
+      : `<div class="empty2"><b>No picks yet</b>Live in ${esc(CITY.name)}? Be the first to name the three places you'd actually send a visitor.</div>`;
+    return `<section class="eats" id="tv-eats" aria-labelledby="eats-h">
+      <div class="eats-h"><h2 id="eats-h">Locals' top 3 restaurants</h2>${people ? `<span class="eats-n">${people} local${people === 1 ? "" : "s"} picked</span>` : ""}</div>
+      ${list}
+      ${top3Box()}
+    </section>`;
+  }
+
+  // The picker. Signed in: three name + why rows. Otherwise: a sign-in button.
+  function top3Box(){
+    const me = signedInUser();
+    if (!me) return `<div class="eats-add" id="top3"><button class="btn2" id="top3-signin">Live here? Add your top 3</button><span class="eats-note">Sign in and pick three; verified locals' picks lead. <a href="/how-we-verify-locals/">How badges work</a>.</span></div>`;
+    if (!EATS.open) {
+      const mine = EATS.mine.map(x => (EATS.rests.find(r => r.id === x.restaurant_id) || {}).name).filter(Boolean);
+      return `<div class="eats-add" id="top3"><button class="btn2${mine.length ? " ghost" : ""}" id="top3-open">${mine.length ? "Edit your top 3" : "Add your top 3"}</button>${
+        mine.length ? `<span class="eats-note">Yours: ${mine.map(esc).join(", ")}${EATS.saved ? " · saved" : ""}</span>` : `<span class="eats-note">Three places you'd actually send a visitor.</span>`}</div>`;
+    }
+    // What's typed lives in EATS.draft, so a validation message never wipes the form.
+    const rows = [1, 2, 3].map(rank => {
+      const d = EATS.draft[rank] || {};
+      return `<div class="top3-row"><span class="n">${rank}</span><div>
+        <input id="top3-n${rank}" data-top3="n${rank}" list="top3-names" maxlength="80" autocapitalize="words" placeholder="${rank === 1 ? "Restaurant name" : "Another place (optional)"}" value="${esc(d.name || "")}">
+        <input id="top3-w${rank}" data-top3="w${rank}" maxlength="100" autocapitalize="sentences" placeholder="Why, in a few words (optional)" value="${esc(d.why || "")}"></div></div>`;
+    }).join("");
+    return `<div class="top3" id="top3">
+      <h3>Your top 3 in ${esc(CITY.name)}</h3>
+      <p>Where you'd actually send a visitor. Type the name; if someone already picked it we'll match it up. One list per person; you can change it any time.</p>
+      <datalist id="top3-names">${EATS.rests.filter(r => !r.hidden && !r.merged_into).map(r => `<option value="${esc(r.name)}">`).join("")}</datalist>
+      ${rows}
+      ${EATS.err ? `<div class="err">${esc(EATS.err)}</div>` : ""}
+      <div class="top3-acts"><button class="btn2" id="top3-save" ${EATS.busy ? "disabled" : ""}>${EATS.busy ? "Saving…" : "Save my top 3"}</button><button class="btn2 ghost" id="top3-cancel">Cancel</button></div>
+    </div>`;
+  }
+
+  function openTop3(){
+    const byId = id => EATS.rests.find(r => r.id === id) || {};
+    EATS.draft = {};
+    EATS.mine.forEach(x => { EATS.draft[x.rank] = { name: byId(x.restaurant_id).name || "", why: x.why || "" }; });
+    EATS.open = true; EATS.saved = false; EATS.err = "";
+  }
+
+  async function saveTop3(){
+    const me = signedInUser(); if (!me) return;
+    const wanted = [];
+    for (const rank of [1, 2, 3]) {
+      const d = EATS.draft[rank] || {};
+      const name = (d.name || "").replace(/\s+/g, " ").trim();
+      const why = (d.why || "").replace(/\s+/g, " ").trim();
+      if (!name) continue;
+      if (name.length < 2) { EATS.err = "That name is too short."; render(); return; }
+      if (wanted.some(w => nameKey(w.name) === nameKey(name))) { EATS.err = "You listed the same place twice."; render(); return; }
+      wanted.push({ rank, name, why: why || null });
+    }
+    if (!wanted.length) { EATS.err = "Name at least one place."; render(); return; }
+    EATS.err = ""; EATS.busy = true; render();
+    try {
+      // Match typed names to existing rows (same key the database uses), create the rest.
+      const rows = [];
+      for (const w of wanted) {
+        let r = EATS.rests.find(x => nameKey(x.name) === nameKey(w.name));
+        if (r && r.merged_into) r = EATS.rests.find(x => x.id === r.merged_into) || r;
+        if (!r) {
+          const ins = await sb.from("restaurants").insert({ city_id: CITY.id, name: w.name, created_by: me.id }).select("id,name,neighborhood,hidden,merged_into").single();
+          if (ins.error) {
+            // Someone added it a moment ago: re-read and match again.
+            const again = await sb.from("restaurants").select("id,name,neighborhood,hidden,merged_into").eq("city_id", CITY.id);
+            EATS.rests = again.data || EATS.rests;
+            r = EATS.rests.find(x => nameKey(x.name) === nameKey(w.name));
+            if (!r) throw ins.error;
+          } else { r = ins.data; EATS.rests.push(r); }
+        }
+        rows.push({ user_id: me.id, city_id: CITY.id, rank: w.rank, restaurant_id: r.id, why: w.why });
+      }
+      // Replace the list wholesale (ranks may have swapped places).
+      const del = await sb.from("top3_picks").delete().eq("user_id", me.id).eq("city_id", CITY.id);
+      if (del.error) throw del.error;
+      const ins = await sb.from("top3_picks").insert(rows);
+      if (ins.error) throw ins.error;
+      T2.track("top3_saved", { city: CITY.slug, n: rows.length });
+      EATS.open = false; EATS.saved = true; EATS.busy = false;
+      await loadEats(); render();
+    } catch (e) {
+      console.error(e); EATS.busy = false;
+      const m = String(e && e.message || "");
+      EATS.err = window.TV.moderationMessage(e) || (/RATE_LIMITED/.test(m) ? "You've added a lot of new places today. Try again tomorrow." : /WRONG_CITY/.test(m) ? "That place belongs to another city." : "That didn't save. Try again.");
+      render();
+    }
+  }
+
   function render(){
     const list = T2.sortPosts(POSTS.filter(p => SECTION === "all" || p.type === SECTION), SORT);
     const locals = new Set(POSTS.filter(p => p.author_verified && p.author_id).map(p => p.author_id)).size;
@@ -137,6 +302,7 @@
       ${questionCard()}
       ${whenCard()}
       ${POSTS.length < 3 ? EDITORS_HTML : ""}
+      ${EATS.ready ? eatsHtml() : EATS_HTML}
       <section class="takes" aria-labelledby="takes-h">
         <div class="takes-h"><h2 id="takes-h">Local takes${POSTS.length ? ` <span>${POSTS.length}</span>` : ""}</h2>
           <span class="founders">${CTX.founderCount} of 10 founding local spots taken</span></div>
@@ -163,6 +329,14 @@
       NT.topic = $("#nt-topic").value; NT.text = $("#nt-text").value; NT.kind = b.dataset.ntk; render();
     }));
     const ns = $("#nt-send"); if (ns) ns.addEventListener("click", sendTopic);
+    const t3s = $("#top3-signin"); if (t3s) t3s.addEventListener("click", () => { T2.track("top3_signin", { city: CITY.slug }); T2.signInForBadge({ pending: false }); });
+    const t3o = $("#top3-open"); if (t3o) t3o.addEventListener("click", () => { openTop3(); render(); const f = $("#top3-n1"); if (f) f.focus({ preventScroll: true }); });
+    $("#city").querySelectorAll("[data-top3]").forEach(inp => inp.addEventListener("input", () => {
+      const k = inp.dataset.top3, rank = Number(k.slice(1)); EATS.draft[rank] = EATS.draft[rank] || {};
+      EATS.draft[rank][k[0] === "n" ? "name" : "why"] = inp.value;
+    }));
+    const t3c = $("#top3-cancel"); if (t3c) t3c.addEventListener("click", () => { EATS.open = false; EATS.err = ""; render(); });
+    const t3v = $("#top3-save"); if (t3v) t3v.addEventListener("click", saveTop3);
     const nt = $("#nt"); if (nt && nt.tagName === "DETAILS") nt.addEventListener("toggle", () => { NT.open = nt.open; if (nt.open) { const f = $("#nt-topic"); if (f && !f.value) f.focus({ preventScroll: true }); } });
     $("#feed").addEventListener("click", async e => {
       const b = e.target.closest("[data-vote]"); if (!b) return;
@@ -185,6 +359,10 @@
       sb.from("city_events").select("name,kind,severity,start_month,end_month").eq("city_id", CITY.id).eq("status", "approved")]);
     EVENTS = (evs && evs.data) || [];
     render();
+    // Top 3 loads after the first paint; the pre-rendered section stands in until then.
+    try { await loadEats(); } catch (e) { console.error(e); }
+    render();
+    if (location.hash === "#top3" && signedInUser()) { openTop3(); render(); const el = $("#top3"); if (el) el.scrollIntoView({ block: "center" }); }
   })();
 })();
 </script>

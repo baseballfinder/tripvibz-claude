@@ -104,12 +104,18 @@ async function fetchTable(name, query = "") {
 
 async function loadContent() {
   try {
-    const [cities, posts, events] = await Promise.all([
+    // Tables from a migration that may not have landed yet come back empty rather than failing the build.
+    const maybe = (name, query) => fetchTable(name, query).catch(() => []);
+    const [cities, posts, events, eats, picks, localChecks, pickers] = await Promise.all([
       fetchTable("cities", "select=id,name,state,slug,photo,blurb,lat,lng&order=sort"),
       fetchTable("posts", "select=id,title,body,type,ups,downs,created_at,city_id,author_id"),
-      fetchTable("city_events", "select=id,name,blurb,kind,severity,start_month,end_month,city_id")
+      fetchTable("city_events", "select=id,name,blurb,kind,severity,start_month,end_month,city_id"),
+      maybe("city_top_restaurants", "select=*"),
+      maybe("top3_picks", "select=user_id,city_id,rank,restaurant_id,why"),
+      maybe("local_checks", "select=user_id,city_id,verified,revoked&verified=is.true"),
+      maybe("profiles", "select=id,display_name,username")
     ]);
-    return { cities, posts, events };
+    return { cities, posts, events, eats, picks, localChecks, pickers };
   } catch (err) {
     // Offline fallback for local development only. It is gitignored, so CI
     // and Cloudflare always build from live data — a stale snapshot must
@@ -544,9 +550,43 @@ function nearbyHtml(list) {
   }</div></nav>`;
 }
 
+/* ---------------- Locals' top 3 restaurants ----------------
+   Rolled up from top3_picks (migration 20261030140000) through the
+   city_top_restaurants view: verified locals' points first, then everyone's.
+   The same markup city.html draws (eatsHtml there mirrors this), so the page
+   script refreshes it in place. */
+const shortName = p => {
+  const n = ((p && (p.display_name || p.username)) || "").trim().split(/\s+/);
+  return !n[0] ? "A local" : n.length > 1 ? `${n[0]} ${n[n.length - 1][0]}.` : n[0];
+};
+function eatsHtml(city, { eats, picks, localChecks, pickers }) {
+  const verified = new Set(localChecks.filter(l => l.city_id === city.id && l.verified && !l.revoked).map(l => l.user_id));
+  const profile = Object.fromEntries(pickers.map(p => [p.id, p]));
+  const rows = eats.filter(r => r.city_id === city.id)
+    .sort((a, b) => b.verified_points - a.verified_points || b.points - a.points || b.firsts - a.firsts || a.name.localeCompare(b.name))
+    .slice(0, 10);
+  const cityPicks = picks.filter(p => p.city_id === city.id);
+  const people = new Set(cityPicks.map(p => p.user_id)).size;
+  const whyFor = id => {
+    const w = cityPicks.filter(p => p.restaurant_id === id && p.why)
+      .sort((a, b) => (verified.has(b.user_id) - verified.has(a.user_id)) || a.rank - b.rank)[0];
+    return w ? `<div class="eat-why">“${esc(w.why)}” <span class="eat-by">— ${esc(shortName(profile[w.user_id]))}${verified.has(w.user_id) ? " ✓" : ""}</span></div>` : "";
+  };
+  const list = rows.length ? `<ol class="eats-list">${rows.map(r => `<li>
+      <div class="eat-main"><b class="eat-name">${esc(r.name)}</b>${r.neighborhood ? `<span class="eat-nb">${esc(r.neighborhood)}</span>` : ""}
+      <div class="eat-meta">${r.picks} local${r.picks === 1 ? "" : "s"}${r.verified_picks ? ` · ${r.verified_picks} verified ✓` : ""}${r.firsts ? ` · #1 for ${r.firsts}` : ""}</div>
+      ${whyFor(r.restaurant_id)}</div></li>`).join("")}</ol>`
+    : `<div class="empty2"><b>No picks yet</b>Live in ${esc(city.name)}? Be the first to name the three places you'd actually send a visitor.</div>`;
+  return `<section class="eats" id="tv-eats" aria-labelledby="eats-h">
+<div class="eats-h"><h2 id="eats-h">Locals' top 3 restaurants</h2>${people ? `<span class="eats-n">${people} local${people === 1 ? "" : "s"} picked</span>` : ""}</div>
+${list}
+<div class="eats-add"><a class="btn2" href="/${esc(city.slug)}/#top3">Live here? Add your top 3</a><span class="eats-note">Sign in and pick three; verified locals' picks lead. <a href="/how-we-verify-locals/">How badges work</a>.</span></div>
+</section>`;
+}
+
 // Crawler-readable version of the city feed; the page script replaces it
 // (keeping the editors' intro and nearby links, see city.html).
-function cityBody(city, counts, takes, intro = "", nearby = []) {
+function cityBody(city, counts, takes, intro = "", nearby = [], eatsData = null) {
   const ranked = takes.slice().sort((a, b) => (b.ups - b.downs) - (a.ups - a.downs));
   return `<a class="back" href="/cities/">← All cities</a>
 ${heroImg(city)}
@@ -558,6 +598,7 @@ ${heroImg(city)}
     p.body ? `<div class="more">${esc(p.body)}</div>` : ""}<div class="who">${p.ups} true · ${p.downs} nope</div></article>`).join("")
   : `<div class="empty2"><b>No takes here yet</b>Live in ${esc(city.name)}? <a href="/${esc(city.slug)}/add/">Tell visitors what they get wrong.</a></div>`}</div>
 ${editorsHtml(city, intro)}
+${eatsData ? eatsHtml(city, eatsData) : ""}
 ${nearbyHtml(nearby)}`;
 }
 
@@ -846,7 +887,7 @@ report.push(["assets/supabase.js (vendor)", SUPABASE_BUNDLE.length, SUPABASE_BUN
 
 
 console.log("\n  fetching content…");
-const { cities, posts, events } = await loadContent();
+const { cities, posts, events, eats = [], picks = [], localChecks = [], pickers = [] } = await loadContent();
 cities.forEach(c => { if (c.photo) PHOTO_BY_SLUG[c.slug] = c.photo; });
 console.log(`  ${cities.length} cities · ${posts.length} posts · ${events.length} events`);
 await resizeCityPhotos(cities);
@@ -929,7 +970,7 @@ for (const city of cities) {
     canonical: `${SITE}/${city.slug}/`,
     image: shareCard(city) ? shareCard(city).image : photo(city.slug),
     og: shareCard(city) || undefined,
-    body: cityBody(city, counts, feedTakes, intro, nearby),
+    body: cityBody(city, counts, feedTakes, intro, nearby, { eats, picks, localChecks, pickers }),
     mount: "city",
     preloadImage: heroSources(city),
     jsonLd: cityLd(city, `${SITE}/${city.slug}/`, feedTakes, { title: cityTitle, desc: cityDesc, intro, nearby, lastmod: cityLastmod }),
