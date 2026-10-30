@@ -55,7 +55,7 @@ async function takePage({ params, request, env }) {
 
   let post = null, city = null;
   try {
-    post = await read(`posts?select=title,body,type,ups,downs,city_id,created_at,author_verified&id=eq.${id}`);
+    post = await read(`posts?select=title,body,type,ups,downs,city_id,created_at,author_id,author_verified&id=eq.${id}`);
     if (!post) return notFound();
     city = await read(`cities?select=name,state,slug&id=eq.${post.city_id}`);
   } catch (e) { return withSecurityHeaders(page); /* database hiccup: serve the page, which loads it itself */ }
@@ -87,10 +87,19 @@ async function takePage({ params, request, env }) {
 
   let comments = [];
   try {
-    comments = await rows(`comments?select=body,created_at,author_verified&post_id=eq.${id}&order=created_at.asc&limit=50`);
+    comments = await rows(`comments?select=body,created_at,author_id,author_verified&post_id=eq.${id}&order=created_at.asc&limit=50`);
   } catch (e) { /* page still works without them */ }
 
-  const local = v => v ? `${city.name} local` : "Anonymous";
+  // Verified ✓ for this city (presence over time; /how-we-verify-locals/). Public columns only.
+  const verifiedHere = new Set();
+  try {
+    const ids = [post.author_id, ...comments.map(c => c.author_id)].filter(Boolean);
+    if (ids.length) for (const r of await rows(`local_checks?select=user_id,verified,revoked&city_id=eq.${post.city_id}&user_id=in.(${[...new Set(ids)].join(",")})`))
+      if (r.verified && !r.revoked) verifiedHere.add(r.user_id);
+  } catch (e) { /* label falls back to "unverified" */ }
+  // Same three tiers the page script draws (assets/v2.js localBadge).
+  const local = (signedIn, authorId) => !signedIn ? "Anonymous"
+    : verifiedHere.has(authorId) ? `Verified ${city.name} local` : `${city.name} local (unverified)`;
   // Answers to a city question store the question in body as "On: <question>".
   const onQ = /^On:\s*/i.test(plain(post.body)) ? plain(post.body).replace(/^On:\s*/i, "") : "";
   const extra = onQ ? "" : plain(post.body);
@@ -108,7 +117,7 @@ async function takePage({ params, request, env }) {
       text,
       inLanguage: "en-US",
       datePublished: post.created_at,
-      author: { "@type": "Person", name: local(post.author_verified) },
+      author: { "@type": "Person", name: local(post.author_verified, post.author_id) },
       about: { "@type": "Place", name: city.name + (city.state ? ", " + city.state : "") },
       isPartOf: theme ? `${SITE}/${city.slug}/${theme}/` : `${SITE}/${city.slug}/`,
       interactionStatistic: [
@@ -121,7 +130,7 @@ async function takePage({ params, request, env }) {
         "@type": "Comment",
         text: plain(c.body),
         datePublished: c.created_at,
-        author: { "@type": "Person", name: local(c.author_verified) }
+        author: { "@type": "Person", name: local(c.author_verified, c.author_id) }
       })) } : {})
     }, {
       "@type": "BreadcrumbList",
@@ -135,8 +144,8 @@ async function takePage({ params, request, env }) {
   // What a crawler reads before the page script takes over the same spot.
   const body = `<article class="take"><a class="back" href="/${esc(city.slug)}/">← ${esc(city.name)}</a>
 ${onQ ? `<div class="kicker">${esc(onQ)}</div>` : ""}<h1>${esc(post.title)}</h1>${extra ? `<p>${esc(extra)}</p>` : ""}
-<div class="who">${local(post.author_verified)} · ${post.ups} true · ${post.downs} nope</div>
-${comments.map(c => plain(c.body) ? `<p class="reply"><b>${local(c.author_verified)}:</b> ${esc(c.body)}</p>` : "").join("")}
+<div class="who">${local(post.author_verified, post.author_id)} · ${post.ups} true · ${post.downs} nope</div>
+${comments.map(c => plain(c.body) ? `<p class="reply"><b>${local(c.author_verified, c.author_id)}:</b> ${esc(c.body)}</p>` : "").join("")}
 </article>`;
   const head = tags + ld(posting) + (thin ? `\n<meta name="robots" content="noindex,follow">` : "");
 

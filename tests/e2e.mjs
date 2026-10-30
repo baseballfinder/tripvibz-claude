@@ -146,6 +146,16 @@ await test("Photo fallbacks without inline handlers: a broken local copy swaps t
   assert(r.cHidden === "hidden", "broken avatar with data-err=hide is still visible");
 });
 
+await test("How we verify locals: page renders, badge tiers listed, reachable from the footer", async () => {
+  await go("/how-we-verify-locals/");
+  assert(/How we verify locals/.test(await page.textContent("h1")), "headline missing");
+  const tiers = await page.locator(".tiers li").count();
+  assert(tiers >= 4, `expected the badge tiers listed, found ${tiers}`);
+  assert(await page.locator('footer a[href="/how-we-verify-locals/"]').count() === 1, "footer link to the page missing");
+  await go("/miami/");
+  assert(await page.locator('footer a[href="/how-we-verify-locals/"]').count() === 1, "footer link missing on city pages");
+});
+
 await test("Cities page: grid, search, request-a-city", async () => {
   await go("/cities/");
   assert(await page.locator(".city-card").count() >= cities.length, "city cards missing");
@@ -173,6 +183,15 @@ for (const slug of ["nashville", "knoxville", "miami"]) {
     assert((await page.textContent(".qcard .qp")).trim() === lead(slug).prompt, "lead question is not the first active question");
     assert(await page.locator(".qcard a.qopt").count() >= 2, "question options missing");
     const hasTakes = (await page.locator(".feed .take").count()) > 0;
+    if (hasTakes) {
+      // Three honest tiers, never a bare "Local" for a sign-in alone: ✓ (verified presence),
+      // "· unverified" (signed in, not yet seen around town), or "Unverified" (anonymous/revoked).
+      const badges = await page.locator(".feed .take .who .bdg:not(.found)").allTextContents();
+      assert(badges.length, "take cards show no badge");
+      for (const b of badges) assert(/✓$|· unverified$|^Unverified$|^Regular visitor/.test(b.trim()), `badge "${b}" is not one of the three tiers`);
+      const link = page.locator(".feed .take .who a.bdg").first();
+      if (await link.count()) assert((await link.getAttribute("href")) === "/how-we-verify-locals/", "local badge should link to the verification page");
+    }
     assert(await page.locator("[data-sec]").count() === (hasTakes ? 4 : 0), hasTakes ? "section chips missing" : "filter chips should be hidden when there are no takes");
     assert(await page.locator("details.nt:not([open])").count() === 1, "new-topic box should start collapsed");
     assert(await page.locator(".fab").count() === 0, "old \"What do tourists get wrong\" button is back");

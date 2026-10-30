@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How TripVibz verifies locals</title>
+<meta name="description" content="What the Local badges on TripVibz mean, how a ✓ is earned (presence near a city over weeks, never a single check), what we store, and what it does not prove.">
+<link rel="canonical" href="https://www.tripvibz.com/how-we-verify-locals/">
+<!--fonts-->
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/analytics.js" defer></script>
+<style>
+  .doc{max-width:680px;padding:26px 0 40px}
+  .doc h1{font-size:clamp(28px,4.5vw,38px);font-weight:900;margin-bottom:6px}
+  .doc .upd{color:var(--muted);font-size:13.5px;margin:0 0 18px}
+  .doc h2{font-family:"Archivo";font-weight:800;font-size:18px;margin:24px 0 6px}
+  .doc p,.doc li{font-size:15.5px;line-height:1.55;color:#2b2720}
+  .doc ul{padding-left:20px;margin:6px 0}
+  .doc a{color:var(--ink);font-weight:700}
+  .tiers{list-style:none;padding:0;margin:10px 0 0;display:flex;flex-direction:column;gap:10px}
+  .tiers li{display:flex;gap:12px;align-items:flex-start;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .tiers .bdg{flex:none;border-radius:6px;padding:3px 8px;font-size:12px;font-weight:800;white-space:nowrap;margin-top:2px}
+  .bdg.local{background:#e3f1ec;color:#0b5c4c}
+  .bdg.local.pending{background:#f1efe9;color:#4e5a55;border:1px dashed #b9c9c2}
+  .bdg.unv{background:#ece6da;color:#5f5a50}
+  .bdg.found{background:#fde9c8;color:#7a4b00}
+  .tiers p{margin:0}
+</style>
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="/"><img class="brand-mark" src="/assets/brand/mark.svg" width="30" height="30" alt="">TripVibz</a>
+    <nav class="nav-links"><a href="/cities/">Cities</a></nav>
+    <div class="nav-right"></div>
+  </div>
+</header>
+<main class="wrap"><article class="doc">
+<h1>How we verify locals</h1>
+<p class="upd">Last updated October 30, 2026</p>
+<p>TripVibz is only useful if the people called locals actually are. A badge you can get by ticking a box isn't worth showing, so here is exactly what each badge means and how the ✓ is earned. We describe the method in full and keep the exact numbers private, because publishing them would mainly help the people trying to fake it.</p>
+
+<h2>What the badges mean</h2>
+<ul class="tiers">
+  <li><span class="bdg local">Local · 10+ yrs ✓</span><p><b>Verified local.</b> This person has signed in from near the city on several different days spread over several weeks. The ✓ is earned by showing up over time, not by anything they typed. The years are how long they told us they've lived there.</p></li>
+  <li><span class="bdg local pending">Local · 10+ yrs · unverified</span><p><b>Says they're local, not verified yet.</b> They signed in and told us they live there, but we haven't yet seen them near the city often enough, or for long enough, to say so ourselves. New locals start here; so does anyone who only ever visits the site from far away.</p></li>
+  <li><span class="bdg unv">Unverified</span><p><b>Anonymous, or badge removed.</b> Posted without signing in, or an editor removed this person's local badge for the city (see below).</p></li>
+  <li><span class="bdg found">Founding local</span><p><b>One of the first ten verified locals</b> to post in a city. It requires the ✓.</p></li>
+  <li><span class="bdg local pending">Regular visitor</span><p><b>Not claiming to be local.</b> Someone who told us they visit often rather than live there. Their takes still count; the badge says what they are.</p></li>
+</ul>
+
+<h2>How the ✓ is earned</h2>
+<ul>
+<li><b>Presence, read from the connection.</b> Every internet connection comes with a rough location (the city your provider routes you through). When a signed-in person opens TripVibz or posts a take, we note whether that location is within about 40 miles of each city on the site. There is no prompt and we never ask the browser for your GPS position.</li>
+<li><b>Over time, not once.</b> One check proves you were near the city that day, which describes a tourist as well as a resident. The ✓ requires being seen near the city on several separate days spread over several weeks. A long weekend doesn't qualify; a two-week vacation doesn't either; living there does, within about a month of normal use.</li>
+<li><b>Per city.</b> Verification is for one city at a time. Someone verified in Miami is "unverified" in Denver until they earn it there.</li>
+<li><b>Hosting and VPN networks don't count.</b> A check from a data-center, cloud or VPN network says nothing about where a person lives, so it's recorded for our editors but never adds to the count.</li>
+<li><b>It can't be bought, requested or self-declared.</b> There is no form for it. The years-lived badge is self-reported and is always shown as what someone told us; the ✓ is the part we checked.</li>
+<li><b>Editors can remove it.</b> If a "local" turns out to be posting spam, advertising, or plainly not from there, an editor removes the badge for that city. It doesn't come back on its own, and the person's takes show as Unverified from then on.</li>
+</ul>
+
+<h2>What it doesn't prove</h2>
+<p>Repeated presence near a city over weeks is strong evidence of living there, but it is evidence, not proof. Someone who commutes in daily, or a student in town for a semester, can earn it honestly and does know the place. A resident whose phone network routes through another metro may take longer to earn it, or earn it in the wrong neighboring city. That's why the badge reads "Local" and not "Resident", why votes from everyone decide which takes rise, and why you can always <a href="/about/#contact">tell us</a> when something looks off.</p>
+
+<h2>What we store</h2>
+<p>For each signed-in person and each city: whether they were near it at the last check, how many separate days they've been seen near it, the first and last of those dates, and whether an editor removed the badge. We do not store your IP address, your coordinates, or a history of where you've been. The full detail is in the <a href="/privacy/">privacy page</a>, including how to have it deleted.</p>
+
+<h2>Why we built it this way</h2>
+<p>Most ways of "verifying" locals either ask people to prove where they live (which almost nobody will do for a one-sentence tip) or trust whatever they type. We wanted something that costs an honest local nothing and costs a faker real effort: you earn it by being here, repeatedly, over time. It isn't perfect, and we'll keep adjusting it as the site grows. If you think it's wrong about someone, <a href="mailto:hello@tripvibz.com">hello@tripvibz.com</a>.</p>
+</article></main>
+</body>
+</html>

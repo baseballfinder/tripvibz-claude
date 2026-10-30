@@ -1,17 +1,21 @@
 /**
- * POST /api/locate — "signed in nearby" check. Called once a day by a signed-in
- * person's browser (assets/tv.js). No prompt and no browser location permission:
- * Cloudflare already attaches a rough location to every request.
+ * POST /api/locate — presence check for signed-in people. Called once a day by
+ * the browser (assets/tv.js) and after every take (functions/api/take.js). No
+ * prompt and no browser location permission: Cloudflare already attaches a
+ * rough location to every request.
  *
- * Records, per TripVibz city within 150 miles, only whether the person was within
- * 40 miles ("near"). Optionally also the city they're looking at, even when far,
- * so admins can see it next to their takes. No IP and no coordinates are stored.
+ * For each TripVibz city within 150 miles it records whether the person was
+ * within 40 miles ("near"), through the database function record_presence,
+ * which turns repeated days near a city into a verified ✓ (the thresholds live
+ * there: supabase/migrations/20261030120000_local_presence.sql). Checks from
+ * hosting and VPN networks (functions/api/_networks.js) are stored for admins
+ * as band "hosting" and never count. No IP and no coordinates are stored.
  *
- * Advisory, never a gate: phone networks and VPNs put people in the wrong city.
- * Admins revoke local status for spam (admin.html), and a revoked row is never
- * re-marked near by a later check.
+ * Advisory, never a gate: phone networks put people in the wrong city. Admins
+ * revoke a badge for spam (admin.html); record_presence leaves revoked rows alone.
  */
 import { adminHeaders } from "./_supabase.js";
+import { isHostingNetwork } from "./_networks.js";
 const SUPABASE_URL = "https://nkxorlktzbgwqnfwmuus.supabase.co";
 const SUPABASE_KEY = "sb_publishable_5UOevsS8KmWWGrQYNWsabg_0sVOIPmB";
 export const NEAR_MI = 40, REGION_MI = 150;
@@ -27,36 +31,38 @@ export function miles(aLat, aLng, bLat, bLng) {
 }
 export const band = (mi) => (mi <= NEAR_MI ? "near" : mi <= REGION_MI ? "region" : "far");
 
-/** Work out near/far for one signed-in user and save it. Returns { cities: [{city_id, slug, near, band, mi}] } or null. */
+/** Work out near/far for one signed-in user and record it. Returns { cities: [{city_id, slug, near, band, mi, revoked}] } or null. */
 export async function locate(env, request, userId, focusCityId) {
   const cf = request.cf || {};
   const lat = Number(cf.latitude), lng = Number(cf.longitude);
   if (!env.SUPABASE_SERVICE_ROLE_KEY || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   const svc = adminHeaders(env.SUPABASE_SERVICE_ROLE_KEY);
+  const hosting = isHostingNetwork(cf);
 
   const cities = await (await fetch(`${SUPABASE_URL}/rest/v1/cities?select=id,slug,name,lat,lng`, { headers: svc })).json();
   const found = (Array.isArray(cities) ? cities : [])
     .filter((c) => Number.isFinite(c.lat) && Number.isFinite(c.lng))
     .map((c) => { const mi = miles(lat, lng, c.lat, c.lng); return { city_id: c.id, slug: c.slug, name: c.name, mi: Math.round(mi), band: band(mi) }; })
-    .filter((c) => c.band !== "far" || c.city_id === focusCityId);
+    .filter((c) => c.band !== "far" || c.city_id === focusCityId)
+    // Distance decides WHICH cities get a row; a hosting network decides what the row says.
+    .map((c) => (hosting ? { ...c, band: "hosting" } : c));
   if (!found.length) return { cities: [] };
 
-  // Don't touch revoked rows: an admin's call stands.
+  // Which of these the admins have revoked (record_presence won't touch those; we report it).
   const ids = found.map((c) => c.city_id).join(",");
   const prior = await (await fetch(
     `${SUPABASE_URL}/rest/v1/local_checks?select=city_id,revoked&user_id=eq.${userId}&city_id=in.(${ids})`, { headers: svc })).json();
   const revoked = new Set((Array.isArray(prior) ? prior : []).filter((r) => r.revoked).map((r) => r.city_id));
-  const rows = found.filter((c) => !revoked.has(c.city_id)).map((c) => ({
-    user_id: userId, city_id: c.city_id, near: c.band === "near", band: c.band, checked_at: new Date().toISOString()
-  }));
-  if (rows.length) {
-    await fetch(`${SUPABASE_URL}/rest/v1/local_checks?on_conflict=user_id,city_id`, {
-      method: "POST",
-      headers: { ...svc, "content-type": "application/json", prefer: "resolution=merge-duplicates,return=minimal" },
-      body: JSON.stringify(rows)
-    });
-  }
-  return { cities: found.map((c) => ({ ...c, near: c.band === "near" && !revoked.has(c.city_id), revoked: revoked.has(c.city_id) })) };
+
+  // One presence record per city: a new day near the city adds a presence day,
+  // the same day again does not, a hosting network never does.
+  await Promise.all(found.map((c) => fetch(`${SUPABASE_URL}/rest/v1/rpc/record_presence`, {
+    method: "POST",
+    headers: { ...svc, "content-type": "application/json", prefer: "return=minimal" },
+    body: JSON.stringify({ p_user: userId, p_city: c.city_id, p_near: !hosting && c.band === "near", p_band: c.band })
+  }).catch(() => {})));
+
+  return { cities: found.map((c) => ({ ...c, near: !hosting && c.band === "near" && !revoked.has(c.city_id), revoked: revoked.has(c.city_id) })) };
 }
 
 /** The signed-in (non-anonymous) user behind a bearer token, or null. */

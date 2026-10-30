@@ -145,7 +145,8 @@
     if(ids.length){
       const [{ data: profs }, { data: checks }] = await Promise.all([
         sb.from("profiles").select("id,display_name,username").in("id", ids),
-        sb.from("local_checks").select("user_id,city_id,near,revoked").in("user_id", ids)
+        // Presence history is admin-only (admin_local_checks); the public sees verified/revoked alone.
+        sb.rpc("admin_local_checks", { p_users: ids })
       ]);
       (profs||[]).forEach(p => { PROFILES[p.id] = p; });
       (checks||[]).forEach(c => { CHECKS[c.user_id + ":" + c.city_id] = c; });
@@ -282,12 +283,18 @@
     wireRlm();
   }
 
-  // "Signed in nearby" check for this author in this city (functions/api/locate.js).
+  // Presence for this author in this city (functions/api/locate.js → record_presence):
+  // days seen near the city and the span they cover, which is what earns the ✓.
   function localTag(r){
     const c = r.author_id && r.city_id ? CHECKS[r.author_id + ":" + r.city_id] : null;
     if(!c) return '<span class="loc">No location check</span>';
     if(c.revoked) return '<span class="loc" style="color:#c0341a">Local revoked</span>';
-    return c.near ? '<span class="loc loc-local">📍 Signed in nearby</span>' : '<span class="loc">Not nearby</span>';
+    const d = n => n ? new Date(n).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
+    const span = c.first_near && c.last_near ? Math.round((new Date(c.last_near) - new Date(c.first_near)) / 864e5) : 0;
+    const hist = `${c.near_days || 0} day${c.near_days === 1 ? "" : "s"} near${c.near_days ? ` (${d(c.first_near)}–${d(c.last_near)}, ${span}d span)` : ""}`;
+    if(c.verified) return `<span class="loc loc-local">✓ Verified local · ${hist}</span>`;
+    const last = c.band === "hosting" ? "last check from a hosting/VPN network" : c.near ? "near at last check" : `${c.band || "not near"} at last check`;
+    return `<span class="loc">Unverified · ${hist} · ${last}</span>`;
   }
 
   async function setLocal(r, revoked){

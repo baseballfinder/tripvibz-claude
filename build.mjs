@@ -782,7 +782,7 @@ const ICON_LINKS = `<link rel="icon" href="/favicon.ico" sizes="48x48"><link rel
 // carried their own footer get this one instead; the admin page gets none.
 const SITE_FOOTER = `<footer class="site-foot"><div class="wrap">
 <div class="sf-brand"><b>TripVibz</b><span class="tagline">The local take on every city.</span></div>
-<nav class="sf-links" aria-label="Site"><a href="/cities/">Cities</a><a href="/about/">About</a><a href="/about/#contact">Contact</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a></nav>
+<nav class="sf-links" aria-label="Site"><a href="/cities/">Cities</a><a href="/about/">About</a><a href="/how-we-verify-locals/">Local badges</a><a href="/about/#contact">Contact</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a></nav>
 <div class="sf-note">© ${new Date().getFullYear()} TripVibz · A city guide written by the people who live there.</div>
 </div></footer>`;
 
@@ -888,6 +888,7 @@ await emit("index.html", await minifyHtml(render(indexTpl, {
 
 pages.push({ path: "/cities/", lastmod: newest(posts), priority: "0.8" });
 pages.push({ path: "/about/", lastmod: CONTENT_EPOCH, priority: "0.3" });
+pages.push({ path: "/how-we-verify-locals/", lastmod: "2026-10-30", priority: "0.3" });
 const lists = cityLists(cities, countsBySlug);
 await emit("cities/index.html", await minifyHtml(render(placesTpl, {
   title: "Every city on TripVibz — local guides by residents",

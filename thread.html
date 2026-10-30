@@ -42,7 +42,7 @@
     const verified = c.author_verified && c.author_id;
     const me = auth.me && c.author_id === auth.me.id;
     const name = !verified ? "Anonymous" : me ? "You" : T2.shortName(CTX.profiles[c.author_id]);
-    const badge = verified ? `<span class="bdg local">${esc(T2.tenureBadge(CTX.tenure[c.author_id]))}</span>` : `<span class="bdg unv">Unverified</span>`;
+    const badge = verified ? T2.localBadge(c.author_id, CTX) : `<span class="bdg unv">Unverified</span>`;
     return `<div class="reply${depth ? " nested" : ""}">
       <div class="who" style="margin:0 0 6px">${c.kind ? `<span class="rk ${c.kind}">${KINDS[c.kind]}</span>` : ""}<b>${esc(name)}</b>${badge}<span>· ${T2.ago(c.created_at)}</span></div>
       <div style="font-size:15px;line-height:1.45;white-space:pre-wrap">${esc(c.body)}</div>

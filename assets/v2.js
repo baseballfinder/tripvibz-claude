@@ -94,7 +94,9 @@
       auth.me && ids.length ? sb.from("votes").select("post_id,value").eq("user_id", auth.me.id).in("post_id", ids) : { data: [] },
       // "Signed in nearby" (functions/api/locate.js). Missing table before the
       // migration runs just means no checkmarks.
-      authors.length && cityId ? sb.from("local_checks").select("user_id,near,revoked").eq("city_id", cityId).in("user_id", authors) : { data: [] }
+      // Verified ✓ / revoked for this city (functions/api/locate.js records presence; the
+      // database decides "verified"). Only those two columns are public; see /how-we-verify-locals/.
+      authors.length && cityId ? sb.from("local_checks").select("user_id,verified,revoked").eq("city_id", cityId).in("user_id", authors) : { data: [] }
     ]);
     var ctx = { profiles: {}, tenure: {}, founders: {}, places: {}, myVotes: {}, local: {} };
     (res[0].data || []).forEach(function (x) { ctx.profiles[x.id] = x; });
@@ -140,17 +142,34 @@
 
   function ago(iso) { var t = TV.timeAgo(iso); return /now/.test(t) ? t : t + " ago"; }
 
+  /* Three tiers, same everywhere (feed, thread, take page):
+       ✓  Verified local — seen near the city on several days over weeks (the database
+          sets local_checks.verified; the method is on /how-we-verify-locals/).
+       Local · unverified — signed in and says they're local; presence not established yet.
+       Unverified — anonymous, or an admin revoked the badge for this city.
+     The tenure they picked ("10+ yrs", "grew up here") shows in both local tiers; it is
+     self-reported and the badge never presents it as checked. */
+  var VERIFY_URL = "/how-we-verify-locals/";
+  function localBadge(authorId, ctx) {
+    var chk = ctx.local && ctx.local[authorId];
+    var tenure = ctx.tenure && ctx.tenure[authorId];
+    if (chk && chk.revoked) return '<span class="bdg unv" title="Local badge removed for this city">Unverified</span>';
+    var base = tenureBadge(tenure);
+    if (chk && chk.verified) {
+      return '<a class="bdg local ok" href="' + VERIFY_URL + '" title="Verified: signed in from near this city on several days over several weeks">' +
+        esc(base) + ' ✓</a>';
+    }
+    return '<a class="bdg local pending" href="' + VERIFY_URL + '" title="Says they\'re local; not verified yet (how we verify)">' +
+      esc(base) + ' · unverified</a>';
+  }
+
   function authorHtml(p, ctx) {
     if (!p.author_verified || !p.author_id) {
       return '<b>Anonymous</b><span class="bdg unv">Unverified</span>';
     }
     var me = auth.me && p.author_id === auth.me.id;
     var name = me ? "You" : shortName(ctx.profiles[p.author_id]);
-    var chk = ctx.local && ctx.local[p.author_id];
-    // Revoked by an admin: their claim to be local here didn't hold up.
-    if (chk && chk.revoked) return "<b>" + esc(name) + '</b><span class="bdg unv">Unverified</span>';
-    var html = "<b>" + esc(name) + '</b><span class="bdg local"' + (chk && chk.near ? ' title="Signed in from nearby"' : "") + ">" +
-      esc(tenureBadge(ctx.tenure[p.author_id])) + (chk && chk.near ? " ✓" : "") + "</span>";
+    var html = "<b>" + esc(name) + "</b>" + localBadge(p.author_id, ctx);
     if (ctx.founders[p.author_id]) html += '<span class="bdg found">Founding local</span>';
     return html;
   }
@@ -630,7 +649,7 @@
   window.TV2 = {
     emailSignupHtml: emailSignupHtml, mountEmailSignup: mountEmailSignup,
     KIND: KIND, TENURE: TENURE, MON: MON, ICON: ICON, POST_COLS: POST_COLS,
-    tenureBadge: tenureBadge, monthsLabel: monthsLabel, shortName: shortName,
+    tenureBadge: tenureBadge, localBadge: localBadge, monthsLabel: monthsLabel, shortName: shortName,
     loadCity: loadCity, hydrate: hydrate, sortPosts: sortPosts, isSplit: isSplit, placeOf: placeOf,
     takeHtml: takeHtml, castVote: castVote, stay22Link: stay22Link, stay22MapHtml: stay22MapHtml, mountStay22: mountStay22, whenSummary: whenSummary, whenStrip: whenStrip, monthSeverity: wSev,
     loadQuestions: loadQuestions, qTotal: qTotal, answer: answer, qOptionsHtml: qOptionsHtml,
