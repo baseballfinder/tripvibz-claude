@@ -768,7 +768,9 @@ const versionAssets = html => html.replace(/(["'])\/assets\/([\w.-]+)\1/g,
 const IMG_ERROR_SCRIPT = `<script>document.addEventListener("error",function(e){var t=e.target;if(!t||t.tagName!=="IMG")return;if(t.dataset.fallback){t.srcset="";t.src=t.dataset.fallback;delete t.dataset.fallback;return}if(t.dataset.err==="remove")t.remove();else if(t.dataset.err==="hide")t.style.visibility="hidden"},true)</script>`;
 const INLINE_SCRIPT_HASHES = new Set();
 function collectInlineHashes(html) {
-  for (const m of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
+  // Same end-tag rule as the HTML parser ("</script" + optional whitespace + ">"), so the
+  // hashed text is exactly what the browser executes.
+  for (const m of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)) {
     if (/\bsrc\s*=/i.test(m[1]) || /ld\+json/i.test(m[1])) continue;   // external scripts: by origin; JSON-LD: never executed
     INLINE_SCRIPT_HASHES.add(`'sha256-${createHash("sha256").update(m[2]).digest("base64")}'`);
   }
