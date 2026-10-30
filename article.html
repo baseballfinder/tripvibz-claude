@@ -398,16 +398,16 @@
       // A visitor's entry waits for the editors (database: city_events_guard
       // sets it to 'pending'), so it isn't readable back here and isn't shown
       // on the calendar until an editor approves it.
-      const { error } = await sb.from("city_events").insert({
-        city_id: CITY.id,
-        name,
-        blurb: blurb || null,
-        severity: $("#ev-sev").value,
-        start_month: parseInt($("#ev-start").value, 10),
-        end_month: parseInt($("#ev-end").value, 10),
-        author_id: auth.me.id
-      });
-      if(error) throw error;
+      // Through /api/event (functions/api/event.js): same row-security rules as
+      // a direct insert, plus a phone notification so the suggestion is seen.
+      const sess = await sb.auth.getSession();
+      const token = sess.data.session && sess.data.session.access_token;
+      if(!token) throw new Error("no session");
+      const res = await fetch("/api/event", { method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer " + token },
+        body: JSON.stringify({ city_id: CITY.id, city_name: CITY.name, name, blurb: blurb || null, severity: $("#ev-sev").value,
+          start_month: parseInt($("#ev-start").value, 10), end_month: parseInt($("#ev-end").value, 10) }) });
+      if(!res.ok){ const out = await res.json().catch(() => ({})); const err = new Error(out.detail || out.error || ("HTTP " + res.status)); err.detail = out.detail; throw err; }
 
       evSlot(`<div class="thanks"><b>Thanks — got it.</b> The TripVibz editors check every calendar entry before it shows, so it may take a few days to appear.</div>`);
       toast("Sent to the editors");

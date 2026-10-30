@@ -74,7 +74,9 @@ The database lint needs the database URL: `psql "$SUPABASE_DB_URL" -f tests/db-s
   developers.facebook.com/tools/debug and click Scrape Again.
 - **Phone share sheet.** On phones the Share button opens the system share sheet instead of the menu;
   the tests run as a desktop browser. After a sharing change, tap Share on a take on your phone.
-- **Phone notifications (ntfy).** After a change to `functions/api/_notify.js`, `hit.js` or `take.js`: open a TripVibz page from a Google result and post a test take; both should reach the ntfy app.
+- **Phone notifications (ntfy).** After a change to `functions/api/_notify.js`, `hit.js`, `take.js`, `event.js` or `error.js`: open a TripVibz page from a Google result, post a test take and add a calendar entry; all should reach the ntfy app. Site errors (browser or Function) arrive the same way, priority low.
+- **Uptime.** Point an uptime monitor (UptimeRobot, Better Stack, …) at `https://www.tripvibz.com/api/health` — 200 when site and database answer, 503 when the database doesn't.
+- **Anonymous sessions.** A page view creates no account; the first vote/take/reply/ask/signup does. `.github/workflows/maintenance.yml` removes empty anonymous users after 30 days (nightly, summary on the run page).
 - **Email (Kit) and the city-request issue.** Run Actions → City requests → Run workflow
   and confirm no error; an issue only appears when a city has 5 asks.
 - **Nightly backup.** Check Actions → Nightly database backup shows green.

@@ -1,0 +1,57 @@
+# Nightly database housekeeping (read the comment on each step). Uses the
+# SUPABASE_DB_URL secret already set for the backup. Safe to run any time:
+# every statement is idempotent and only touches rows that carry no content.
+
+name: Nightly maintenance
+
+on:
+  schedule:
+    - cron: "41 8 * * *"   # 4:41 am Eastern (daylight time), after the 3:17 backup
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: maintenance
+  cancel-in-progress: false
+
+jobs:
+  housekeeping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Anonymous sessions: the site creates one the first time a visitor acts
+      # (vote, take, reply, ask, signup). Ones that never produced anything are
+      # removed after 30 days; anything with content stays, so votes and takes
+      # from anonymous locals are never lost. profiles cascade with auth.users.
+      - name: Remove empty anonymous users older than 30 days
+        if: env.SUPABASE_DB_URL != ''
+        run: |
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -q <<'SQL' | tee -a "$GITHUB_STEP_SUMMARY"
+          with gone as (
+            delete from auth.users u
+             where u.is_anonymous
+               and u.created_at < now() - interval '30 days'
+               and not exists (select 1 from public.posts          p where p.author_id = u.id)
+               and not exists (select 1 from public.comments       c where c.author_id = u.id)
+               and not exists (select 1 from public.votes          v where v.user_id   = u.id)
+               and not exists (select 1 from public.question_votes q where q.user_id   = u.id)
+               and not exists (select 1 from public.city_requests  r where r.user_id   = u.id)
+               and not exists (select 1 from public.email_signups  e where e.user_id   = u.id)
+               and not exists (select 1 from public.city_tenure    t where t.user_id   = u.id)
+               and not exists (select 1 from public.claims         k where k.anon_user_id = u.id)
+             returning 1)
+          select 'anonymous users removed: ' || count(*) from gone;
+          select 'auth users now: ' || count(*) || ' (' || count(*) filter (where is_anonymous) || ' anonymous)' from auth.users;
+          SQL
+
+      # Expired one-time claim tokens (anonymous → signed-in history transfer).
+      - name: Remove expired claim tokens
+        if: env.SUPABASE_DB_URL != ''
+        run: |
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -q -c "with gone as (delete from public.claims where expires_at < now() returning 1) select 'expired claims removed: ' || count(*) from gone;" | tee -a "$GITHUB_STEP_SUMMARY"

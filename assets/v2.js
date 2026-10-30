@@ -215,7 +215,7 @@
   function qTotal(q) { return Object.keys(q.counts).reduce(function (s, k) { return s + q.counts[k]; }, 0); }
 
   async function answer(q, optionId) {
-    if (!auth.me) await auth.ensure();
+    if (!(await auth.session())) { TV.toast("That vote didn't save"); return false; }
     var prev = q.mine;
     if (prev === optionId) return true;
     if (prev) q.counts[prev] = Math.max(0, (q.counts[prev] || 1) - 1);
@@ -610,7 +610,7 @@
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { msg.textContent = "That email doesn't look right."; msg.className = "signup-msg err"; input.focus(); return; }
       btn.disabled = true; msg.textContent = "Signing you up…";
       try {
-        await TV.auth.ensure();
+        if (!(await TV.auth.session())) throw new Error("no session");
         var out = await TV.sb.rpc("email_signup", { p_email: email, p_city: city ? city.id : null, p_source: box.getAttribute("data-signup") || "site" });
         if (out.error) throw out.error;
         SIGNED_UP[(city && city.id) || "all"] = true;

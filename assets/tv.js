@@ -297,25 +297,18 @@
     onRender: null,
     onSignOut: null,
 
+    /* ensure(): restore the session a returning visitor already has. It never
+       creates one — a page view is not an account. The anonymous session a
+       write needs is created by session() the first time someone acts (vote,
+       take, reply, ask, signup). Before that change every visit, crawler and
+       speed test became a row in auth.users (346 users, 2 real, Oct 2026). */
     async ensure() {
       try {
         await finishTikTok();
         var res = await sb.auth.getSession();
         var session = res.data.session;
-        if (session) {
-          this.me = session.user;
-          this.canPersist = true;
-        } else {
-          var out = await sb.auth.signInAnonymously();
-          if (out.error) {
-            this.canPersist = false;
-            this.showAuthbar();
-            this.renderUI();
-            return;
-          }
-          this.me = out.data.user;
-          this.canPersist = true;
-        }
+        this.me = session ? session.user : null;
+        this.canPersist = true;
         if (this.me && !this.me.is_anonymous) await this.syncProfile();
         if (this.me && !this.me.is_anonymous) this.locate();
         this.renderUI();
@@ -325,6 +318,31 @@
         this.showAuthbar();
         this.renderUI();
       }
+    },
+
+    // The user a write runs as: the existing session, or a new anonymous one.
+    // Returns null (and shows the auth bar) when Supabase refuses.
+    async session() {
+      if (this.me) return this.me;
+      if (this._pending) return this._pending;
+      var self = this;
+      this._pending = (async function () {
+        try {
+          var out = await sb.auth.signInAnonymously();
+          if (out.error) throw out.error;
+          self.me = out.data.user;
+          self.canPersist = true;
+          self.renderUI();
+          return self.me;
+        } catch (e) {
+          console.error(e);
+          self.canPersist = false;
+          self.showAuthbar();
+          self.renderUI();
+          return null;
+        } finally { self._pending = null; }
+      })();
+      return this._pending;
     },
 
     showAuthbar() {
@@ -425,7 +443,7 @@
      Returns true when the write landed, false when it was skipped or failed. */
 
   async function persistVote(postId, value) {
-    if (!auth.canPersist || !auth.me) return false;
+    if (!(await auth.session())) return false;
     try {
       if (value === 0) {
         await sb.from("votes").delete().eq("user_id", auth.me.id).eq("post_id", postId);
@@ -535,6 +553,7 @@
   async function sendTake(payload) {
     var token = null;
     try {
+      await auth.session();
       var sess = await sb.auth.getSession();
       token = sess.data.session && sess.data.session.access_token;
     } catch (e) { /* fall through to direct insert */ }

@@ -52,6 +52,10 @@ add `?preview=signin` to any page to see the buttons. Both need the public
 business accounts managing their own posts). People with Instagram use the
 Facebook account it's linked to; the sign-in box says so.
 
+**Monitoring.** `GET /api/health` is for an uptime monitor (200 / 503). Browser errors from the site's
+own scripts and Function failures are pushed to the ntfy topic (`NTFY_TOPIC`) by `functions/api/error.js`;
+calendar suggestions by `functions/api/event.js`. Pending calendar entries are reviewed in `admin.html`.
+
 **Facebook** (built into Supabase):
 1. developers.facebook.com → Create app → "Authenticate and request data from users with Facebook Login" → business portfolio for TripVibz.
 2. Use cases → Facebook Login → Settings: Valid OAuth Redirect URI = `https://nkxorlktzbgwqnfwmuus.supabase.co/auth/v1/callback`. Permissions: `email`, `public_profile`.

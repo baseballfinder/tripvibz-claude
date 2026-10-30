@@ -29,3 +29,15 @@ export function where(request) {
   const cf = request.cf || {};
   return [cf.city, cf.regionCode || cf.region, cf.country].filter(Boolean).join(", ");
 }
+
+/** A Function failure, pushed the same way as a browser error (never throws). */
+export async function reportError(env, request, whereLabel, err) {
+  const msg = err && (err.message || String(err)) || "unknown error";
+  await notify(env, {
+    title: `Function error: ${whereLabel}`,
+    message: `${msg.slice(0, 300)}\n${new URL(request.url).pathname}${where(request) ? `\nVisitor near ${where(request)}` : ""}`,
+    click: "https://www.tripvibz.com" + new URL(request.url).pathname,
+    tags: "rotating_light",
+    priority: 2
+  });
+}
