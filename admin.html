@@ -96,7 +96,7 @@
   "use strict";
   const { sb, $, TYPE_LABEL, escapeHtml, timeAgo, toast, auth, openLogin, isSignedIn, routes } = window.TV;
 
-  let ROWS = [], EVENTS = [], CITIES = {}, PROFILES = {}, CHECKS = {};
+  let ROWS = [], EVENTS = [], CITIES = {}, PROFILES = {}, CHECKS = {}, RESTS = [], RPICKS = [], RSHOW = false;
   let FILTER = "all", CITY = "", SEARCH = "", editing = null;
 
   const STATUSES = ["approved","hidden","rejected"];
@@ -151,6 +151,14 @@
       (profs||[]).forEach(p => { PROFILES[p.id] = p; });
       (checks||[]).forEach(c => { CHECKS[c.user_id + ":" + c.city_id] = c; });
     }
+    // Locals' top 3: every restaurant row with how many lists it is on (tables land with migration 20261030140000).
+    const [{ data: rests }, { data: rpicks }] = await Promise.all([
+      sb.from("restaurants").select("id,city_id,name,neighborhood,hidden,merged_into,created_by,created_at").order("created_at", { ascending: false }),
+      sb.from("top3_picks").select("restaurant_id,user_id,rank,why,updated_at")
+    ]);
+    RESTS = rests || []; RPICKS = rpicks || [];
+    const pickers = [...new Set(RPICKS.map(x => x.user_id).concat(RESTS.map(x => x.created_by)))].filter(id => id && !PROFILES[id]);
+    if(pickers.length){ const { data: pp } = await sb.from("profiles").select("id,display_name,username").in("id", pickers); (pp||[]).forEach(p => { PROFILES[p.id] = p; }); }
   }
 
   const authorName = id => {
@@ -209,6 +217,46 @@
       <div class="actions"><button data-evact="approved" class="go">Approve</button><button data-evact="rejected">Reject</button></div>
     </article>`;
   }
+  // ---- Locals' top 3 restaurants: hide (off the page, picks kept), rename, merge duplicates ----
+  function restRow(r){
+    const city = CITIES[r.city_id] || {};
+    const picks = RPICKS.filter(x => x.restaurant_id === r.id);
+    const into = r.merged_into ? RESTS.find(x => x.id === r.merged_into) : null;
+    const whys = picks.filter(x => x.why).slice(0, 3).map(x => `“${escapeHtml(x.why)}” — ${escapeHtml(authorName(x.user_id))}`).join("<br>");
+    return `<article class="row ev" data-rest="${r.id}">
+      <div class="top">${r.hidden ? '<span class="st st-rejected">hidden</span>' : into ? `<span class="st st-hidden">merged → ${escapeHtml(into.name)}</span>` : '<span class="st st-approved">live</span>'}
+        <a href="/${escapeHtml(city.slug||"")}/" target="_blank" rel="noopener"><b>${escapeHtml(city.name||"?")}</b></a>
+        <span class="count">${picks.length} pick${picks.length === 1 ? "" : "s"} · added ${new Date(r.created_at).toLocaleDateString()} by ${escapeHtml(authorName(r.created_by))}</span></div>
+      <div class="t">${escapeHtml(r.name)}${r.neighborhood ? ` <span class="count">${escapeHtml(r.neighborhood)}</span>` : ""}</div>
+      ${whys ? `<div class="b">${whys}</div>` : ""}
+      <div class="actions">
+        <button data-ract="${r.hidden ? "show" : "hide"}">${r.hidden ? "Show again" : "Hide"}</button>
+        <button data-ract="rename">Rename</button>
+        ${into ? `<button data-ract="unmerge">Unmerge</button>` : `<button data-ract="merge">Merge into…</button>`}
+      </div>
+    </article>`;
+  }
+  async function onRestAction(e){
+    const btn = e.target.closest("button[data-ract]"); if(!btn) return;
+    const id = btn.closest(".row").dataset.rest, r = RESTS.find(x => x.id === id); if(!r) return;
+    let patch = null;
+    if(btn.dataset.ract === "hide") patch = { hidden: true };
+    if(btn.dataset.ract === "show") patch = { hidden: false };
+    if(btn.dataset.ract === "unmerge") patch = { merged_into: null };
+    if(btn.dataset.ract === "rename"){ const n = prompt("New name for this restaurant", r.name); if(!n || n.trim() === r.name) return; patch = { name: n.trim() }; }
+    if(btn.dataset.ract === "merge"){
+      const n = prompt("Merge into which restaurant? Type its name exactly (same city).", ""); if(!n) return;
+      const key = x => x.toLowerCase().replace(/^\s*the\s+/, "").replace(/[^a-z0-9]+/g, " ").trim();
+      const target = RESTS.find(x => x.city_id === r.city_id && x.id !== r.id && !x.merged_into && key(x.name) === key(n));
+      if(!target){ toast("No live restaurant by that name in this city"); return; }
+      patch = { merged_into: target.id };
+    }
+    if(!patch) return;
+    const { error } = await sb.from("restaurants").update(patch).eq("id", id);
+    if(error){ toast("Couldn't update: " + (error.message||"")); return; }
+    Object.assign(r, patch); toast("Updated; the city page follows at its next load/build"); render();
+  }
+
   async function onEventAction(e){
     const btn = e.target.closest("button[data-evact]"); if(!btn) return;
     const id = btn.closest(".row").dataset.ev;
@@ -254,6 +302,12 @@
         <div id="evrows">${EVENTS.map(eventRow).join("")}</div>
       </section>` : ""}
 
+      ${RESTS.length ? `<section class="evq" id="rq">
+        <h2>Locals' top 3 restaurants <span class="count">${RESTS.length} places · ${RPICKS.length} picks</span> <button data-rtoggle style="margin-left:8px">${RSHOW ? "Hide list" : "Show list"}</button></h2>
+        <p class="rlm-note">Names typed by locals. Hide takes a place off the page (its picks stay), Rename fixes spelling, Merge points duplicates at one row.</p>
+        ${RSHOW ? `<div id="rrows">${RESTS.map(restRow).join("")}</div>` : ""}
+      </section>` : ""}
+
       <div class="filters" id="filters">
         <button data-f="all" aria-pressed="${FILTER==="all"}">All</button>
         ${STATUSES.map(s=>`<button data-f="${s}" aria-pressed="${FILTER===s}">${s} (${counts[s]})</button>`).join("")}
@@ -280,6 +334,8 @@
     $("#city").addEventListener("change", e=>{ CITY=e.target.value; editing=null; render(); });
     $("#rows").addEventListener("click", onAction);
     const evq = $("#evrows"); if(evq) evq.addEventListener("click", onEventAction);
+    const rq = $("#rrows"); if(rq) rq.addEventListener("click", onRestAction);
+    const rt = document.querySelector("[data-rtoggle]"); if(rt) rt.addEventListener("click", () => { RSHOW = !RSHOW; render(); });
     wireRlm();
   }
 

@@ -355,6 +355,58 @@ await test("Share a take: button on every card opens the share menu with the tak
   assert(await page.locator("#sharesheet").count() === 0, "share menu did not close");
 });
 
+await test("Locals' top 3 restaurants: section on city pages; anonymous sees sign-in; a signed-in person's picks are saved as one ranked list", async () => {
+  await go("/miami/");
+  assert(await page.locator("#tv-eats h2").count() === 1 && /top 3 restaurants/i.test(await page.textContent("#tv-eats h2")), "top-3 section missing on the city page");
+  assert(await page.locator("#top3-signin").count() === 1, "anonymous visitor should be offered sign-in, not the picker");
+  assert(await page.locator('#tv-eats a[href="/how-we-verify-locals/"]').count() === 1, "section should link to how badges work");
+
+  // A signed-in (non-anonymous) person: a second browser with a stored Google-style session.
+  const me = randomUUID(), exp2 = Math.floor(Date.now() / 1000) + 3600;
+  const jwt = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub: me, role: "authenticated", is_anonymous: false, exp: exp2, aud: "authenticated" })}.sig`;
+  const user = { id: me, aud: "authenticated", role: "authenticated", is_anonymous: false, app_metadata: { provider: "google" }, user_metadata: { full_name: "Test Local" }, created_at: new Date().toISOString() };
+  const session = { access_token: jwt, token_type: "bearer", expires_in: 3600, expires_at: exp2, refresh_token: "test2", user };
+  const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await ctx2.addInitScript(([k, v]) => { try { localStorage.setItem(k, v); } catch {} }, ["sb-nkxorlktzbgwqnfwmuus-auth-token", JSON.stringify(session)]);
+  await ctx2.route(`${SB}/auth/v1/**`, r => r.fulfill({ json: r.request().url().includes("/user") ? user : session }));
+  const before = writes.length;
+  await ctx2.route(`${SB}/rest/v1/**`, async r => {
+    const req = r.request(), m = req.method(), url = req.url();
+    const headers = { ...req.headers() }; delete headers.authorization;
+    if (m === "GET" || m === "HEAD" || url.includes("/rpc/")) return r.continue({ headers });
+    let body = {}; try { body = JSON.parse(req.postData() || "{}"); } catch {}
+    const table = new URL(url).pathname.split("/").pop();
+    writes.push({ table, method: m, body, who: me });
+    const rows = (Array.isArray(body) ? body : [body]).map(x => ({ id: randomUUID(), created_at: new Date().toISOString(), ...x }));
+    const single = (headers.accept || "").includes("vnd.pgrst.object");
+    return r.fulfill({ status: m === "POST" ? 201 : 200, json: single ? rows[0] : rows });
+  });
+  await ctx2.route("**/api/locate", r => r.fulfill({ json: { ok: true, near: [] } }));
+  const p2 = await ctx2.newPage();
+  const errs2 = []; p2.on("pageerror", e => errs2.push(e.message));
+  await p2.goto(BASE + "/miami/", { waitUntil: "networkidle" }); await p2.waitForTimeout(800);
+  assert(await p2.locator("#top3-open").count() === 1, "signed-in person should see the Add-your-top-3 button");
+  await p2.click("#top3-open");
+  await p2.fill("#top3-n1", "The Salty Donut"); await p2.fill("#top3-w1", "Get the guava and cheese, go before 10.");
+  await p2.fill("#top3-n2", "La Camaronera");
+  await p2.fill("#top3-n3", "la camaronera");   // same place twice, typed differently
+  await p2.click("#top3-save"); await p2.waitForTimeout(300);
+  assert(/same place twice/i.test(await p2.textContent("#top3")), "duplicate names should be caught before saving");
+  await p2.fill("#top3-n3", "Versailles");
+  await p2.click("#top3-save"); await p2.waitForTimeout(1500);
+  const mine = writes.slice(before).filter(w => w.who === me);
+  const rests = mine.filter(w => w.table === "restaurants" && w.method === "POST");
+  const shown = await p2.locator("#top3 .err").count() ? await p2.textContent("#top3 .err") : "";
+  assert(rests.length === 3 && rests.every(w => w.body.city_id && w.body.created_by === me && w.body.name), `expected 3 new restaurant rows with created_by set, got ${rests.length}; page says "${shown}"; errors: ${errs2.join(" | ")}`);
+  assert(mine.some(w => w.table === "top3_picks" && w.method === "DELETE"), "old list should be cleared before the new one is written");
+  const picks = mine.find(w => w.table === "top3_picks" && w.method === "POST");
+  assert(picks && Array.isArray(picks.body) && picks.body.length === 3, "three picks should be inserted together");
+  assert(picks.body.map(x => x.rank).join() === "1,2,3" && picks.body.every(x => x.user_id === me && x.city_id && x.restaurant_id), "picks must carry rank 1-3, the user and the city");
+  assert(picks.body[0].why === "Get the guava and cheese, go before 10." && picks.body[1].why === null, "why text should be kept, blanks saved as null");
+  assert(!errs2.length, `page errors: ${errs2[0]}`);
+  await ctx2.close();
+});
+
 await test("Thread: split bar, replies, typed reply", async () => {
   const posts = await api("posts?select=id&limit=1");
   if (!posts.length) return;

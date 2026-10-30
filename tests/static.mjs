@@ -193,6 +193,23 @@ await test("Local verification: 40-mile rule, presence recorded server-side only
     assert(n.isHostingNetwork({ asn, asOrganization: org }), `${org} should be treated as a hosting network`);
 });
 
+await test("Locals' top 3 restaurants: section pre-rendered on every city page; picker and roll-up wired", async () => {
+  for (const c of cities) {
+    const h = await readFile(join("dist", c.slug, "index.html"), "utf8");
+    assert(h.includes('<section class="eats" id="tv-eats"') && /Locals' top 3 restaurants/.test(h), `${c.slug}: top-3 section missing`);
+    assert(h.includes("/how-we-verify-locals/"), `${c.slug}: top-3 section should link to how badges work`);
+  }
+  const city = await readFile("city.html", "utf8");
+  assert(/from\("city_top_restaurants"\)/.test(city) && /from\("top3_picks"\)\.delete\(\)/.test(city) && /from\("restaurants"\)\.insert\(/.test(city), "city page must read the roll-up and replace the person's list wholesale");
+  assert(/created_by: me\.id/.test(city), "new restaurant rows must carry created_by (RLS requires it)");
+  assert(/const nameKey = /.test(city) && /\[\^a-z0-9\]\+/.test(city), "client must match names with the same key the database uses");
+  const mig = await readFile("supabase/migrations/20261030140000_top3_restaurants.sql", "utf8");
+  assert(/jwt_is_verified\(\) and created_by = auth\.uid\(\)/.test(mig) && /jwt_is_verified\(\) and user_id = auth\.uid\(\)/.test(mig), "anonymous sessions must not be able to add restaurants or picks");
+  assert(/moderation_guard\(\)/.test(mig) && /moderation_violation\(new\.why\)/.test(mig), "names and whys must go through the content screen");
+  assert(/n >= 10 then raise exception 'RATE_LIMITED'/.test(mig), "new restaurant rows must be rate-limited per person");
+  assert((await readFile("admin.html", "utf8")).includes('from("restaurants").update(patch)'), "admin page must be able to hide/rename/merge restaurants");
+});
+
 await test("How-we-verify-locals page: exists, linked, describes the method without the exact thresholds", async () => {
   const h = await readFile("dist/how-we-verify-locals/index.html", "utf8");
   for (const t of ["Verified local", "unverified", "Founding local", "several different days", "VPN", "remove", "What we store", "privacy"])
