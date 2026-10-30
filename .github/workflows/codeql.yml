@@ -1,0 +1,33 @@
+# CodeQL: static analysis of the JavaScript (site, Functions, build) and the
+# Python bots for injection, unsafe patterns and the like. Free for public
+# repositories; findings appear under Security → Code scanning.
+
+name: CodeQL
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "37 10 * * 3"   # Wednesdays 6:37 am Eastern (daylight time)
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        language: [javascript-typescript, python]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:${{ matrix.language }}

@@ -33,11 +33,12 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - run: pip install --quiet "psycopg[binary]==3.2.3"
+      - run: pip install --quiet -r scripts/requirements.txt
       - name: Add new signups to Kit
         env:
           KIT_API_KEY: ${{ secrets.KIT_API_KEY }}
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          # The limited bot role (supabase/migrations/20261030010000_bot_role.sql); full URL until BOT_DB_URL is set.
+          SUPABASE_DB_URL: ${{ secrets.BOT_DB_URL || secrets.SUPABASE_DB_URL }}
         run: |
           MODE="${{ github.event_name == 'pull_request' && 'check' || inputs.mode || 'sync' }}"
           python3 scripts/kit_sync.py "$MODE"

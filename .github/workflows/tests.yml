@@ -40,7 +40,7 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npx playwright install --with-deps chromium
-          pip install --quiet pyyaml pillow
+          pip install --quiet -r scripts/requirements.txt
 
       # ---- security: dependencies with known vulnerabilities fail the build ----
       - name: Dependency audit (high or critical advisories fail)

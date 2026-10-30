@@ -36,8 +36,25 @@ begin
   select string_agg(tablename || '.' || policyname, ', ') into v_rows
     from pg_policies
    where schemaname = 'public' and cmd in ('INSERT', 'UPDATE', 'DELETE', 'ALL')
-     and (coalesce(qual, 'true') = 'true' and coalesce(with_check, 'true') = 'true');
+     and (coalesce(qual, 'true') = 'true' and coalesce(with_check, 'true') = 'true')
+     -- a policy scoped to a named server-side role (the bots) is not "everyone"
+     and (roles = '{public}' or 'anon' = any(roles) or 'authenticated' = any(roles));
   if v_rows is not null then v_fail := v_fail || E'\n  write policy open to everyone: ' || v_rows; end if;
+
+  -- 2b. The bot role, once created, must never have the API roles' reach: no
+  --     grants on auth, storage, or tables the three scripts don't use.
+  if exists (select 1 from pg_roles where rolname = 'tripvibz_bot') then
+    select string_agg(table_schema || '.' || table_name, ', ') into v_rows
+      from information_schema.role_table_grants
+     where grantee = 'tripvibz_bot'
+       and table_schema || '.' || table_name not in (
+         'public.email_signups', 'public.city_requests', 'public.city_candidates', 'public.cities',
+         'public.questions', 'public.posts', 'public.take_reviews', 'supabase_migrations.schema_migrations');
+    if v_rows is not null then v_fail := v_fail || E'\n  tripvibz_bot has grants beyond its allow-list: ' || v_rows; end if;
+    if exists (select 1 from pg_roles where rolname = 'tripvibz_bot' and (rolsuper or rolbypassrls or rolcreaterole or rolcreatedb)) then
+      v_fail := v_fail || E'\n  tripvibz_bot must have no superuser/bypassrls/createrole/createdb attribute';
+    end if;
+  end if;
 
   -- 3a. SECURITY DEFINER functions must pin search_path
   select string_agg(p.proname, ', ') into v_rows
