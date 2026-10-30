@@ -115,9 +115,15 @@ method but not the exact numbers, and `tests/db-security.sql` checks the grants 
 
 ## Locals' top 3 restaurants
 
-Migration `20261030140000_top3_restaurants.sql`: `restaurants` (one row per place per city; `name_key`
-folds spelling so "The Salty Donut" and "salty donut" are one row; admins hide/rename/merge in
-admin.html) and `top3_picks` (one ranked list per signed-in person per city, optional one-line why).
+Migration `20261030140000_top3_restaurants.sql`: `places_catalog` (eat-and-drink places within ~25 km of
+each city from Overture Maps' open places data, CDLA-Permissive 2.0; loaded monthly by
+`.github/workflows/places-catalog.yml` → `scripts/places_catalog.py` with DuckDB, bot role; searched by
+`search_places()` with pg_trgm fuzzy matching), `restaurants` (one row per place per city; a catalogue
+pick is created server-side by `ensure_restaurant_from_place()` with address/phone/website/coordinates
+copied from the catalogue, hand-typed names get `source = 'local'` and fold spelling via `name_key`;
+admins hide/rename/merge in admin.html) and `top3_picks` (one ranked list per signed-in person per
+city, optional one-line why). Each place on the page gets Directions (Google Maps URL, no API),
+Call, Website and a Stay22 "Hotels near" link (campaign `tripvibz_top3_<city>`).
 Anonymous sessions can't write either (`jwt_is_verified()`); names and whys go through the same
 content screen as takes; a person can add at most 10 new restaurant rows a day. The
 `city_top_restaurants` view rolls picks up (#1 = 3 points, #2 = 2, #3 = 1) with verified locals'

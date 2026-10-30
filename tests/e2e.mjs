@@ -370,9 +370,14 @@ await test("Locals' top 3 restaurants: section on city pages; anonymous sees sig
   await ctx2.addInitScript(([k, v]) => { try { localStorage.setItem(k, v); } catch {} }, ["sb-nkxorlktzbgwqnfwmuus-auth-token", JSON.stringify(session)]);
   await ctx2.route(`${SB}/auth/v1/**`, r => r.fulfill({ json: r.request().url().includes("/user") ? user : session }));
   const before = writes.length;
+  const PLACE = { id: "overture-test-place-1", name: "The Salty Donut", category: "donut_shop", address: "50 NW 23rd St", locality: "Miami", phone: "+17864094714", website: "https://www.saltydonut.com/", lat: 25.7994, lng: -80.1984, status: "open" };
+  const ENSURED = randomUUID();
   await ctx2.route(`${SB}/rest/v1/**`, async r => {
     const req = r.request(), m = req.method(), url = req.url();
     const headers = { ...req.headers() }; delete headers.authorization;
+    // The places catalogue search and the server-side "restaurant from catalogue" call, faked.
+    if (url.includes("/rpc/search_places")) { let b = {}; try { b = JSON.parse(req.postData() || "{}"); } catch {} ; return r.fulfill({ json: /salty/i.test(b.p_q || "") ? [PLACE, { ...PLACE, id: "overture-test-place-2", name: "Salty Flats Cafe", address: "1 Ocean Dr", locality: "Miami Beach" }] : [] }); }
+    if (url.includes("/rpc/ensure_restaurant_from_place")) { let b = {}; try { b = JSON.parse(req.postData() || "{}"); } catch {} ; writes.push({ table: "ensure_restaurant_from_place(rpc)", method: m, body: b, who: me }); return r.fulfill({ json: ENSURED }); }
     if (m === "GET" || m === "HEAD" || url.includes("/rpc/")) return r.continue({ headers });
     let body = {}; try { body = JSON.parse(req.postData() || "{}"); } catch {}
     const table = new URL(url).pathname.split("/").pop();
@@ -387,21 +392,33 @@ await test("Locals' top 3 restaurants: section on city pages; anonymous sees sig
   await p2.goto(BASE + "/miami/", { waitUntil: "networkidle" }); await p2.waitForTimeout(800);
   assert(await p2.locator("#top3-open").count() === 1, "signed-in person should see the Add-your-top-3 button");
   await p2.click("#top3-open");
-  await p2.fill("#top3-n1", "The Salty Donut"); await p2.fill("#top3-w1", "Get the guava and cheese, go before 10.");
+  // Row 1 from the catalogue: type, see suggestions with addresses, pick one.
+  await p2.type("#top3-n1", "salty", { delay: 20 }); await p2.waitForTimeout(600);
+  assert(await p2.locator("#top3-s1 button[data-pick]").count() === 3, "typing should list the two catalogue matches plus 'use as typed'");
+  assert(/50 NW 23rd St/.test(await p2.textContent("#top3-s1")), "suggestions should show the address");
+  await p2.click('#top3-s1 button[data-pick="overture-test-place-1"]'); await p2.waitForTimeout(200);
+  assert((await p2.inputValue("#top3-n1")) === "The Salty Donut", "picking a suggestion should fill the exact catalogue name");
+  assert(/50 NW 23rd St/.test(await p2.textContent("#top3")), "picked place should show its address under the field");
+  await p2.fill("#top3-w1", "Get the guava and cheese, go before 10.");
+  // Rows 2 and 3 typed by hand (not in the catalogue).
   await p2.fill("#top3-n2", "La Camaronera");
   await p2.fill("#top3-n3", "la camaronera");   // same place twice, typed differently
   await p2.click("#top3-save"); await p2.waitForTimeout(300);
   assert(/same place twice/i.test(await p2.textContent("#top3")), "duplicate names should be caught before saving");
+  assert((await p2.inputValue("#top3-n1")) === "The Salty Donut" && /50 NW 23rd St/.test(await p2.textContent("#top3")), "a validation message must not wipe the picked place");
   await p2.fill("#top3-n3", "Versailles");
   await p2.click("#top3-save"); await p2.waitForTimeout(1500);
   const mine = writes.slice(before).filter(w => w.who === me);
-  const rests = mine.filter(w => w.table === "restaurants" && w.method === "POST");
   const shown = await p2.locator("#top3 .err").count() ? await p2.textContent("#top3 .err") : "";
-  assert(rests.length === 3 && rests.every(w => w.body.city_id && w.body.created_by === me && w.body.name), `expected 3 new restaurant rows with created_by set, got ${rests.length}; page says "${shown}"; errors: ${errs2.join(" | ")}`);
+  const ensured = mine.filter(w => w.table === "ensure_restaurant_from_place(rpc)");
+  assert(ensured.length === 1 && ensured[0].body.p_place === "overture-test-place-1", `the catalogue pick must go through ensure_restaurant_from_place (got ${ensured.length}); page says "${shown}"; errors: ${errs2.join(" | ")}`);
+  const rests = mine.filter(w => w.table === "restaurants" && w.method === "POST");
+  assert(rests.length === 2 && rests.every(w => w.body.city_id && w.body.created_by === me && w.body.name) && !rests.some(w => w.body.address || w.body.phone), `expected 2 hand-typed restaurant rows (name + created_by only), got ${rests.length}`);
   assert(mine.some(w => w.table === "top3_picks" && w.method === "DELETE"), "old list should be cleared before the new one is written");
   const picks = mine.find(w => w.table === "top3_picks" && w.method === "POST");
   assert(picks && Array.isArray(picks.body) && picks.body.length === 3, "three picks should be inserted together");
   assert(picks.body.map(x => x.rank).join() === "1,2,3" && picks.body.every(x => x.user_id === me && x.city_id && x.restaurant_id), "picks must carry rank 1-3, the user and the city");
+  assert(picks.body[0].restaurant_id === ENSURED, "the catalogue pick must reference the row the database returned");
   assert(picks.body[0].why === "Get the guava and cheese, go before 10." && picks.body[1].why === null, "why text should be kept, blanks saved as null");
   assert(!errs2.length, `page errors: ${errs2[0]}`);
   await ctx2.close();
