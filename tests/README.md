@@ -94,5 +94,16 @@ one and writes resized WebP copies to `dist/assets/city/`: `<slug>-{256,360,480,
 measured from the real layout (grid tiles 171–256 CSS px on desktop and full/half width on phones;
 heroes 608 px on desktop and 650–720 device px on phones). The hero is pre-rendered in the HTML with
 `fetchpriority="high"` and a `<link rel="preload">`, and kept across hydration (`id="tv-hero"`).
+The home and `/cities/` grids are pre-rendered in the same markup and order the page scripts produce,
+with the first two tiles at `fetchpriority="high"`; the scripts then refresh counts in place and mark the
+grid `data-hydrated="inplace"` (e2e asserts it). Rebuilding the grid moved different photos into view a
+second time, and that late paint — not the hero — was the page's LCP (~3.5 s on a phone in CI).
+
+## Scripts
+
+`/assets/supabase.js` is bundled by `build.mjs` from `lib/supabase-client.mjs`: the PostgREST and Auth
+packages only (30 KB gzipped), wired the way `@supabase/supabase-js` wires them, without the Realtime,
+Storage and Functions clients the pages never call (the full package was 57 KB gzipped). The security
+test checks that those never creep back in; the perf budget is 140 KB raw.
 If a photo can't be downloaded at build time the page falls back to the Supabase URL. When a photo
 changes in storage, the next build picks it up; no cache to clear.

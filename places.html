@@ -126,21 +126,47 @@
         <p>${escapeHtml(c.blurb||"")}</p>
         <div class="city-foot ${live?'':'soon'}">${countLine(c)}</div>
       </div>`;
-    return `<a class="city-card${live ? "" : " is-thin"}" href="${routes.city(c.slug)}">${inner}</a>`;
+    return `<a class="city-card${live ? "" : " is-thin"}" href="${routes.city(c.slug)}" data-slug="${escapeHtml(c.slug)}">${inner}</a>`;
   }
 
+  // The build pre-renders both grids with this same card markup (build.mjs
+  // cityCard / cityLists). The first render keeps those cards — and their
+  // already-loaded photos — in place and refreshes the counts; rebuilding the
+  // grids made the page paint its photos twice. Searches re-render freely.
+  let hydrated = false;
   function render(q){
     q=(q||"").trim().toLowerCase();
     const match = c => !q || c.name.toLowerCase().includes(q) || (c.state||"").toLowerCase().includes(q);
     const live = CITIES.filter(c=>c.take_count>0 && match(c));
     const soon = CITIES.filter(c=>!(c.take_count>0) && match(c));
-    $("#live-grid").innerHTML = live.map(card).join("");
-    $("#soon-grid").innerHTML = soon.map(card).join("");
+    const liveGrid = $("#live-grid"), soonGrid = $("#soon-grid");
+    const have = new Map([...document.querySelectorAll("#live-grid a.city-card[data-slug], #soon-grid a.city-card[data-slug]")].map(a=>[a.dataset.slug, a]));
+    if(!hydrated && !q && have.size){
+      let added = 0, i = 0;
+      const place = (grid, list) => list.forEach(c=>{
+        const a = have.get(c.slug);
+        if(!a){ grid.insertAdjacentHTML("beforeend", card(c, i++)); added++; return; }
+        have.delete(c.slug); i++;
+        const isLive = c.take_count > 0;
+        a.classList.toggle("is-thin", !isLive);
+        const foot = a.querySelector(".city-foot");
+        if(foot){ foot.textContent = countLine(c); foot.classList.toggle("soon", !isLive); }
+        if(a.parentNode !== grid) grid.appendChild(a);   // its count crossed zero since the build
+      });
+      place(liveGrid, live); place(soonGrid, soon);
+      have.forEach(a=>a.remove());                        // cities no longer in the database
+      liveGrid.dataset.hydrated = soonGrid.dataset.hydrated = added ? "partial" : "inplace";
+    }else{
+      liveGrid.innerHTML = live.map(card).join("");
+      soonGrid.innerHTML = soon.map(card).join("");
+      if(!q) liveGrid.dataset.hydrated = soonGrid.dataset.hydrated = "rebuilt";
+    }
+    hydrated = true;
     $("#live-label").hidden = !live.length;
     $("#soon-label").hidden = !soon.length;
     $("#soon-label").textContent = "Open for locals";
     if(!live.length && !soon.length){
-      $("#live-grid").innerHTML = `<div class="empty">No cities match “${escapeHtml(q)}”.</div>`;
+      liveGrid.innerHTML = `<div class="empty">No cities match “${escapeHtml(q)}”.</div>`;
     }
   }
 

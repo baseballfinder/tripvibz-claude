@@ -118,6 +118,11 @@ await test("Home: hero, city grid, logo, request link", async () => {
   assert(/The local take on every city/i.test(await page.textContent("h1")), "headline missing");
   const n = await page.locator("#needs a").count();
   assert(n >= cities.length, `city grid shows ${n} of ${cities.length}`);
+  // The build pre-renders the grid and the counters; the script must refresh them in place (not rebuild
+  // them) or the photos paint twice and the second paint becomes the page's LCP.
+  assert((await page.getAttribute("#needs", "data-hydrated")) === "inplace", `home grid was rebuilt by the script (data-hydrated=${await page.getAttribute("#needs", "data-hydrated")})`);
+  assert(await page.locator("#stats .stat").count() === 3, "stats missing");
+  assert(/^\d+$/.test((await page.textContent("#stats .stat b")).trim()), "take counter is not a number");
   assert(await page.locator("header .brand-mark").count() === 1, "logo missing in header");
   assert(await page.locator('a[href="/cities/#request"]').count() === 1, "Ask for your city link missing");
   assert(await page.locator('link[rel="icon"]').count() >= 1, "favicon link missing");
@@ -126,6 +131,8 @@ await test("Home: hero, city grid, logo, request link", async () => {
 await test("Cities page: grid, search, request-a-city", async () => {
   await go("/cities/");
   assert(await page.locator(".city-card").count() >= cities.length, "city cards missing");
+  assert((await page.getAttribute("#live-grid", "data-hydrated")) === "inplace", `cities grids were rebuilt by the script (data-hydrated=${await page.getAttribute("#live-grid", "data-hydrated")})`);
+  assert(await page.locator("#soon-label:not([hidden])").count() + await page.locator("#live-label:not([hidden])").count() >= 1, "section labels hidden");
   await page.fill("#search", "zzzz");
   assert(/No cities match/.test(await page.textContent("#live-grid")), "empty search state missing");
   await page.fill("#search", "");
@@ -257,7 +264,9 @@ await test("Email signup: city page box checks the address, sends it with the ci
   const w = writes.find(x => x.table === "email_signup(rpc)");
   assert(w && w.body.p_email === "test@example.com" && w.body.p_city && w.body.p_source === "city_page", "signup was not sent with city and source");
   assert(/on the list/.test(await page.textContent("[data-signup]")), "thank-you state missing");
-  await page.waitForLoadState("networkidle");   // let in-flight page fetches finish before the next test navigates
+  // Let in-flight fetches settle before the next test navigates. Bounded: the signup starts the lazy
+  // anonymous session, whose refresh timer can keep the network from ever reading as idle.
+  await page.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => {});
 });
 
 await test("Sign-in options: Facebook and TikTok buttons (preview), TikTok goes to the bridge", async () => {
