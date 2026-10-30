@@ -391,7 +391,7 @@
           var name = m.full_name || m.name || (this.me.email ? this.me.email.split("@")[0] : "You");
           var av = m.avatar_url || m.picture || "";
           slot.innerHTML =
-            '<div class="userchip"><img alt="" src="' + av + '" onerror="this.style.visibility=\'hidden\'">' +
+            '<div class="userchip"><img alt="" src="' + av + '" data-err="hide">' +
             "<span>" + escapeHtml(name.split(" ")[0]) + "</span>" +
             '<button data-signout title="Sign out" aria-label="Sign out">⎋</button></div>';
           slot.querySelector("[data-signout]").addEventListener("click", this.signOut.bind(this));
@@ -607,7 +607,7 @@
 
   /* City photos: resized copies served from this site (build.mjs writes
      /assets/city/<name>-480.webp and -800.webp). The Supabase original is the
-     fallback if a copy is missing, swapped in by the onerror handler. */
+     fallback if a copy is missing, swapped in by the head error handler. */
   var PHOTO_REMOTE = SUPABASE_URL + "/storage/v1/object/public/city-photos/";
   function cityPhotoName(city) { return city.photo || city.slug + ".webp"; }
   function cityPhoto(city, w) { return "/assets/city/" + encodeURIComponent(cityPhotoName(city).replace(/\.[a-z0-9]+$/i, "")) + "-" + w + ".webp"; }
@@ -616,7 +616,7 @@
     var set = [256, 360, 480, 640, 720, 800].map(function (w) { return cityPhoto(city, w) + " " + w + "w"; }).join(", ");
     return 'src="' + cityPhoto(city, 800) + '" srcset="' + set + '" sizes="' + escapeHtml(sizes) + '"' +
       ' data-fallback="' + escapeHtml(PHOTO_REMOTE + encodeURIComponent(cityPhotoName(city))) + '"' +
-      " onerror=\"if(this.dataset.fallback){this.srcset='';this.src=this.dataset.fallback;delete this.dataset.fallback}else this.remove()\"";
+      ' data-err="remove"';   // fallbacks run in the hashed head script (build.mjs IMG_ERROR_SCRIPT), not inline
   }
 
   window.TV = { tidy: tidyText,

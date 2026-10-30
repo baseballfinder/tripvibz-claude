@@ -13,16 +13,19 @@
  * added (a script, a font, an iframe, an API), add its origin here — the
  * browser blocks anything not listed, and tests/csp.mjs will fail first.
  *
- * script-src still allows 'unsafe-inline' because the page templates carry
- * inline <script> blocks and a few inline on*= handlers. Phase 2 is hashing
- * those at build time and dropping 'unsafe-inline'; that is the one remaining
- * gap between this policy and a strict one.
+ * script-src has no 'unsafe-inline': each page template's inline <script> is
+ * hashed by build.mjs into _inline-hashes.js (generated, committed), and the
+ * photo fallbacks that used to be on*= handlers are data-attributes handled by
+ * one hashed head script. An inline script that isn't in the list doesn't run.
+ * style-src keeps 'unsafe-inline' for the style="" attributes in the markup.
  */
+import { INLINE_SCRIPT_HASHES } from "./_inline-hashes.js";
+
 export const CSP = [
   "default-src 'self'",
   // Site scripts (incl. the self-hosted Supabase client) + GA4, Clarity, Google sign-in.
   // Fonts are self-hosted (build.mjs), so no font or style origin beyond Google sign-in.
-  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://*.clarity.ms https://accounts.google.com",
+  `script-src 'self' ${INLINE_SCRIPT_HASHES.join(" ")} https://www.googletagmanager.com https://*.clarity.ms https://accounts.google.com`,
   "style-src 'self' 'unsafe-inline' https://accounts.google.com",
   "font-src 'self' data:",
   // City photos (Supabase storage), sign-in avatars (Google/TikTok CDNs), share images.

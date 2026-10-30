@@ -66,6 +66,8 @@ await test("Security header values are sound", async () => {
     assert(!v.some(s => s === "*" || s === "https:" || s === "http:" || s.startsWith("http://")), `${d} must list exact https origins, no wildcards or http`);
   }
   assert(!dir("script-src").includes("https://cdn.jsdelivr.net"), "the CDN is gone; scripts are self-hosted");
+  assert(!dir("script-src").includes("'unsafe-inline'"), "script-src must not allow 'unsafe-inline' (inline scripts are hashed by build.mjs)");
+  assert(dir("script-src").filter(s => s.startsWith("'sha256-")).length >= 5, "script-src should carry the inline-script hashes from functions/_inline-hashes.js");
   const hsts = /max-age=(\d+)/.exec(H["Strict-Transport-Security"]);
   assert(hsts && Number(hsts[1]) >= 31536000, "HSTS max-age must be at least a year");
   assert(H["X-Frame-Options"] === "DENY" && H["X-Content-Type-Options"] === "nosniff", "X-Frame-Options DENY and nosniff");
@@ -99,6 +101,35 @@ await test("Every script, stylesheet and font is same-origin (fonts and the Supa
   const vendored = await readFile("dist/assets/supabase.js", "utf8");
   assert(vendored.includes("createClient") && vendored.includes("rest/v1") && vendored.includes("auth/v1") && vendored.length > 50_000, "vendored Supabase client looks wrong");
   assert(!vendored.includes("realtime/v1") && !vendored.includes("storage/v1"), "vendored Supabase client carries Realtime/Storage code the site never uses (lib/supabase-client.mjs)");
+});
+
+await test("Inline scripts: functions/_inline-hashes.js matches the built pages; no inline on*= handlers anywhere", async () => {
+  const { createHash } = await import("node:crypto");
+  const want = new Set();
+  const htmlFiles = [];
+  const walk = async d => { for (const e of await readdir(d, { withFileTypes: true })) { const p = join(d, e.name); if (e.isDirectory()) await walk(p); else if (p.endsWith(".html")) htmlFiles.push(p); } };
+  await walk("dist");
+  for (const f of htmlFiles) {
+    const h = await readFile(f, "utf8");
+    for (const m of h.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\b[^>]*>/gi)) {
+      if (/\bsrc\s*=/i.test(m[1]) || /ld\+json/i.test(m[1])) continue;
+      want.add(`'sha256-${createHash("sha256").update(m[2]).digest("base64")}'`);
+    }
+    // on*= attributes can't be hashed into a CSP without 'unsafe-hashes'; the photo fallbacks are data-attributes.
+    const handlers = h.match(/\son(error|click|load|change|input|submit|key\w+|mouse\w+|focus|blur)\s*=\s*["']/gi) || [];
+    assert(!handlers.length, `${f}: inline event handler attribute ${handlers.length ? handlers[0].trim() : ""}`);
+  }
+  const { INLINE_SCRIPT_HASHES } = await import("../functions/_inline-hashes.js");
+  const have = new Set(INLINE_SCRIPT_HASHES);
+  const missing = [...want].filter(x => !have.has(x)), extra = [...have].filter(x => !want.has(x));
+  assert(!missing.length && !extra.length, `functions/_inline-hashes.js is stale (run node build.mjs and commit it): missing ${missing.length}, extra ${extra.length}`);
+  assert(want.size >= 5 && want.size <= 20, `${want.size} distinct inline scripts: expected one per page template (+ the head handler)`);
+  // Markup built by the scripts must not carry handlers either.
+  for (const f of ["assets/tv.js", "assets/v2.js", "assets/analytics.js", "build.mjs"]) {
+    const js = await readFile(f, "utf8");
+    const m = /\son(error|click|load)=\\?["']/i.exec(js);
+    assert(!m, `${f}: generates markup with an inline ${m && m[0].trim()} handler (use data-err / data-fallback; build.mjs IMG_ERROR_SCRIPT handles them)`);
+  }
 });
 
 await test("CSP covers every outside origin the site code talks to", async () => {

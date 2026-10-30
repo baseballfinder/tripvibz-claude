@@ -128,6 +128,24 @@ await test("Home: hero, city grid, logo, request link", async () => {
   assert(await page.locator('link[rel="icon"]').count() >= 1, "favicon link missing");
 });
 
+await test("Photo fallbacks without inline handlers: a broken local copy swaps to its data-fallback, a broken image with data-err is removed", async () => {
+  // The head script (build.mjs IMG_ERROR_SCRIPT) replaces the on*= handlers the CSP no longer allows.
+  const r = await page.evaluate(() => new Promise(done => {
+    const ok = "/assets/brand/mark.svg";
+    const a = document.createElement("img"); a.src = "/assets/city/nope-800.webp"; a.srcset = "/assets/city/nope-480.webp 480w"; a.dataset.fallback = ok; a.dataset.err = "remove"; a.id = "fb-a";
+    const b = document.createElement("img"); b.src = "/assets/nothing-here.webp"; b.dataset.err = "remove"; b.id = "fb-b";
+    const c = document.createElement("img"); c.src = "/assets/nothing-here-2.webp"; c.dataset.err = "hide"; c.id = "fb-c";
+    document.body.append(a, b, c);
+    setTimeout(() => done({
+      a: a.getAttribute("src"), aSet: a.getAttribute("srcset"), aIn: !!document.getElementById("fb-a"),
+      bIn: !!document.getElementById("fb-b"), cHidden: c.style.visibility
+    }), 1500);
+  }));
+  assert(r.a === "/assets/brand/mark.svg" && r.aSet === "" && r.aIn, `broken tile did not swap to its fallback: ${JSON.stringify(r)}`);
+  assert(!r.bIn, "broken image with data-err=remove is still in the page");
+  assert(r.cHidden === "hidden", "broken avatar with data-err=hide is still visible");
+});
+
 await test("Cities page: grid, search, request-a-city", async () => {
   await go("/cities/");
   assert(await page.locator(".city-card").count() >= cities.length, "city cards missing");
