@@ -74,7 +74,7 @@ jobs:
         run: npx lhci autorun --config=lighthouserc.mobile.json
       - name: Keep the Lighthouse reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: lighthouse-reports
           path: |
