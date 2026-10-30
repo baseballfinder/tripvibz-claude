@@ -171,18 +171,45 @@ await test("New tables and views in migrations come with explicit grants (Supaba
   }
 });
 
-await test("Signed-in-nearby check: 40-mile rule, stores no coordinates, never re-marks a revoked city", async () => {
+await test("Local verification: 40-mile rule, presence recorded server-side only, hosting networks never count, no coordinates stored", async () => {
   const src = await readFile("functions/api/locate.js", "utf8");
-  const { build } = await import("esbuild");   // bundle so ./_supabase.js resolves
+  const { build } = await import("esbuild");   // bundle so ./_supabase.js and ./_networks.js resolve
   const out = await build({ entryPoints: ["functions/api/locate.js"], bundle: true, write: false, format: "esm", platform: "neutral" });
   const m = await import("data:text/javascript;base64," + Buffer.from(out.outputFiles[0].text).toString("base64"));
   assert(m.band(m.miles(40.7128, -74.0060, 40.7357, -74.1724)) === "near", "Newark should count as near New York");
   assert(m.band(m.miles(40.7128, -74.0060, 39.9526, -75.1652)) === "region", "Philadelphia is region, not near, for New York");
   assert(m.band(m.miles(25.7617, -80.1918, 41.8781, -87.6298)) === "far", "Miami to Chicago is far");
-  const rowObj = src.slice(src.indexOf("const rows ="), src.indexOf("if (rows.length)"));
-  assert(!/lat|lng|latitude|longitude|ip/i.test(rowObj.replace(/checked_at/g, "")), "saved rows must not include coordinates or IP");
-  assert(/revoked\.has\(c\.city_id\)/.test(src), "revoked rows must be skipped");
-  assert((await readFile("functions/api/take.js", "utf8")).includes('from "./locate.js"'), "take alerts should include the nearby check");
+  // Everything the Function sends to the database goes through record_presence (the day-count rule lives there).
+  const sent = src.slice(src.indexOf("rpc/record_presence"), src.lastIndexOf("return { cities:"));
+  assert(/p_user|p_city|p_near|p_band/.test(sent) && !/lat|lng|latitude|longitude|\bip\b/i.test(sent), "record_presence must get user/city/near/band only — no coordinates or IP");
+  assert(!/rest\/v1\/local_checks\?[^`]*method:\s*"POST"/.test(src) && !/on_conflict=user_id,city_id/.test(src), "locate.js must not write local_checks directly (record_presence owns the counting)");
+  assert(/isHostingNetwork\(cf\)/.test(src) && /p_near:\s*!hosting/.test(src), "hosting/VPN networks must never count as presence");
+  assert((await readFile("functions/api/take.js", "utf8")).includes('from "./locate.js"'), "posting a take should record presence too");
+  // The network list: residential and mobile carriers are never on it.
+  const n = await import("../functions/api/_networks.js");
+  for (const [asn, org] of [[7922, "Comcast Cable Communications"], [21928, "T-Mobile USA"], [22394, "Cellco Partnership DBA Verizon Wireless"], [20115, "Charter Communications"], [7018, "AT&T Services"], [6167, "Verizon Business"], [701, "UUNET"]])
+    assert(!n.isHostingNetwork({ asn, asOrganization: org }), `${org} must not be treated as a hosting network`);
+  for (const [asn, org] of [[16509, "Amazon.com, Inc."], [14061, "DigitalOcean, LLC"], [13335, "Cloudflare, Inc."], [99999, "Acme VPN Services"]])
+    assert(n.isHostingNetwork({ asn, asOrganization: org }), `${org} should be treated as a hosting network`);
+});
+
+await test("How-we-verify-locals page: exists, linked, describes the method without the exact thresholds", async () => {
+  const h = await readFile("dist/how-we-verify-locals/index.html", "utf8");
+  for (const t of ["Verified local", "unverified", "Founding local", "several different days", "VPN", "remove", "What we store", "privacy"])
+    assert(h.includes(t), `verify page should mention "${t}"`);
+  // The method is public; the numbers that would help someone game it are not.
+  assert(!/\b(3|three|five|5) (separate |distinct |different )?days\b/i.test(h) && !/\b(21|14|28|30) days\b/.test(h) && !/\bthree weeks\b/i.test(h),
+    "verify page must not state the exact day-count or span thresholds");
+  assert(!/near_days|record_presence|asn\b|HOSTING_ASNS/i.test(h), "verify page must not leak implementation names");
+  assert((await readFile("dist/sitemap.xml", "utf8")).includes("/how-we-verify-locals/"), "verify page missing from the sitemap");
+  for (const f of ["dist/index.html", "dist/about/index.html", "dist/privacy/index.html", "dist/miami/index.html"])
+    assert((await readFile(f, "utf8")).includes("/how-we-verify-locals/"), `${f} should link to the verify page`);
+  // The badge tiers the scripts draw match the page.
+  const v2 = await readFile("assets/v2.js", "utf8");
+  assert(/function localBadge\(/.test(v2) && v2.includes("· unverified") && v2.includes(" ✓") && v2.includes("/how-we-verify-locals/"), "v2.js localBadge must draw the three tiers and link the page");
+  assert(/select\("user_id,verified,revoked"\)/.test(v2) && !/select\("user_id,near,revoked"\)/.test(v2), "the feed must read verified/revoked, not the raw nearby flag");
+  assert((await readFile("thread.html", "utf8")).includes("T2.localBadge("), "thread replies must use the shared badge");
+  assert((await readFile("admin.html", "utf8")).includes('rpc("admin_local_checks"'), "admin page must read presence detail through the admin RPC");
 });
 
 await test("Secret key goes on the apikey header only (new sb_secret keys are rejected as Bearer)", async () => {

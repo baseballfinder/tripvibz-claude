@@ -47,6 +47,10 @@
 .who b{color:var(--ink)}
 .bdg{border-radius:6px;padding:2px 7px;font-size:11.5px;font-weight:800}
 .bdg.local{background:#e3f1ec;color:#0b5c4c}
+a.bdg{text-decoration:none}
+a.bdg:hover{text-decoration:underline}
+/* Says local, not verified yet: same family as Local, visibly provisional. */
+.bdg.local.pending{background:#f1efe9;color:#4e5a55;border:1px dashed #b9c9c2}
 .bdg.unv{background:#ece6da;color:#5f5a50}
 .bdg.found{background:#fde9c8;color:#7a4b00}
 .bar{height:6px;border-radius:999px;background:#e9e3d7;overflow:hidden;margin-bottom:10px}

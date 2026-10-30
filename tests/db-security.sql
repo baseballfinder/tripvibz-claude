@@ -12,6 +12,9 @@
 --      moderation status and badges are locked, calendar entries from visitors
 --      wait for review, text fields have size limits, the location table hides
 --      its detail columns, and the API roles can't TRUNCATE.
+--   6. (after migration 20261030120000) local verification: presence detail is
+--      admin-only, "verified" is computed by a trigger and never writable or
+--      recordable through the API, and Founding local requires the ✓.
 --
 -- Checks under 5 are skipped with a NOTICE until that migration has been
 -- applied (merging the pull request applies it), so this file never blocks the
@@ -111,6 +114,39 @@ begin
                  and cmd = 'SELECT' and coalesce(qual, 'true') = 'true') then
       v_fail := v_fail || E'\n  contributor_locality is readable by everyone';
     end if;
+  end if;
+
+  -- 6. Local verification v2 (migration 20261030120000): presence detail is admin-only,
+  --    the verdict is computed by the trigger, recording is server-only, founders need the ✓.
+  if exists (select 1 from supabase_migrations.schema_migrations where version = '20261030120000') then
+    if has_column_privilege('anon', 'public.local_checks', 'near', 'SELECT')
+       or has_column_privilege('authenticated', 'public.local_checks', 'near_days', 'SELECT')
+       or has_column_privilege('anon', 'public.local_checks', 'first_near', 'SELECT')
+       or has_column_privilege('authenticated', 'public.local_checks', 'last_near', 'SELECT') then
+      v_fail := v_fail || E'\n  local_checks presence detail (near, near_days, first_near, last_near) is readable through the API';
+    end if;
+    if not has_column_privilege('anon', 'public.local_checks', 'verified', 'SELECT') then
+      v_fail := v_fail || E'\n  local_checks.verified must be readable (the badge reads it)';
+    end if;
+    if not exists (select 1 from pg_trigger tg join pg_class c on c.oid = tg.tgrelid
+                    where c.relname = 'local_checks' and tg.tgname = 'trg_local_checks_verified' and not tg.tgisinternal) then
+      v_fail := v_fail || E'\n  missing trigger trg_local_checks_verified (verified must be computed, never written by a client)';
+    end if;
+    if has_column_privilege('authenticated', 'public.local_checks', 'verified', 'UPDATE')
+       or has_column_privilege('authenticated', 'public.local_checks', 'near_days', 'UPDATE') then
+      v_fail := v_fail || E'\n  local_checks.verified / near_days must not be writable through the API';
+    end if;
+    for v_rows in select p.oid::regprocedure::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                   where n.nspname = 'public' and p.proname in ('record_presence', 'tv_local_verified') loop
+      if has_function_privilege('anon', v_rows, 'EXECUTE') or has_function_privilege('authenticated', v_rows, 'EXECUTE') then
+        v_fail := v_fail || E'\n  ' || v_rows || ' is callable through the API (must be server-only)';
+      end if;
+    end loop;
+    if not exists (select 1 from pg_views where schemaname = 'public' and viewname = 'city_founders' and definition ilike '%lc.verified%') then
+      v_fail := v_fail || E'\n  city_founders no longer requires a verified local';
+    end if;
+  else
+    raise notice 'db-security: migration 20261030120000_local_presence not applied yet - skipping the presence checks';
   end if;
 
   if v_fail <> '' then

@@ -76,7 +76,7 @@
       </div>
 
       ${needTenure ? `<div class="sect box"><h2 style="margin-bottom:4px">How long have you lived in ${esc(CITY.name)}?</h2>
-        <div class="sub" style="margin:0 0 10px">We ask once. It shows as a badge on your takes when you sign in.</div>
+        <div class="sub" style="margin:0 0 10px">We ask once. It shows on your badge when you sign in; the ✓ comes on its own once we've seen you around ${esc(CITY.name)} a few times (<a href="/how-we-verify-locals/" target="_blank" rel="noopener">how that works</a>).</div>
         <div class="wrapchips">${Object.keys(T2.TENURE).map(t => `<button class="chip" data-tenure="${t}" aria-pressed="${S.tenure===t}">${esc(T2.TENURE[t])}</button>`).join("")}</div>
       </div>` : ""}
 
@@ -84,7 +84,7 @@
         <div class="take" style="padding-bottom:14px">
           <div class="tags"><span class="tag2">${esc(K.label)}</span>${placeValue() ? `<span class="tag2">${T2.ICON.pin}${esc(placeValue())}</span>` : ""}${S.months.length ? `<span class="tag2">${esc(T2.monthsLabel(S.months))}</span>` : ""}</div>
           <div class="tt" id="pv">${esc(S.text) || '<span style="color:#9a937f">Your take shows here.</span>'}</div>
-          <div class="who" style="margin-bottom:0"><b>You</b><span class="bdg local">${esc(badge)}</span></div>
+          <div class="who" style="margin-bottom:0"><b>You</b><span class="bdg local pending">${esc(badge)} · unverified</span></div>
         </div>
       </div>
 
@@ -187,7 +187,7 @@
         <h2>Get updates on your takes</h2>
         <div style="font-size:14px;color:#e9e3d7;margin-top:6px">Sign in and this take moves to your name.</div>
         <ul>
-          <li>Your <b style="color:#fff">${esc(badge)}</b> badge instead of “Unverified”</li>
+          <li>Your <b style="color:#fff">${esc(badge)}</b> badge instead of “Unverified” (the ✓ follows once we've seen you around town)</li>
           <li>Your takes rank higher in the feed</li>
           <li>Claim a founding-local spot in ${esc(CITY.name)}${left ? ` (${left} left)` : ""}</li>
                   </ul>

@@ -34,7 +34,7 @@ async function serve() {
 const server = process.env.BASE ? null : await serve();
 const BASE = process.env.BASE || "http://localhost:8091";
 const slug = JSON.parse(await readFile("data/editorial/intros.json", "utf8")) && "miami";
-const PAGES = ["/", "/cities/", `/${slug}/`, `/${slug}/worst-times-to-visit/`, `/${slug}/what-not-to-do/`, `/${slug}/what-locals-do/`,
+const PAGES = ["/", "/cities/", "/how-we-verify-locals/", `/${slug}/`, `/${slug}/worst-times-to-visit/`, `/${slug}/what-not-to-do/`, `/${slug}/what-locals-do/`,
   `/${slug}/add/`, `/${slug}/vote/`, "/t/00000000-0000-0000-0000-000000000000", "/admin.html", "/about/", "/privacy/", "/terms/", "/does-not-exist"];
 
 const browser = await chromium.launch();

@@ -104,7 +104,7 @@ await test("City photos: every city has local 256-800 px + short 720/800 WebP co
 
 await test("Hero photo is in the HTML of every city and topic page: local srcset, fetchpriority=high, preloaded, no Supabase src", async () => {
   const pages = (await files("dist", p => /^dist\/[a-z0-9-]+\/(index|(what-not-to-do|worst-times-to-visit|what-locals-do)\/index)\.html$/.test(p)))
-    .filter(p => !/^dist\/(cities|about|privacy|terms)\//.test(p));
+    .filter(p => !/^dist\/(cities|about|privacy|terms|how-we-verify-locals)\//.test(p));
   assert(pages.length >= 100, `only ${pages.length} city/topic pages found`);
   for (const f of pages) {
     const h = await readFile(f, "utf8");

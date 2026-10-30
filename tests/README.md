@@ -99,6 +99,20 @@ with the first two tiles at `fetchpriority="high"`; the scripts then refresh cou
 grid `data-hydrated="inplace"` (e2e asserts it). Rebuilding the grid moved different photos into view a
 second time, and that late paint — not the hero — was the page's LCP (~3.5 s on a phone in CI).
 
+## Local verification
+
+Three badge tiers, drawn by `assets/v2.js localBadge()` and mirrored in the `/t/<id>` Function:
+✓ Verified local (presence near the city on several days over weeks), Local · unverified (signed in,
+says they're local), Unverified (anonymous or revoked). `functions/api/locate.js` reads Cloudflare's
+rough location once a day per signed-in person and after every take, and records it through the
+database function `record_presence` (migration `20261030120000_local_presence.sql`), which counts
+distinct days near the city; the trigger `trg_local_checks_verified` computes `local_checks.verified`
+from `tv_local_verified()` — the thresholds live there and nowhere else. Checks from hosting/VPN
+networks (`functions/api/_networks.js`) are stored as band `hosting` and never count. The public reads
+only `verified`/`revoked`; the day counts are admin-only (`admin_local_checks`). Founding local needs
+the ✓. The public explanation is `/how-we-verify-locals/`; the static test checks it describes the
+method but not the exact numbers, and `tests/db-security.sql` checks the grants and the trigger.
+
 ## Content-Security-Policy
 
 `script-src` has no `'unsafe-inline'`. `build.mjs` hashes every inline `<script>` as it emits a page
