@@ -2,13 +2,13 @@
 // Do not edit: run `node build.mjs` after changing a page template.
 export const INLINE_SCRIPT_HASHES = [
   "'sha256-/s5iiA2TD4bhPcYb+hSBVwgbY61gthXNYRmdX0LthKo='",
-  "'sha256-6t2U6bmwJvlLiLa+PpEiqZEonVAcyMe8hkcUigulIjY='",
-  "'sha256-8ZQGk4YY6hhRcyBKrG6wNVOvAnGQgR0S8HDsHljunUc='",
   "'sha256-8mqWKQXekZ4deaAqZfBxhjSmwrxVXZk6SdN3eWr5cpw='",
+  "'sha256-AdO5UEKbB8Y1yr1cy9aofJ2ccjnw/7ffMJq4wn209rE='",
   "'sha256-CTJB62s2dABPCY6Cu3yONIigba1H913Zm80ge382l0w='",
   "'sha256-FtFqUxfcTu8lEO8SwkLj+3rB+Q64cu3Ddhid11fR2QI='",
-  "'sha256-GjkMf6j5VR/UJpP034P2aKV08/CiHticMHCks2vRB1c='",
   "'sha256-Ij4Z5LUZP0exLtimq/5OeKtdjqFCjHKdlnTujJaYTGo='",
+  "'sha256-PzMz6MoiT2muNVUM9/21LCtAfYxAcp0+FIxUJustFlg='",
+  "'sha256-T3c7Ac3lENyDf8/rGQ0eI6qOttR61i4QndBUWqiS04w='",
   "'sha256-iGJcif/CL9TUWMnkxkC2JyQt+uNQhd+aBHo3eibviC4='",
   "'sha256-pesX8W1ojg3Ufph+DbjIwbL9CRExP6xSe7osLrpAUOo='",
   "'sha256-sPQDC8l6SA8tK5dowYYtq9K5vwynxHWWENU1nDsBOEg='"

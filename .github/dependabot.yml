@@ -13,6 +13,12 @@ updates:
   - package-ecosystem: pip
     directory: /scripts
     schedule: { interval: weekly, day: monday, time: "06:00", timezone: America/New_York }
+    # One pull request a week for the bots' Python, not one per package.
+    groups:
+      python: { patterns: ["*"] }
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly, day: monday, time: "06:00", timezone: America/New_York }
+    # Same for the workflow actions: the first week opened five separate PRs.
+    groups:
+      actions: { patterns: ["*"] }

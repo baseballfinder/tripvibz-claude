@@ -23,7 +23,7 @@ jobs:
     env:
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Anonymous sessions: the site creates one the first time a visitor acts
       # (vote, take, reply, ask, signup). Ones that never produced anything are
