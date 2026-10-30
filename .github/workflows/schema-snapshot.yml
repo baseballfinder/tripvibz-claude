@@ -52,7 +52,7 @@ jobs:
           } > supabase/schema.sql
           wc -l supabase/schema.sql
       - name: Open or refresh the snapshot pull request when it changed
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           branch: schema-snapshot
           commit-message: "Schema snapshot (automated)"
