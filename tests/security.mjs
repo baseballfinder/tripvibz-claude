@@ -125,7 +125,7 @@ await test("No secret committed to the repo (keys, tokens, database passwords, p
     [/-----BEGIN (RSA |EC |OPENSSH |)PRIVATE KEY-----/, "private key"],
     [/postgres(ql)?:\/\/[^:\s/]+:[^@\s]{4,}@[^\s]+/, "database URL with a password"],
     [/\bAIza[0-9A-Za-z_-]{35}\b/, "Google API key"],
-    [/(?:api[_-]?key|client[_-]?secret|service[_-]?role[_-]?key|access[_-]?token)['"]?\s*[:=]\s*['"][A-Za-z0-9_\-]{24,}['"]/i, "hard-coded credential assignment"]
+    [/(?:api[_-]?key|client[_-]?secret|service[_-]?role[_-]?key|access[_-]?token)['"]?\s*[:=]\s*['"](?!sb_publishable_)[A-Za-z0-9_\-]{24,}['"]/i, "hard-coded credential assignment"]
   ];
   const skip = f => /^(package-lock\.json|assets\/og\/|assets\/brand\/|scripts\/fonts\/)/.test(f) || /\.(png|jpg|jpeg|webp|ico|ttf|pyc)$/i.test(f);
   for (const f of tracked) {

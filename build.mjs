@@ -52,7 +52,7 @@ const SUPABASE_KEY = "sb_publishable_5UOevsS8KmWWGrQYNWsabg_0sVOIPmB";
 // so copying it into the output would upload the handler as a static asset.
 const SKIP = new Set([
   "dist", "node_modules", ".git", "supabase", ".github", "functions",
-  "build.mjs", "package.json", "package-lock.json", "lighthouserc.json",
+  "build.mjs", "package.json", "package-lock.json", "lighthouserc.json", "lighthouserc.mobile.json",
   // Maintenance scripts and docs are not site content; never publish them.
   "scripts", "data", "tests", "README.md", "vote.html", "add.html"
 ]);
@@ -131,10 +131,11 @@ async function loadContent() {
 const MONTHS = ["January","February","March","April","May","June","July",
                 "August","September","October","November","December"];
 
-function head({ title, desc, canonical, image, noindex, og = {} }) {
+function head({ title, desc, canonical, image, noindex, og = {}, preloadImage }) {
   const ogTitle = og.title || title, ogDesc = og.desc || desc;
   return `<title>${esc(title)}</title>
 ${noindex ? `<meta name="robots" content="noindex,follow" />` : ""}
+${preloadImage ? `<link rel="preload" as="image" href="${esc(preloadImage.href)}"${preloadImage.srcset ? ` imagesrcset="${esc(preloadImage.srcset)}" imagesizes="${esc(preloadImage.sizes)}"` : ""} fetchpriority="high" />` : ""}
 <meta name="description" content="${esc(desc)}" />
 <link rel="canonical" href="${esc(canonical)}" />
 <meta property="og:type" content="article" />
@@ -176,9 +177,9 @@ function injectInto(html, id, content) {
 // Replace the shell's <title> and inject metadata + pre-rendered body.
 // The shell's own description is stripped FIRST, so it can't delete the one
 // we then inject (that ordering bug shipped pages with no description).
-function render(template, { title, desc, canonical, image, body, mount = "root", jsonLd, noindex, og }) {
+function render(template, { title, desc, canonical, image, body, mount = "root", jsonLd, noindex, og, preloadImage }) {
   let out = template.replace(/<meta name="description"[^>]*>\s*/g, "");
-  const headOut = head({ title, desc, canonical, image, noindex, og });
+  const headOut = head({ title, desc, canonical, image, noindex, og, preloadImage });
   out = out.replace(/<title>[\s\S]*?<\/title>/, () => headOut);
   if (jsonLd) out = out.replace(/<\/head>/, () => jsonLd + "</head>");
   if (body) out = injectInto(out, mount, body);
@@ -426,6 +427,7 @@ function articleBody(city, theme, takes, events) {
     : "";
 
   return `<a class="back" href="/${esc(city.slug)}/">← ${esc(city.name)}</a>
+${heroImg(city, { short: true })}
 <div class="hd">
   <div class="kicker">${esc(city.name)}${city.state ? ", " + esc(city.state) : ""}</div>
   <h1>${esc(t.title(city.name))}</h1>
@@ -442,9 +444,11 @@ ${cal}`;
 // city index build their grids in JS, so a crawler following links finds
 // nothing beyond the two shells. Pre-render real <a> tags.
 function cityGrid(cities, countsBySlug) {
-  return cities.map(c => {
+  return cities.map((c, i) => {
     const n = countsBySlug[c.slug] || 0;
     return `<a class="need" href="/${esc(c.slug)}/what-not-to-do/">
+      ${gridImg(c, i, "(max-width: 640px) calc(50vw - 22px), 180px", { width: 336, height: 132 })}
+      <span class="scrim"></span>
       <span class="txt"><b>${esc(c.name)}</b>
       <span class="s">${esc(c.state || "")}</span>
       <span class="n">${n ? `${n} take${n === 1 ? "" : "s"}` : "Be the first"}</span></span></a>`;
@@ -452,9 +456,10 @@ function cityGrid(cities, countsBySlug) {
 }
 
 function cityList(cities, countsBySlug) {
-  return cities.map(c => {
+  return cities.map((c, i) => {
     const n = countsBySlug[c.slug] || 0;
     return `<a class="city-card" href="/${esc(c.slug)}/">
+      <div class="city-top">${gridImg(c, i, "(max-width: 640px) calc(100vw - 42px), 256px", { cls: "city-img", width: 232, height: 104 })}<span class="city-state">${esc(c.state || "US")}</span></div>
       <div class="city-body"><h3>${esc(c.name)}</h3>
       <p>${esc(c.state || "")}</p>
       <div class="city-foot">${n ? `${n} local take${n === 1 ? "" : "s"}` : "Needs locals"}</div>
@@ -508,6 +513,7 @@ function nearbyHtml(list) {
 function cityBody(city, counts, takes, intro = "", nearby = []) {
   const ranked = takes.slice().sort((a, b) => (b.ups - b.downs) - (a.ups - a.downs));
   return `<a class="back" href="/cities/">← All cities</a>
+${heroImg(city)}
 <div class="kicker">${esc(city.name)}${city.state ? ", " + esc(city.state) : ""}</div>
 <h1>What locals say about ${esc(city.name)}</h1>
 <nav class="chips">${Object.keys(THEMES).map(k =>
@@ -519,11 +525,102 @@ ${editorsHtml(city, intro)}
 ${nearbyHtml(nearby)}`;
 }
 
+/* ---------------- inline CSS ----------------
+   site.css and v2.css are ~27 KB raw / ~6 KB compressed. As <link> tags they
+   were two render-blocking round trips (~440 ms on a phone connection,
+   PageSpeed Oct 2026); inlined, the page paints as soon as the HTML arrives.
+   The files are still emitted for anything that links them directly. */
+const INLINE_CSS = {};
+for (const f of ["site.css", "v2.css"]) {
+  const r = await transform(await readFile(join("assets", f), "utf8"), { loader: "css", minify: true });
+  INLINE_CSS[f] = r.code;
+}
+const inlineCss = html => html.replace(/<link rel="stylesheet" href="\/assets\/(site|v2)\.css">/g, (m, f) => `<style>${INLINE_CSS[f + ".css"]}</style>`);
+
+/* ---------------- city photos ----------------
+   The hero and grid photos used to load straight from Supabase storage: a
+   third origin, no cache header, and one 800×500 file for every screen. The
+   build now downloads each city's photo and emits 480 px and 800 px WebP
+   copies under /assets/city/, so phones get the small one (srcset) and the
+   hero is in the HTML with fetchpriority=high — the single biggest Largest
+   Contentful Paint fix on city pages. If a photo can't be fetched the page
+   falls back to the Supabase URL, so a storage hiccup never breaks a build. */
+// Measured rendered widths (tests/README.md "Photos"): grid tiles 171-256 px on
+// desktop and 315-700 device px on phones; heroes 608 px on desktop and
+// 650-720 device px on phones. One file per step, nothing larger than the
+// 800 px originals.
+const PHOTO_SIZES = [256, 360, 480, 640, 720, 800];
+// Topic pages show a short 8:3 strip of the photo; a pre-cropped copy avoids
+// downloading the 16:10 height that is never displayed.
+const SHORT_SIZES = [720, 800];
+const HERO_SIZES = "(max-width: 640px) calc(100vw - 32px), 608px";
+const SHORT_HERO_SIZES = "(max-width: 640px) calc(100vw - 32px), 680px";
+const PHOTO_QUALITY = 72;
+const LOCAL_PHOTO = {};   // slug -> base name, once resized
+let sharpMod = null;
+try { sharpMod = (await import("sharp")).default; } catch { console.warn("  (sharp not installed — city photos stay on Supabase storage)"); }
+async function resizeCityPhotos(cities) {
+  if (!sharpMod) return;
+  let ok = 0;
+  await Promise.all(cities.map(async city => {
+    const name = city.photo || `${city.slug}.webp`;
+    const base = name.replace(/\.[a-z0-9]+$/i, "");
+    try {
+      const r = await fetch(photo(city.slug));
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const buf = Buffer.from(await r.arrayBuffer());
+      for (const w of PHOTO_SIZES) {
+        const out = await sharpMod(buf).resize({ width: w, withoutEnlargement: true }).webp({ quality: PHOTO_QUALITY }).toBuffer();
+        await emit(`assets/city/${base}-${w}.webp`, out);
+      }
+      for (const w of SHORT_SIZES) {
+        const out = await sharpMod(buf).resize({ width: w, height: Math.round(w * 3 / 8), fit: "cover", position: "attention", withoutEnlargement: true }).webp({ quality: PHOTO_QUALITY }).toBuffer();
+        await emit(`assets/city/${base}-short-${w}.webp`, out);
+      }
+      LOCAL_PHOTO[city.slug] = base;
+      ok++;
+    } catch (e) { console.warn(`  photo ${name}: ${e.message} — using the Supabase URL`); }
+  }));
+  console.log(`  ${ok}/${cities.length} city photos resized to ${PHOTO_SIZES.join("/")} px`);
+}
+function heroSources(city, { short = false } = {}) {
+  const base = LOCAL_PHOTO[city.slug];
+  if (!base) return { href: photo(city.slug) };
+  const file = w => `/assets/city/${base}${short ? "-short" : ""}-${w}.webp`;
+  const sizes = short ? SHORT_SIZES : PHOTO_SIZES;
+  return { href: file(800), srcset: sizes.map(w => `${file(w)} ${w}w`).join(", "), sizes: short ? SHORT_HERO_SIZES : HERO_SIZES };
+}
+// Grid tiles: same attributes assets/tv.js cityPhotoAttrs() produces, so the
+// script's re-render reuses the already-loaded files. The first rows are eager
+// (one of them is usually the largest thing on the page); the rest lazy.
+const EAGER_TILES = 8;
+function gridImg(city, i, sizes, { cls = "", width, height } = {}) {
+  const base = LOCAL_PHOTO[city.slug];
+  const remote = photo(city.slug);
+  const srcAttrs = base
+    ? `src="/assets/city/${esc(base)}-800.webp" srcset="${PHOTO_SIZES.map(w => `/assets/city/${esc(base)}-${w}.webp ${w}w`).join(", ")}" sizes="${esc(sizes)}" data-fallback="${esc(remote)}"`
+      + ` onerror="if(this.dataset.fallback){this.srcset='';this.src=this.dataset.fallback;delete this.dataset.fallback}else this.remove()"`
+    : `src="${esc(remote)}" onerror="this.remove()"`;
+  return `<img${cls ? ` class="${cls}"` : ""} ${srcAttrs} alt="${esc(city.name)}" width="${width}" height="${height}" loading="${i < EAGER_TILES ? "eager" : "lazy"}" decoding="async">`;
+}
+
+// The hero <img>: in the HTML (discoverable at once, fetchpriority=high) and
+// kept by city.html across hydration (id tv-hero) so it is never re-fetched.
+function heroImg(city, { short = false } = {}) {
+  const src = heroSources(city, { short });
+  const attrs = src.srcset
+    ? `src="${esc(src.href)}" srcset="${esc(src.srcset)}" sizes="${esc(src.sizes)}" data-fallback="${esc(photo(city.slug))}"`
+      + ` onerror="if(this.dataset.fallback){this.srcset='';this.src=this.dataset.fallback;delete this.dataset.fallback}else this.remove()"`
+    : `src="${esc(src.href)}" onerror="this.remove()"`;
+  return `<img class="city-hero${short ? " short" : ""}" id="tv-hero" ${attrs} alt="${esc(city.name)}" width="800" height="${short ? 300 : 500}" fetchpriority="high" decoding="async">`;
+}
+
 /* ---------------- minify ---------------- */
 
 async function minifyHtml(html, label) {
   // Self-hosted fonts go in before comments are stripped (the marker is a comment).
   html = html.replace("<!--fonts-->", () => FONT_HEAD);
+  html = inlineCss(html);
   let out = html;
   for (const m of [...out.matchAll(/<script(?![^>]*\bsrc=)([^>]*)>([\s\S]*?)<\/script>/g)]) {
     const [full, attrs, code] = m;
@@ -702,7 +799,16 @@ ${secLines}
   ! Cache-Control
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
 
-# Font files have the content hash in their name: a changed font is a new URL.
+# Scripts and stylesheets are always linked with ?v=<content hash>, fonts carry
+# the hash in their name: a changed file is a new URL, so these can live a year.
+/assets/*.js
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*.css
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
+
 /assets/fonts/*
   ! Cache-Control
   Cache-Control: public, max-age=31536000, immutable
@@ -720,6 +826,7 @@ console.log("\n  fetching content…");
 const { cities, posts, events } = await loadContent();
 cities.forEach(c => { if (c.photo) PHOTO_BY_SLUG[c.slug] = c.photo; });
 console.log(`  ${cities.length} cities · ${posts.length} posts · ${events.length} events`);
+await resizeCityPhotos(cities);
 
 let INTROS = {};
 try { INTROS = JSON.parse(await readFile("data/editorial/intros.json", "utf8")); }
@@ -797,6 +904,7 @@ for (const city of cities) {
     og: shareCard(city) || undefined,
     body: cityBody(city, counts, feedTakes, intro, nearby),
     mount: "city",
+    preloadImage: heroSources(city),
     jsonLd: cityLd(city, `${SITE}/${city.slug}/`, feedTakes, { title: cityTitle, desc: cityDesc, intro, nearby, lastmod: cityLastmod }),
     // Empty pages stay reachable for people (links, email, social) but out of
     // Google until there is something real on them: the editors' intro or
@@ -836,6 +944,7 @@ for (const city of cities) {
           ? `“${[...takes].sort((a, b) => (b.ups - b.downs) - (a.ups - a.downs))[0].title}” and ${takes.length > 1 ? `${takes.length - 1} more` : "more"} from locals. True or nope?`
           : t.desc(city.name)),
       body: articleBody(city, theme, takes, cityEvents),
+      preloadImage: heroSources(city, { short: true }),
       jsonLd: articleLd(city, theme, takes, `${SITE}/${city.slug}/${t.slug}/`, t, photo(city.slug)),
       noindex: !hasContent
     }), null));

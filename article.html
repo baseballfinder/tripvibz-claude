@@ -125,7 +125,6 @@
   // Stay22 campaign label for this page type (see assets/v2.js).
   const PLACEMENT = { worst_times: "worst_times", hidden_gem: "locals_do", what_not_to_do: "what_not_to_do" }[THEME] || "topic";
   const SECTION_CHIPS = [["all","Everything"],["what_not_to_do","What not to do"],["worst_times","Worst times"],["hidden_gem","What locals do"]];
-  const PHOTO_BASE = "https://nkxorlktzbgwqnfwmuus.supabase.co/storage/v1/object/public/city-photos/";
   const THEMES = {
     what_not_to_do: {
       vent: c => `What do tourists do in ${c} that drives you crazy?`,
@@ -174,6 +173,8 @@
   const CFG = THEMES[THEME];
 
   let CITY = null, ENTRIES = [], CTX = null;
+  // Pre-rendered hero (build.mjs heroImg): keep it so it is never re-fetched.
+  const HERO_HTML = (function () { const el = document.getElementById("tv-hero"); return el ? el.outerHTML : ""; })();
   let EVENTS = [], SEL_MONTH = new Date().getMonth() + 1, evEgIx = 0;
 
   // Deliberately generic. Naming one city's festival on another city's page
@@ -223,7 +224,7 @@
 
     $("#root").innerHTML = `
       <a class="back" href="${routes.city(CITY.slug)}">← ${escapeHtml(CITY.name)}</a>
-      <img class="city-hero short" src="${PHOTO_BASE}${encodeURIComponent(CITY.photo || CITY.slug + ".webp")}" alt="${escapeHtml(CITY.name)}" width="800" height="300" onerror="this.remove()">
+      ${HERO_HTML || `<img class="city-hero short" ${TV.cityPhotoAttrs(CITY, "(max-width: 640px) calc(100vw - 32px), 680px")} alt="${escapeHtml(CITY.name)}" width="800" height="300" fetchpriority="high" decoding="async">`}
 
       <div class="hd">
         <div class="kicker">${escapeHtml(CITY.name)}${CITY.state ? ", "+escapeHtml(CITY.state) : ""}</div>

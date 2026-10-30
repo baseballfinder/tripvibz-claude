@@ -36,7 +36,6 @@
   const { sb, $, escapeHtml: esc, auth } = window.TV;
   const T2 = window.TV2;
   const SLUG = window.TV.parseRoute().city;
-  const PHOTO_BASE = "https://nkxorlktzbgwqnfwmuus.supabase.co/storage/v1/object/public/city-photos/";
   // Attribution for openly licensed hero photos (Wikimedia Commons etc.).
   const PHOTO_CREDIT = {
   };
@@ -47,6 +46,9 @@
   // and nearby-city links. Grab them before the first render replaces #city.
   const keep = id => { const el = document.getElementById(id); return el ? el.outerHTML : ""; };
   const EDITORS_HTML = keep("tv-editors"), NEARBY_HTML = keep("tv-nearby");
+  // The hero photo is pre-rendered too (build.mjs heroImg: local resized copies,
+  // fetchpriority=high) so it is the first thing the browser fetches.
+  const HERO_HTML = keep("tv-hero");
   const NT = { kind: "what_not_to_do", topic: "", text: "", busy: false, sent: false, err: "", open: false };
   const NT_KINDS = [["what_not_to_do","Don’t do this"],["hidden_gem","Do this"],["take","It depends"],["worst_times","When to go"]];
 
@@ -126,7 +128,7 @@
     const votes = POSTS.reduce((s,p) => s + p.ups + p.downs, 0) + QS.reduce((s,q) => s + T2.qTotal(q), 0);
     $("#city").innerHTML = `
       <a class="back" href="/cities/">← All cities</a>
-      <img class="city-hero" src="${PHOTO_BASE}${encodeURIComponent(CITY.photo || CITY.slug + ".webp")}" alt="${esc(CITY.name)}" width="800" height="500" onerror="this.nextElementSibling && this.nextElementSibling.classList.contains('photo-credit') && this.nextElementSibling.remove(); this.remove()">
+      ${HERO_HTML || `<img class="city-hero" ${TV.cityPhotoAttrs(CITY, "(max-width: 640px) calc(100vw - 32px), 608px")} alt="${esc(CITY.name)}" width="800" height="500" fetchpriority="high" decoding="async">`}
       ${PHOTO_CREDIT[CITY.slug] ? `<a class="photo-credit" href="${PHOTO_CREDIT[CITY.slug][1]}" target="_blank" rel="noopener">Photo: ${esc(PHOTO_CREDIT[CITY.slug][0])}</a>` : ""}
       <div class="kicker">${esc(CITY.name)}${CITY.state ? ", " + esc(CITY.state) : ""}</div>
       <h1>What locals say about ${esc(CITY.name)}</h1>

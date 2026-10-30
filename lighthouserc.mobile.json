@@ -1,0 +1,50 @@
+{
+  "ci": {
+    "collect": {
+      "staticDistDir": "./dist",
+      "url": [
+        "http://localhost/fort-lauderdale/",
+        "http://localhost/",
+        "http://localhost/miami/worst-times-to-visit/"
+      ],
+      "numberOfRuns": 2,
+      "settings": {
+        "onlyCategories": ["performance"],
+        "skipAudits": ["uses-http2", "is-on-https", "redirects-http", "bf-cache"],
+        "chromeFlags": "--no-sandbox --headless=new"
+      }
+    },
+    "assert": {
+      "assertMatrix": [
+        {
+          "matchingUrlPattern": ".*",
+          "aggregationMethod": "median-run",
+          "assertions": {
+            "categories:performance": ["error", { "minScore": 0.85 }],
+            "largest-contentful-paint": ["error", { "maxNumericValue": 3500 }],
+            "first-contentful-paint": ["error", { "maxNumericValue": 2000 }],
+            "total-blocking-time": ["error", { "maxNumericValue": 300 }],
+            "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
+            "render-blocking-resources": ["error", { "maxNumericValue": 250 }],
+            "uses-responsive-images": "error",
+            "prioritize-lcp-image": "error",
+            "lcp-lazy-loaded": "error",
+            "offscreen-images": "error",
+            "modern-image-formats": "error",
+            "unused-javascript": "off",
+            "uses-long-cache-ttl": "off",
+            "errors-in-console": "off",
+            "image-delivery-insight": "off",
+            "network-dependency-tree-insight": "off",
+            "third-party-summary": "off",
+            "legacy-javascript": "off",
+            "non-composited-animations": "off",
+            "valid-source-maps": "off",
+            "inspector-issues": "off"
+          }
+        }
+      ]
+    },
+    "upload": { "target": "filesystem", "outputDir": ".lighthouseci/mobile", "reportFilenamePattern": "%%PATHNAME%%-mobile-%%DATETIME%%.%%EXTENSION%%" }
+  }
+}

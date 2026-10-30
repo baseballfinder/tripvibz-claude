@@ -36,21 +36,33 @@
   } catch (e) { /* never block analytics */ }
 
   /* ---- Google Analytics 4 ---- */
-  var ga = document.createElement("script");
-  ga.async = true;
-  ga.src = "https://www.googletagmanager.com/gtag/js?id=" + GA4_ID;
-  document.head.appendChild(ga);
-
+  // gtag() is defined now so events fired before the tag loads queue in the
+  // dataLayer; the tag itself (177 KB) and Clarity load after the page is
+  // interactive — on a phone they were blocking the main thread for ~660 ms
+  // during load (PageSpeed, Oct 2026) without changing what gets measured.
   window.dataLayer = window.dataLayer || [];
   function gtag() { window.dataLayer.push(arguments); }
   window.gtag = gtag;
   gtag("js", new Date());
   gtag("config", GA4_ID);
 
-  /* ---- Microsoft Clarity ---- */
-  (function (c, l, a, r, i, t, y) {
-    c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
-    t = l.createElement(r); t.async = 1; t.src = "https://www.clarity.ms/tag/" + i;
-    y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
-  })(window, document, "clarity", "script", CLARITY_ID);
+  function loadTrackers() {
+    var ga = document.createElement("script");
+    ga.async = true;
+    ga.src = "https://www.googletagmanager.com/gtag/js?id=" + GA4_ID;
+    document.head.appendChild(ga);
+
+    /* ---- Microsoft Clarity ---- */
+    (function (c, l, a, r, i, t, y) {
+      c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
+      t = l.createElement(r); t.async = 1; t.src = "https://www.clarity.ms/tag/" + i;
+      y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
+    })(window, document, "clarity", "script", CLARITY_ID);
+  }
+  function whenIdle() {
+    if (window.requestIdleCallback) window.requestIdleCallback(loadTrackers, { timeout: 4000 });
+    else setTimeout(loadTrackers, 1500);
+  }
+  if (document.readyState === "complete") whenIdle();
+  else window.addEventListener("load", whenIdle);
 })();
