@@ -174,31 +174,38 @@
     return html;
   }
 
+  // One take, slim: a kicker line (kind · place · months · age), the title, the
+  // author line and two buttons. Replies and share are quiet text. The agreement
+  // bar shows once there are enough votes to mean something; the hotel link
+  // that used to sit in every card lives in the city page's Stay tab instead.
+  var KIND_CLASS = { what_not_to_do: "k-dont", hidden_gem: "k-do", take: "k-dep", worst_times: "k-when" };
   function takeHtml(p, ctx, opts) {
     opts = opts || {};
     var v = ctx.myVotes[p.id] || 0;
-    var pct = p.ups + p.downs ? Math.round(100 * p.ups / (p.ups + p.downs)) : 0;
+    var total = p.ups + p.downs, pct = total ? Math.round(100 * p.ups / total) : 0;
     var place = placeOf(p, ctx), when = monthsLabel(p.months);
     var href = TV.routes.thread(p.id);
+    var kicker = [
+      KIND[p.type] ? '<span class="tk-kind ' + (KIND_CLASS[p.type] || "") + '">' + esc(KIND[p.type].label) + "</span>" : "",
+      place ? esc(place) : "",
+      when ? esc(when) : "",
+      ago(p.created_at)
+    ].filter(Boolean).join(" · ");
     return '<article class="take' + (p.status === "pending" ? " is-pending" : "") + '" data-id="' + p.id + '">' +
-      '<div class="tags">' +
-        (KIND[p.type] ? '<span class="tag2">' + esc(KIND[p.type].label) + "</span>" : "") +
-        (place ? '<span class="tag2">' + ICON.pin + esc(place) + "</span>" : "") +
-        (when ? '<span class="tag2">' + esc(when) + "</span>" : "") +
-        (isSplit(p) ? '<span class="tag2 split">Locals are split</span>' : "") +
-        (p.topic ? '<span class="tag2">On: ' + esc(p.topic) + "</span>" : "") +
-        (p.status === "pending" ? '<span class="tag2 pending">Waiting for review · only you can see it</span>' : "") +
+      '<div class="tk">' + kicker +
+        (isSplit(p) ? ' <span class="tag2 split">Locals are split</span>' : "") +
+        (p.status === "pending" ? ' <span class="tag2 pending">Waiting for review · only you can see it</span>' : "") +
       "</div>" +
       (opts.noLink ? '<h1 class="tt" style="font-size:23px">' + esc(p.title) + "</h1>" : '<a class="tt" href="' + href + '">' + esc(p.title) + "</a>") +
       (p.body ? '<div class="more">' + esc(p.body) + "</div>" : "") +
-      (opts.city ? stay22TakeLink(p, ctx, opts.city, opts.placement || "take") : "") +
-      '<div class="who">' + authorHtml(p, ctx) + "<span>· " + ago(p.created_at) + "</span></div>" +
-      (opts.noBar ? "" : '<div class="bar" aria-hidden="true"><i style="width:' + pct + '%"></i></div>' +
+      (p.topic ? '<div class="on">On: ' + esc(p.topic) + "</div>" : "") +
+      '<div class="who">' + authorHtml(p, ctx) + "</div>" +
+      (opts.noBar ? "" : (total >= 5 ? '<div class="bar" aria-hidden="true"><i style="width:' + pct + '%"></i></div>' : "") +
       '<div class="tv-actions">' +
         '<button class="tvb yes" data-vote="1" data-id="' + p.id + '" aria-pressed="' + (v === 1) + '">' + ICON.check + "True · " + p.ups + "</button>" +
         '<button class="tvb no" data-vote="-1" data-id="' + p.id + '" aria-pressed="' + (v === -1) + '">' + ICON.x + "Nope · " + p.downs + "</button>" +
-        '<a class="replies-link" href="' + href + '">' + ICON.chat + p.comment_count + "</a>" +
-        '<button class="tv-share" data-share-take="' + p.id + '" aria-label="Share this take">' + ICON.share + "</button>" +
+        '<span class="tv-meta"><a class="replies-link" href="' + href + '">' + p.comment_count + (p.comment_count === 1 ? " reply" : " replies") + "</a>" +
+        ' · <button class="tv-share" data-share-take="' + p.id + '">Share</button></span>' +
       "</div>") +
     "</article>";
   }
@@ -651,7 +658,7 @@
     KIND: KIND, TENURE: TENURE, MON: MON, ICON: ICON, POST_COLS: POST_COLS,
     tenureBadge: tenureBadge, localBadge: localBadge, monthsLabel: monthsLabel, shortName: shortName,
     loadCity: loadCity, hydrate: hydrate, sortPosts: sortPosts, isSplit: isSplit, placeOf: placeOf,
-    takeHtml: takeHtml, castVote: castVote, stay22Link: stay22Link, stay22MapHtml: stay22MapHtml, mountStay22: mountStay22, whenSummary: whenSummary, whenStrip: whenStrip, monthSeverity: wSev,
+    takeHtml: takeHtml, castVote: castVote, stay22Link: stay22Link, stay22TakeLink: stay22TakeLink, stay22MapHtml: stay22MapHtml, mountStay22: mountStay22, whenSummary: whenSummary, whenStrip: whenStrip, monthSeverity: wSev,
     loadQuestions: loadQuestions, qTotal: qTotal, answer: answer, qOptionsHtml: qOptionsHtml,
     prepareClaim: prepareClaim, finishClaim: finishClaim, signInForBadge: signInForBadge, saveTenure: saveTenure,
     drawShareCard: drawShareCard, shareCard: shareCard, ago: ago, answerKind: answerKind, loadPosts: loadPosts, POST_COLS_X: POST_COLS_X,

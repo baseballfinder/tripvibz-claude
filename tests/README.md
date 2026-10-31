@@ -36,7 +36,7 @@ The database lint needs the database URL: `psql "$SUPABASE_DB_URL" -f tests/db-s
 | Homepage | Headline, every city in the grid, logo, "Ask for your city" link, favicon | e2e |
 | Cities page | Grid, search (incl. no-match message) | e2e |
 | Request a city | Search finds Tulsa, tapping "Ask for it" sends the request and flips to "Asked" | e2e |
-| City feed | Hero photo loads, lead question = first active question, options, section chips, add button (Nashville, Knoxville, Miami) | e2e |
+| City feed | Hero photo loads, lead question = first active question, options, four tabs (Takes · Eat · When to go · Stay) with one panel shown and the hash deep-linking a tab, section chips only at 10+ takes, Add-your-take bar (Nashville, Knoxville, Miami) | e2e |
 | One-tap voting on questions | Vote link records the vote, results and "Why?" box show | e2e |
 | Posting a take (anonymous) | Kind, starter, place, month, tenure, preview, posted page, 1080×1920 share card | e2e |
 | Sign in with Google (Local badge) | Badge button opens the sign-in box | e2e |

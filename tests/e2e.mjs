@@ -192,9 +192,23 @@ for (const slug of ["nashville", "knoxville", "miami"]) {
       const link = page.locator(".feed .take .who a.bdg").first();
       if (await link.count()) assert((await link.getAttribute("href")) === "/how-we-verify-locals/", "local badge should link to the verification page");
     }
-    assert(await page.locator("[data-sec]").count() === (hasTakes ? 4 : 0), hasTakes ? "section chips missing" : "filter chips should be hidden when there are no takes");
+    // Filters only once there is enough to filter (10+ takes); small cities stay uncluttered.
+    const many = (await page.locator(".feed .take").count()) >= 10;
+    assert(await page.locator("[data-sec]").count() === (many ? 4 : 0), many ? "section chips missing" : "filter chips should be hidden under 10 takes");
     assert(await page.locator("details.nt:not([open])").count() === 1, "new-topic box should start collapsed");
     assert(await page.locator(".fab").count() === 0, "old \"What do tourists get wrong\" button is back");
+    // One section at a time: four tabs, Takes open, the rest hidden until tapped; the hash deep-links a tab.
+    assert(await page.locator('.tabs [role="tab"]').count() === 4, "city page should have four tabs");
+    assert(await page.isVisible("#panel-takes") && !(await page.isVisible("#panel-eat")) && !(await page.isVisible("#panel-when")) && !(await page.isVisible("#panel-stay")), "only the Takes panel should show at first");
+    assert(await page.locator(".hero-band h1").count() === 1 && await page.isVisible(".cta-bar a.cta-btn"), "title should sit on the hero and the Add-your-take bar should show");
+    assert((await page.getAttribute(".cta-bar a.cta-btn", "href")) === `/${slug}/add/`, "Add your take should open the add page");
+    await page.click('[data-tab="eat"]');
+    assert(await page.isVisible("#tv-eats") && !(await page.isVisible("#panel-takes")), "Eat tab should swap the panels");
+    assert((await page.evaluate(() => location.hash)) === "#eat", "the tab should be in the URL hash");
+    assert((await page.getAttribute('[data-tab="eat"]', "aria-selected")) === "true", "Eat tab should be selected");
+    assert(/top 3/.test(await page.textContent(".cta-bar a.cta-btn")) && (await page.getAttribute(".cta-bar a.cta-btn", "href")) === "#top3", "on Eat the bar should ask for a top 3");
+    await page.click('[data-tab="takes"]');
+    assert(await page.isVisible("#panel-takes") && (await page.evaluate(() => location.hash)) === "", "Takes tab should clear the hash");
   });
 }
 
@@ -259,8 +273,9 @@ await test("Topic page: new take cards, starters open the add page, calendar on 
 });
 
 await test("City page: When-to-go strip links to the month-by-month calendar", async () => {
-  await go("/nashville/");
+  await go("/nashville/#when");   // deep link straight to the When-to-go tab
   await page.waitForSelector("a.when", { timeout: 8000 });
+  assert((await page.getAttribute('[data-tab="when"]', "aria-selected")) === "true" && !(await page.isVisible("#panel-takes")), "#when should open the When-to-go tab");
   assert(await page.locator(".when-strip span").count() === 12, "month strip should have 12 cells");
   assert((await page.getAttribute("a.when", "href")) === "/nashville/worst-times-to-visit/", "strip should link to the calendar");
   const best = await page.textContent(".when-t .wl:first-child");
@@ -392,6 +407,7 @@ await test("Locals' top 3 restaurants: section on city pages; anonymous sees sig
   const errs2 = []; p2.on("pageerror", e => errs2.push(e.message));
   await p2.goto(BASE + "/miami/", { waitUntil: "networkidle" }); await p2.waitForTimeout(800);
   assert(await p2.locator("#top3-open").count() === 1, "signed-in person should see the Add-your-top-3 button");
+  await p2.click('[data-tab="eat"]');   // the picker lives in the Eat tab
   await p2.click("#top3-open");
   // Row 1 from the catalogue: type, see suggestions with addresses, pick one.
   await p2.type("#top3-n1", "salty", { delay: 20 }); await p2.waitForTimeout(600);

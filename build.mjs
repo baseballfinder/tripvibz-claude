@@ -596,22 +596,50 @@ ${list}
 </section>`;
 }
 
-// Crawler-readable version of the city feed; the page script replaces it
-// (keeping the editors' intro and nearby links, see city.html).
-function cityBody(city, counts, takes, intro = "", nearby = [], eatsData = null) {
+// When-to-go strip for the pre-render: one cell per month, coloured like the
+// client's (assets/v2.js wSev: avoid beats good beats busy; a one-off "avoid"
+// event only makes a month busy). The page script adds the written summary.
+const WMON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const SEASONAL_KIND = { season: 1, weather: 1 };
+function monthSeverity(events, m) {
+  const has = {};
+  for (const e of events) {
+    const covers = e.start_month <= e.end_month ? (m >= e.start_month && m <= e.end_month) : (m >= e.start_month || m <= e.end_month);
+    if (covers) has[e.severity === "avoid" && !SEASONAL_KIND[e.kind] ? "busy" : e.severity] = 1;
+  }
+  return has.avoid ? "avoid" : has.good ? "good" : has.busy ? "busy" : "";
+}
+function whenHtml(city, events) {
+  if (!events.length) return `<div class="empty2"><b>No calendar for ${esc(city.name)} yet</b>We're still checking the seasons and big events here.</div>`;
+  return `<a class="when" href="/${esc(city.slug)}/worst-times-to-visit/"><div class="when-k">Best and worst months</div><div class="when-strip">${
+    WMON.map((mn, i) => `<span class="${monthSeverity(events, i + 1)}" title="${mn}">${mn[0]}</span>`).join("")
+  }</div><div class="when-go">Month-by-month calendar →</div></a>`;
+}
+
+// Crawler-readable version of the city page; the page script replaces it
+// (keeping the hero, the editors' intro, the top 3 and nearby links, see
+// city.html). Same skeleton as the script draws: hero band, four tabs, panels.
+const CITY_TABS = [["takes", "Takes"], ["eat", "Eat"], ["when", "When to go"], ["stay", "Stay"]];
+function cityBody(city, counts, takes, intro = "", nearby = [], eatsData = null, events = []) {
   const ranked = takes.slice().sort((a, b) => (b.ups - b.downs) - (a.ups - a.downs));
-  return `<a class="back" href="/cities/">← All cities</a>
-${heroImg(city)}
-<div class="kicker">${esc(city.name)}${city.state ? ", " + esc(city.state) : ""}</div>
+  const n = takes.length;
+  const panel = (id, html) => `<section class="panel" id="panel-${id}" role="tabpanel" aria-labelledby="tab-${id}"${id === "takes" ? "" : " hidden"}>${html}</section>`;
+  return `<div class="hero-band">${heroImg(city, { band: true })}<div class="hero-txt"><div class="kicker">${esc(city.name)}${city.state ? ", " + esc(city.state) : ""}</div>
 <h1>What locals say about ${esc(city.name)}</h1>
-<nav class="chips">${Object.keys(THEMES).map(k =>
-    `<a class="chip" href="/${esc(city.slug)}/${THEMES[k].slug}/">${esc(THEMES[k].nav)}${counts[k] ? ` (${counts[k]})` : ""}</a>`).join("")}</nav>
-<div class="feed">${ranked.length ? ranked.map(p => `<article class="take"><a class="tt" href="/t/${esc(p.id)}">${esc(p.title)}</a>${
+<div class="hero-n">${n ? `${n} take${n === 1 ? "" : "s"} from people who live here` : "Be the first local to weigh in"}</div></div></div>
+<div class="tabs" role="tablist" aria-label="Sections">${CITY_TABS.map(([id, l]) =>
+    `<button role="tab" id="tab-${id}" data-tab="${id}" aria-selected="${id === "takes"}" aria-controls="panel-${id}" tabindex="${id === "takes" ? 0 : -1}">${l}</button>`).join("")}</div>
+${panel("takes", `<div class="feed">${ranked.length ? ranked.map(p => `<article class="take"><a class="tt" href="/t/${esc(p.id)}">${esc(p.title)}</a>${
     p.body ? `<div class="more">${esc(p.body)}</div>` : ""}<div class="who">${p.ups} true · ${p.downs} nope</div></article>`).join("")
   : `<div class="empty2"><b>No takes here yet</b>Live in ${esc(city.name)}? <a href="/${esc(city.slug)}/add/">Tell visitors what they get wrong.</a></div>`}</div>
 ${editorsHtml(city, intro)}
-${eatsData ? eatsHtml(city, eatsData) : ""}
-${nearbyHtml(nearby)}`;
+${n ? `<div class="more-topics">By topic: ${Object.keys(THEMES).filter(k => counts[k]).map(k =>
+    `<a href="/${esc(city.slug)}/${THEMES[k].slug}/">${esc(THEMES[k].nav)}</a>`).join(" · ")}</div>` : ""}`)}
+${panel("eat", eatsData ? eatsHtml(city, eatsData) : "")}
+${panel("when", whenHtml(city, events))}
+${panel("stay", `<section class="s22"><h2>Where to stay in ${esc(city.name)}</h2><p>Prices and availability from Booking.com, Expedia and more. TripVibz may earn a commission when you book.</p></section>`)}
+${nearbyHtml(nearby)}
+<div class="cta-bar"><div class="cta-t">Live here?</div><a class="cta-btn" href="/${esc(city.slug)}/add/">Add your take</a></div>`;
 }
 
 /* ---------------- inline CSS ----------------
@@ -642,6 +670,10 @@ const PHOTO_SIZES = [256, 360, 480, 640, 720, 800];
 // Topic pages show a short 8:3 strip of the photo; a pre-cropped copy avoids
 // downloading the 16:10 height that is never displayed.
 const SHORT_SIZES = [720, 800];
+// City pages put the title on a 2:1 photo band; a matching crop means phones
+// don't download the 16:10 rows the band never shows (Lighthouse
+// uses-responsive-images is an error in the mobile run).
+const BAND_SIZES = [360, 480, 640, 720, 800];
 const HERO_SIZES = "(max-width: 640px) calc(100vw - 32px), 608px";
 const SHORT_HERO_SIZES = "(max-width: 640px) calc(100vw - 32px), 680px";
 const PHOTO_QUALITY = 72;
@@ -666,17 +698,21 @@ async function resizeCityPhotos(cities) {
         const out = await sharpMod(buf).resize({ width: w, height: Math.round(w * 3 / 8), fit: "cover", position: "attention", withoutEnlargement: true }).webp({ quality: PHOTO_QUALITY }).toBuffer();
         await emit(`assets/city/${base}-short-${w}.webp`, out);
       }
+      for (const w of BAND_SIZES) {
+        const out = await sharpMod(buf).resize({ width: w, height: w / 2, fit: "cover", position: "attention", withoutEnlargement: true }).webp({ quality: PHOTO_QUALITY }).toBuffer();
+        await emit(`assets/city/${base}-band-${w}.webp`, out);
+      }
       LOCAL_PHOTO[city.slug] = base;
       ok++;
     } catch (e) { console.warn(`  photo ${name}: ${e.message} — using the Supabase URL`); }
   }));
   console.log(`  ${ok}/${cities.length} city photos resized to ${PHOTO_SIZES.join("/")} px`);
 }
-function heroSources(city, { short = false } = {}) {
+function heroSources(city, { short = false, band = false } = {}) {
   const base = LOCAL_PHOTO[city.slug];
   if (!base) return { href: photo(city.slug) };
-  const file = w => `/assets/city/${base}${short ? "-short" : ""}-${w}.webp`;
-  const sizes = short ? SHORT_SIZES : PHOTO_SIZES;
+  const file = w => `/assets/city/${base}${band ? "-band" : short ? "-short" : ""}-${w}.webp`;
+  const sizes = band ? BAND_SIZES : short ? SHORT_SIZES : PHOTO_SIZES;
   return { href: file(800), srcset: sizes.map(w => `${file(w)} ${w}w`).join(", "), sizes: short ? SHORT_HERO_SIZES : HERO_SIZES };
 }
 // Grid tiles: same attributes assets/tv.js cityPhotoAttrs() produces, so the
@@ -698,13 +734,13 @@ function gridImg(city, i, sizes, { cls = "", width, height } = {}) {
 
 // The hero <img>: in the HTML (discoverable at once, fetchpriority=high) and
 // kept by city.html across hydration (id tv-hero) so it is never re-fetched.
-function heroImg(city, { short = false } = {}) {
-  const src = heroSources(city, { short });
+function heroImg(city, { short = false, band = false } = {}) {
+  const src = heroSources(city, { short, band });
   const attrs = src.srcset
     ? `src="${esc(src.href)}" srcset="${esc(src.srcset)}" sizes="${esc(src.sizes)}" data-fallback="${esc(photo(city.slug))}"`
       + ` data-err="remove"`
     : `src="${esc(src.href)}" data-err="remove"`;
-  return `<img class="city-hero${short ? " short" : ""}" id="tv-hero" ${attrs} alt="${esc(city.name)}" width="800" height="${short ? 300 : 500}" fetchpriority="high" decoding="async">`;
+  return `<img class="city-hero${short ? " short" : ""}${band ? " band" : ""}" id="tv-hero" ${attrs} alt="${esc(city.name)}" width="800" height="${short ? 300 : band ? 400 : 500}" fetchpriority="high" decoding="async">`;
 }
 
 /* ---------------- minify ---------------- */
@@ -982,9 +1018,9 @@ for (const city of cities) {
     canonical: `${SITE}/${city.slug}/`,
     image: shareCard(city) ? shareCard(city).image : photo(city.slug),
     og: shareCard(city) || undefined,
-    body: cityBody(city, counts, feedTakes, intro, nearby, { eats, picks, localChecks, pickers }),
+    body: cityBody(city, counts, feedTakes, intro, nearby, { eats, picks, localChecks, pickers }, cityEvents),
     mount: "city",
-    preloadImage: heroSources(city),
+    preloadImage: heroSources(city, { band: true }),
     jsonLd: cityLd(city, `${SITE}/${city.slug}/`, feedTakes, { title: cityTitle, desc: cityDesc, intro, nearby, lastmod: cityLastmod }),
     // Empty pages stay reachable for people (links, email, social) but out of
     // Google until there is something real on them: the editors' intro or
