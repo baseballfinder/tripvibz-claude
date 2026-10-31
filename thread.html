@@ -76,6 +76,7 @@
           <p><b>${v ? "You voted. Do your friends agree?" : "Do your friends agree?"}</b>Send it to someone who knows ${esc(CITY.name)}.</p>
           <button id="share-take">${T2.ICON.share}Share</button>
         </div>
+        ${CITY.id ? T2.stay22TakeLink(POST, CTX, CITY, "take_page") : ""}
       </div>
 
       <div class="row-between" style="margin:20px 0 10px">

@@ -5,11 +5,11 @@ export const INLINE_SCRIPT_HASHES = [
   "'sha256-FtFqUxfcTu8lEO8SwkLj+3rB+Q64cu3Ddhid11fR2QI='",
   "'sha256-GbcKAF1MD/4DLDAiJf/4iB3FcxAqEoXZQDUbdRcaYvI='",
   "'sha256-Ij4Z5LUZP0exLtimq/5OeKtdjqFCjHKdlnTujJaYTGo='",
+  "'sha256-PQrkQtbkXooM09YRosSZlmbaCNqtl+f+fFpBdBIwle4='",
   "'sha256-PzMz6MoiT2muNVUM9/21LCtAfYxAcp0+FIxUJustFlg='",
   "'sha256-T3c7Ac3lENyDf8/rGQ0eI6qOttR61i4QndBUWqiS04w='",
   "'sha256-bqCo/SvS0xKMdGwFQcQnYkFSVS0vDiK5VboJfkdg0pc='",
-  "'sha256-gY6QFVrgKtCG6QDgyU9PPN3oQSoRsOTtMgU8StN6JTk='",
+  "'sha256-f/XLaVrttwvrFeL05PUKDV8dTPw/4w7MzwPRjp2vN9g='",
   "'sha256-iGJcif/CL9TUWMnkxkC2JyQt+uNQhd+aBHo3eibviC4='",
-  "'sha256-oqMZlRtZOC5ZWa+1mgVoal/YD9rkLLj0D4+xE5voIFE='",
   "'sha256-sPQDC8l6SA8tK5dowYYtq9K5vwynxHWWENU1nDsBOEg='"
 ];

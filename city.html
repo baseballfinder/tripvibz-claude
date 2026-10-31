@@ -10,8 +10,45 @@
 <link rel="stylesheet" href="/assets/v2.css">
 <script src="/assets/analytics.js" defer></script>
 <style>
+/* City page layout: a hero band with the title on it, then one section at a time
+   (Takes · Eat · When to go · Stay). build.mjs cityBody mirrors the skeleton. */
+.hero-band{position:relative;margin:10px 0 14px;border-radius:14px;overflow:hidden;background:#efe9dd}
+.hero-band .city-hero{display:block;width:100%;height:auto;margin:0;border-radius:0;aspect-ratio:2/1;max-height:none;object-fit:cover}
+.hero-txt{position:absolute;left:0;right:0;bottom:0;padding:48px 14px 12px;color:#fff;background:linear-gradient(to top,rgba(10,9,7,.82) 0%,rgba(10,9,7,.45) 55%,rgba(10,9,7,0) 100%)}
+.hero-txt .kicker{color:#fff;opacity:.9;font-size:11px;letter-spacing:.12em}
+.hero-txt h1{color:#fff;font-size:clamp(22px,5.6vw,30px);margin:2px 0;text-shadow:0 1px 3px rgba(0,0,0,.45)}
+.hero-n{font-size:13px;opacity:.92}
+.tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;background:var(--sand);border-radius:12px;padding:4px;margin:0 0 14px}
+.tabs [role=tab]{min-height:40px;border:0;border-radius:9px;background:transparent;color:var(--ink);font:600 13.5px "Public Sans",sans-serif;cursor:pointer;padding:0 4px;white-space:nowrap}
+.tabs [role=tab][aria-selected=true]{background:var(--ink);color:#fff;font-weight:700}
+.tabs [role=tab]:focus-visible{outline:2px solid var(--coral-ink);outline-offset:-2px}
+.panel>*:first-child{margin-top:0}
+/* The question card, light: the page already has one dark block (the hero) */
+.qcard.lite{background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:14px 14px 12px;margin:0 0 12px}
+.qcard.lite .qk{color:var(--muted);font-size:11px}
+.qcard.lite .qp{font-size:16.5px;line-height:1.25;margin:6px 0 10px}
+.qcard.lite .qopts{flex-direction:row;flex-wrap:wrap;gap:8px}
+.qcard.lite .qopt{min-height:40px;padding:0 14px;border:1.5px solid var(--ink);background:#fff;color:var(--ink);font-size:14px;font-weight:600;border-radius:999px}
+.qcard.lite .qopt .fill{display:none}
+.qcard.lite .qnote{color:var(--muted);margin-top:8px}
+.panel .editors{margin-bottom:12px}
+.panel .chips{padding-top:0}
+.more-topics{font-size:13px;color:var(--muted);margin:14px 2px 0}
+.more-topics a{color:var(--ink);font-weight:700;text-decoration:none;white-space:nowrap}
+.more-topics a:hover{text-decoration:underline}
+.panel .when{margin:0}
+.panel .s22{margin-top:0}
+.stay-tips{margin-top:16px}
+.stay-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.stay-links .s22-link{margin:0}
+/* Live here? Add your take: one fixed bar, in reach of a thumb */
+.cta-bar{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:640px;margin:0 auto;padding:10px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(251,250,247,.94);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+.cta-t{font-size:13px;color:var(--muted);line-height:1.3}
+.cta-t small{display:block;font-size:12px;color:var(--coral-ink);font-weight:700}
+.cta-btn{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border-radius:12px;background:var(--coral-btn);color:#fff;font:800 15px "Public Sans",sans-serif;text-decoration:none;white-space:nowrap}
+@media(min-width:900px){.cta-bar{left:auto;right:24px;bottom:24px;max-width:none;border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 30px rgba(22,20,15,.14)}}
 /* Locals' top 3 restaurants (city pages only; build.mjs eatsHtml mirrors the markup) */
-.eats{margin:22px 0 6px}
+.eats{margin:0 0 6px}
 .eats-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
 .eats-h h2{font:900 20px "Archivo",sans-serif;margin:0;color:var(--ink)}
 .eats-n{font-size:12.5px;font-weight:600;color:var(--muted)}
@@ -91,6 +128,12 @@
 
   const SECTIONS = [["all","Everything"],["what_not_to_do","What not to do"],["worst_times","Worst times"],["hidden_gem","What locals do"]];
   let CITY = null, POSTS = [], CTX = null, QS = [], EVENTS = [], SECTION = "all", SORT = "top";
+  // One section at a time. The hash deep-links a tab (#eat, #when, #stay; #top3 opens the picker).
+  const TABS = [["takes","Takes"],["eat","Eat"],["when","When to go"],["stay","Stay"]];
+  const tabFromHash = h => { h = String(h || "").replace(/^#/, ""); return h === "top3" ? "eat" : TABS.some(t => t[0] === h) ? h : "takes"; };
+  let TAB = tabFromHash(location.hash);
+  // Section chips and sort only once there is enough to filter.
+  const CHIPS_MIN_TAKES = 10;
   // Pre-rendered by the build: the TripVibz editors' intro (empty cities only)
   // and nearby-city links. Grab them before the first render replaces #city.
   const keep = id => { const el = document.getElementById(id); return el ? el.outerHTML : ""; };
@@ -152,25 +195,34 @@
     const base = `/${CITY.slug}/vote/`;
     if (!q) {
       const last = QS[0];
-      return `<div class="qcard"><div class="qk">You've answered every question</div>
+      return `<div class="qcard lite"><div class="qk">You've answered every question</div>
         <div class="qp">${esc(last.prompt)}</div>
         <div class="qopts">${T2.qOptionsHtml(last, true, base)}</div>
         <div class="qnote">${T2.qTotal(last)} votes so far. New questions every week.</div></div>`;
     }
     const total = T2.qTotal(q);
-    return `<div class="qcard"><div class="qk">Locals, settle this</div>
+    return `<div class="qcard lite"><div class="qk">Locals, settle this</div>
       <div class="qp">${esc(q.prompt)}</div>
       <div class="qopts">${T2.qOptionsHtml(q, true, base)}</div>
       <div class="qnote">One tap. ${total ? `See what ${total} other ${total === 1 ? "person" : "people"} said.` : "Be the first to answer."}</div></div>`;
   }
 
-  function whenCard(){
-    if (!EVENTS.length) return "";
+  // When to go: the month strip and summary (same data as the worst-times calendar).
+  function whenPanel(){
+    if (!EVENTS.length) return `<div class="empty2"><b>No calendar for ${esc(CITY.name)} yet</b>We're still checking the seasons and big events here.${
+      POSTS.some(p => p.type === "worst_times") ? " Locals' “when to go” takes are under Takes." : ` Live in ${esc(CITY.name)}? Tell visitors which months to skip.`}</div>`;
     return `<a class="when" href="/${esc(CITY.slug)}/worst-times-to-visit/">
-      <div class="when-k">When to go</div>
+      <div class="when-k">Best and worst months</div>
       <div class="when-strip">${T2.whenStrip(EVENTS)}</div>
       <div class="when-t">${T2.whenSummary(EVENTS)}</div>
       <div class="when-go">Month-by-month calendar →</div></a>`;
+  }
+
+  // Stay: the hotel map, then hotel links for the places and months locals mention.
+  function stayPanel(){
+    const seen = new Set();
+    const tips = POSTS.map(p => T2.stay22TakeLink(p, CTX, CITY, "city_stay")).filter(h => h && !seen.has(h) && seen.add(h));
+    return `${T2.stay22MapHtml(CITY, "city_map")}${tips.length ? `<div class="stay-tips"><div class="when-k">Where locals point visitors</div><div class="stay-links">${tips.join("")}</div></div>` : ""}`;
   }
 
   /* ---------- Locals' top 3 restaurants ----------
@@ -355,42 +407,89 @@
     }
   }
 
-  function render(){
+  function heroBand(){
+    const n = POSTS.length;
+    const img = HERO_HTML || `<img class="city-hero band" ${TV.cityPhotoAttrs(CITY, "(max-width: 640px) calc(100vw - 32px), 608px")} alt="${esc(CITY.name)}" width="800" height="400" fetchpriority="high" decoding="async">`;
+    return `<div class="hero-band">${img}<div class="hero-txt">
+        <div class="kicker">${esc(CITY.name)}${CITY.state ? ", " + esc(CITY.state) : ""}</div>
+        <h1>What locals say about ${esc(CITY.name)}</h1>
+        <div class="hero-n">${n ? `${n} take${n === 1 ? "" : "s"} from people who live here` : "Be the first local to weigh in"}</div></div></div>
+      ${PHOTO_CREDIT[CITY.slug] ? `<a class="photo-credit" href="${PHOTO_CREDIT[CITY.slug][1]}" target="_blank" rel="noopener">Photo: ${esc(PHOTO_CREDIT[CITY.slug][0])}</a>` : ""}`;
+  }
+
+  function tabsHtml(){
+    return `<div class="tabs" role="tablist" aria-label="Sections">${TABS.map(([id, l]) =>
+      `<button role="tab" id="tab-${id}" data-tab="${id}" aria-selected="${TAB === id}" aria-controls="panel-${id}" tabindex="${TAB === id ? 0 : -1}">${l}</button>`).join("")}</div>`;
+  }
+
+  // Takes: the question first, then the takes. Filters appear once there's enough to filter.
+  function takesPanel(){
+    const many = POSTS.length >= CHIPS_MIN_TAKES;
+    if (!many) SECTION = "all";
     const list = T2.sortPosts(POSTS.filter(p => SECTION === "all" || p.type === SECTION), SORT);
-    const locals = new Set(POSTS.filter(p => p.author_verified && p.author_id).map(p => p.author_id)).size;
-    const votes = POSTS.reduce((s,p) => s + p.ups + p.downs, 0) + QS.reduce((s,q) => s + T2.qTotal(q), 0);
-    $("#city").innerHTML = `
-      <a class="back" href="/cities/">← All cities</a>
-      ${HERO_HTML || `<img class="city-hero" ${TV.cityPhotoAttrs(CITY, "(max-width: 640px) calc(100vw - 32px), 608px")} alt="${esc(CITY.name)}" width="800" height="500" fetchpriority="high" decoding="async">`}
-      ${PHOTO_CREDIT[CITY.slug] ? `<a class="photo-credit" href="${PHOTO_CREDIT[CITY.slug][1]}" target="_blank" rel="noopener">Photo: ${esc(PHOTO_CREDIT[CITY.slug][0])}</a>` : ""}
-      <div class="kicker">${esc(CITY.name)}${CITY.state ? ", " + esc(CITY.state) : ""}</div>
-      <h1>What locals say about ${esc(CITY.name)}</h1>
-      ${POSTS.length || votes ? `<div class="stats"><span>${POSTS.length} take${POSTS.length === 1 ? "" : "s"}</span><span>${locals} local${locals === 1 ? "" : "s"}</span><span>${votes} vote${votes === 1 ? "" : "s"}</span></div>` : ""}
-      <div style="height:14px"></div>
-      ${questionCard()}
-      ${whenCard()}
+    const topics = [["what_not_to_do","what-not-to-do","What not to do"],["hidden_gem","what-locals-do","What locals do"],["worst_times","worst-times-to-visit","Worst times to visit"]];
+    return `${questionCard()}
       ${POSTS.length < 3 ? EDITORS_HTML : ""}
-      ${EATS.ready ? eatsHtml() : EATS_HTML}
-      <section class="takes" aria-labelledby="takes-h">
-        <div class="takes-h"><h2 id="takes-h">Local takes${POSTS.length ? ` <span>${POSTS.length}</span>` : ""}</h2>
-          <span class="founders">${CTX.founderCount} of 10 founding local spots taken</span></div>
-        ${POSTS.length ? `
-        <nav class="chips" aria-label="Show">${SECTIONS.map(([id,l]) => `<button class="chip" data-sec="${id}" aria-pressed="${SECTION===id}">${l}</button>`).join("")}</nav>
-        <div class="seg" role="group" aria-label="Sort" style="margin:2px 0 12px">${[["top","Top"],["hot","Hot"],["new","New"]].map(([id,l]) => `<button data-sort="${id}" aria-pressed="${SORT===id}">${l}</button>`).join("")}</div>` : ""}
-        <div class="feed" id="feed">${list.length ? list.map(p => T2.takeHtml(p, CTX, { city: CITY, placement: "city_feed" })).join("") :
-          POSTS.length ? `<div class="empty2"><b>Nothing in this section yet</b>Try “Everything”, or add one below.</div>` :
-          `<div class="empty2"><b>No takes yet</b>Live in ${esc(CITY.name)}? Tap an answer in the question above, or start your own topic below. The first 10 signed-in locals become founding locals.</div>`}</div>
-        ${topicBox()}
-      </section>
-      ${T2.stay22MapHtml(CITY, "city_map")}
+      ${many ? `<nav class="chips" aria-label="Show">${SECTIONS.map(([id,l]) => `<button class="chip" data-sec="${id}" aria-pressed="${SECTION===id}">${l}</button>`).join("")}</nav>
+      <div class="seg" role="group" aria-label="Sort" style="margin:2px 0 12px">${[["top","Top"],["hot","Hot"],["new","New"]].map(([id,l]) => `<button data-sort="${id}" aria-pressed="${SORT===id}">${l}</button>`).join("")}</div>` : ""}
+      <div class="feed" id="feed">${list.length ? list.map(p => T2.takeHtml(p, CTX, { city: CITY, placement: "city_feed" })).join("") :
+        POSTS.length ? `<div class="empty2"><b>Nothing in this section yet</b>Try “Everything”, or add one below.</div>` :
+        `<div class="empty2"><b>No takes yet</b>Live in ${esc(CITY.name)}? Tap an answer in the question above, or start your own topic below. The first 10 signed-in locals become founding locals.</div>`}</div>
+      ${topicBox()}
+      ${POSTS.length ? `<div class="more-topics">By topic: ${topics.filter(t => POSTS.some(p => p.type === t[0])).map(t => `<a href="/${esc(CITY.slug)}/${t[1]}/">${t[2]}</a>`).join(" · ")}</div>` : ""}`;
+  }
+
+  // The bar follows the tab: on Eat it asks for a top 3, everywhere else for a take.
+  function ctaBar(){
+    const taken = CTX ? CTX.founderCount : 0, left = taken > 0 && taken < 10 ? 10 - taken : 0;
+    const eat = TAB === "eat";
+    return `<div class="cta-bar"><div class="cta-t">Live here?${!eat && left ? `<small>${left} founding local spot${left === 1 ? "" : "s"} left</small>` : ""}</div>${
+      eat ? `<a class="cta-btn" href="#top3">Add your top 3</a>` : `<a class="cta-btn" href="/${esc(CITY.slug)}/add/">Add your take</a>`}</div>`;
+  }
+
+  function render(){
+    const panel = (id, html) => `<section class="panel" id="panel-${id}" role="tabpanel" aria-labelledby="tab-${id}"${TAB === id ? "" : " hidden"}>${html}</section>`;
+    $("#city").innerHTML = `
+      ${heroBand()}
+      ${tabsHtml()}
+      ${panel("takes", takesPanel())}
+      ${panel("eat", EATS.ready ? eatsHtml() : EATS_HTML)}
+      ${panel("when", whenPanel())}
+      ${panel("stay", stayPanel())}
       ${T2.emailSignupHtml(CITY, "city_page")}
-      ${NEARBY_HTML}`;
+      ${NEARBY_HTML}
+      ${ctaBar()}`;
     wire();
     T2.mountStay22($("#city"));
     T2.mountEmailSignup($("#city"), CITY);
   }
 
+  // Switch sections in place (no re-render, so a half-typed top 3 survives).
+  function showTab(id, opts){
+    opts = opts || {};
+    TAB = id;
+    $("#city").querySelectorAll("[role=tab]").forEach(b => { const on = b.dataset.tab === id; b.setAttribute("aria-selected", on); b.tabIndex = on ? 0 : -1; if (on && opts.focus) b.focus(); });
+    $("#city").querySelectorAll(".panel").forEach(p => { p.hidden = p.id !== "panel-" + id; });
+    if (opts.hash !== false) { try { history.replaceState(null, "", id === "takes" ? location.pathname + location.search : "#" + id); } catch (e) {} }
+    const bar = $("#city .cta-bar"); if (bar) bar.outerHTML = ctaBar();
+    T2.mountStay22($("#city"));
+    if (opts.track) T2.track("city_tab", { city: CITY.slug, tab: id });
+  }
+  function onHash(){
+    showTab(tabFromHash(location.hash), { hash: false });
+    if (location.hash === "#top3" && signedInUser() && !EATS.open) { openTop3(); render(); }
+    if (location.hash === "#top3") { const el = $("#top3"); if (el) el.scrollIntoView({ block: "center" }); }
+  }
+
   function wire(){
+    $("#city").querySelectorAll("[role=tab]").forEach(b => {
+      b.addEventListener("click", () => showTab(b.dataset.tab, { track: true }));
+      b.addEventListener("keydown", e => {
+        if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+        const i = TABS.findIndex(t => t[0] === TAB), n = TABS.length;
+        showTab(TABS[(i + (e.key === "ArrowRight" ? 1 : n - 1)) % n][0], { track: true, focus: true }); e.preventDefault();
+      });
+    });
     $("#city").querySelectorAll("[data-sec]").forEach(b => b.addEventListener("click", () => { SECTION = b.dataset.sec; render(); }));
     $("#city").querySelectorAll("[data-sort]").forEach(b => b.addEventListener("click", () => { SORT = b.dataset.sort; render(); }));
     $("#city").querySelectorAll("[data-ntk]").forEach(b => b.addEventListener("click", () => {
@@ -443,10 +542,11 @@
       sb.from("city_events").select("name,kind,severity,start_month,end_month").eq("city_id", CITY.id).eq("status", "approved")]);
     EVENTS = (evs && evs.data) || [];
     render();
+    window.addEventListener("hashchange", onHash);
     // Top 3 loads after the first paint; the pre-rendered section stands in until then.
     try { await loadEats(); } catch (e) { console.error(e); }
     render();
-    if (location.hash === "#top3" && signedInUser()) { openTop3(); render(); const el = $("#top3"); if (el) el.scrollIntoView({ block: "center" }); }
+    if (location.hash === "#top3") onHash();
   })();
 })();
 </script>
