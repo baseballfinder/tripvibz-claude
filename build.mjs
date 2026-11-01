@@ -137,13 +137,14 @@ async function loadContent() {
 const MONTHS = ["January","February","March","April","May","June","July",
                 "August","September","October","November","December"];
 
+let REMOVED_META = "";   // set once data/removed-cities.json is read (below)
 function head({ title, desc, canonical, image, noindex, og = {}, preloadImage }) {
   const ogTitle = og.title || title, ogDesc = og.desc || desc;
   return `<title>${esc(title)}</title>
 ${noindex ? `<meta name="robots" content="noindex,follow" />` : ""}
 ${preloadImage ? `<link rel="preload" as="image" href="${esc(preloadImage.href)}"${preloadImage.srcset ? ` imagesrcset="${esc(preloadImage.srcset)}" imagesizes="${esc(preloadImage.sizes)}"` : ""} fetchpriority="high" />` : ""}
 <meta name="description" content="${esc(desc)}" />
-<link rel="canonical" href="${esc(canonical)}" />
+${REMOVED_META}<link rel="canonical" href="${esc(canonical)}" />
 <meta property="og:type" content="article" />
 <meta property="og:site_name" content="TripVibz" />
 <meta property="og:title" content="${esc(ogTitle)}" />
@@ -935,7 +936,21 @@ report.push(["assets/supabase.js (vendor)", SUPABASE_BUNDLE.length, SUPABASE_BUN
 
 
 console.log("\n  fetching content…");
-const { cities, posts, events, eats = [], picks = [], localChecks = [], pickers = [] } = await loadContent();
+const content = await loadContent();
+// Cities taken off the site (data/removed-cities.json: slug -> where its old
+// URLs go). Their database rows are deleted by a migration; this list keeps a
+// build that runs before that migration from re-publishing them, and writes
+// the redirects so old links and search results land somewhere useful.
+let REMOVED = {};
+try { REMOVED = Object.fromEntries(Object.entries(JSON.parse(await readFile("data/removed-cities.json", "utf8"))).filter(([k]) => !k.startsWith("_"))); } catch {}
+const removedCount = content.cities.filter(c => REMOVED[c.slug]).length;
+const cities = content.cities.filter(c => !REMOVED[c.slug]);
+const removedIds = new Set(content.cities.filter(c => REMOVED[c.slug]).map(c => c.id));
+const posts = content.posts.filter(p => !removedIds.has(p.city_id)), events = content.events.filter(e => !removedIds.has(e.city_id));
+const { eats = [], picks = [], localChecks = [], pickers = [] } = content;
+if (removedCount) console.log(`  (${removedCount} removed ${removedCount === 1 ? "city" : "cities"} left out: ${Object.keys(REMOVED).join(", ")})`);
+// Pages hydrate their city lists from the database; this tells assets/tv.js which slugs to drop.
+REMOVED_META = Object.keys(REMOVED).length ? `<meta name="tv-removed" content="${esc(Object.keys(REMOVED).join(","))}" />\n` : "";
 cities.forEach(c => { if (c.photo) PHOTO_BY_SLUG[c.slug] = c.photo; });
 console.log(`  ${cities.length} cities · ${posts.length} posts · ${events.length} events`);
 await resizeCityPhotos(cities);
@@ -1157,6 +1172,7 @@ await emit("_redirects", `# Old query-param URLs -> clean paths
 /places.html   /cities/  301
 /map.html      /cities/  301
 /map           /cities/  301
+${Object.entries(REMOVED).map(([slug, to]) => `# ${slug} was removed from the site\n/${slug}  ${to}  301\n/${slug}/*  ${to}  301`).join("\n")}
 `);
 
 let before = 0, after = 0;

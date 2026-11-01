@@ -89,7 +89,8 @@ await test("Pages don't ship uncompressed inline data (no base64 blobs over 4 KB
 });
 
 await test("City photos: every city has local 256-800 px + short 720/800 WebP copies within budget", async () => {
-  const cities = await (await fetch("https://nkxorlktzbgwqnfwmuus.supabase.co/rest/v1/cities?select=slug,photo", { headers: { apikey: "sb_publishable_5UOevsS8KmWWGrQYNWsabg_0sVOIPmB" } })).json();
+  let REMOVED = {}; try { REMOVED = JSON.parse(await readFile("data/removed-cities.json", "utf8")); } catch {}
+  const cities = (await (await fetch("https://nkxorlktzbgwqnfwmuus.supabase.co/rest/v1/cities?select=slug,photo", { headers: { apikey: "sb_publishable_5UOevsS8KmWWGrQYNWsabg_0sVOIPmB" } })).json()).filter(c => !REMOVED[c.slug]);
   assert(Array.isArray(cities) && cities.length, "could not read the cities table");
   for (const c of cities) {
     const base = (c.photo || `${c.slug}.webp`).replace(/\.[a-z0-9]+$/i, "");

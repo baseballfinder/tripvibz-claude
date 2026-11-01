@@ -619,7 +619,17 @@
       ' data-err="remove"';   // fallbacks run in the hashed head script (build.mjs IMG_ERROR_SCRIPT), not inline
   }
 
+  // Cities taken off the site but maybe still in the database for a moment
+  // (the build removes them first, a migration deletes the rows on merge).
+  // build.mjs writes their slugs into <meta name="tv-removed">.
+  var REMOVED_CITIES = (function () {
+    var m = document.querySelector('meta[name="tv-removed"]');
+    return new Set(m && m.content ? m.content.split(",").map(function (s) { return s.trim(); }).filter(Boolean) : []);
+  })();
+  function liveCities(list) { return (list || []).filter(function (c) { return !REMOVED_CITIES.has(c.slug); }); }
+
   window.TV = { tidy: tidyText,
+    liveCities: liveCities,
     cityPhoto: cityPhoto,
     cityPhotoAttrs: cityPhotoAttrs,
     sb: sb,

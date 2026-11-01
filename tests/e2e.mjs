@@ -109,7 +109,8 @@ page.on("pageerror", e => errors.push(`${page.url()}: ${e.message}`));
 page.on("console", m => { if (m.type() === "error" && !/Failed to load resource/.test(m.text())) errors.push(`${page.url()}: ${m.text()}`); });
 const go = async path => { await page.goto(BASE + path, { waitUntil: "networkidle" }); await page.waitForTimeout(800); };
 
-const cities = await api("cities?select=id,slug,name&order=sort");
+let REMOVED = {}; try { REMOVED = JSON.parse(await readFile("data/removed-cities.json", "utf8")); } catch {}
+const cities = (await api("cities?select=id,slug,name&order=sort")).filter(c => !REMOVED[c.slug]);   // removed cities may linger in the database until their migration runs
 const qs = await api("questions?select=city_id,sort,prompt&active=eq.true&order=sort");
 const lead = slug => { const c = cities.find(x => x.slug === slug); return qs.find(q => q.city_id === c.id); };
 

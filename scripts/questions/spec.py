@@ -125,17 +125,6 @@ CITIES = {
     q("Best time to visit Hawaii, Oahu locals?", SEASONS, "Whole island",
       ["best time to visit hawaii", "best time to visit oahu"], ["oahu", "hawaii"]),
 ],
-"key-biscayne": [
-    q("Bill Baggs Cape Florida or Crandon Park for a beach day?", ["Bill Baggs", "Crandon Park", "Both, in one day"], "Beaches",
-      ["bill baggs cape florida state park", "crandon park"], ["billbaggs", "crandonpark"]),
-    q("Crossing the Rickenbacker Causeway on a Sunday: fine, or avoid?", ["Fine", "Avoid", "Only before noon"], "Rickenbacker Causeway",
-      ["rickenbacker causeway"], ["rickenbacker"]),
-    q("Key Biscayne for a beach day: worth the drive from Miami?", ["Worth it", "Skip it", "Weekdays only"], "Whole island",
-      ["key biscayne beach", "key biscayne"], ["keybiscayne"]),
-    q("Biking Key Biscayne: best way to see it, or overrated?", ["Best way", "Overrated", "Only to the lighthouse"], "Whole island",
-      ["key biscayne bike rental"], ["keybiscayne"]),
-    best_time("Key Biscayne", tags=["keybiscayne"]),
-],
 "key-west": [
     q("Fantasy Fest 2026: come for it, or stay away?", ["Come for it", "Stay away", "Just one night"], "Whole island",
       ["fantasy fest 2026", "fantasy fest key west"], ["fantasyfest", "fantasyfest2026"]),

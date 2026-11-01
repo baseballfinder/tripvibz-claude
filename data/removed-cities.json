@@ -1,0 +1,4 @@
+{
+  "_note": "Cities removed from the site: slug -> where their old URLs redirect (301). The database rows are deleted by a migration (see data/removed/ for the backups); this list also keeps the build from publishing the city if it runs before that migration.",
+  "key-biscayne": "/miami/"
+}

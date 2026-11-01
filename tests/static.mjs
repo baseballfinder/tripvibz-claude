@@ -27,7 +27,9 @@ async function htmlFiles(dir) {
 }
 
 const pages = await htmlFiles("dist");
-const cities = await api("cities?select=id,slug&order=sort");
+// Cities removed from the site may still be in the database until their migration runs.
+let REMOVED = {}; try { REMOVED = JSON.parse(await readFile("data/removed-cities.json", "utf8")); } catch {}
+const cities = (await api("cities?select=id,slug&order=sort")).filter(c => !REMOVED[c.slug]);
 const qs = await api("questions?select=city_id,sort,prompt,options&active=eq.true");
 
 await test("Every city has a page, a vote page and an add page", async () => {

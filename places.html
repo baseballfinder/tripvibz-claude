@@ -176,7 +176,7 @@
     try{
       const { data, error } = await sb.from("cities_with_counts").select("*").order("sort");
       if(error) throw error;
-      CITIES = data||[];
+      CITIES = TV.liveCities(data);
       render("");
     }catch(e){
       console.error(e);

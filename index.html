@@ -240,8 +240,9 @@
       sb.from("posts").select("id,title,type,city_id,author_id,created_at").order("created_at",{ascending:false})
     ]);
 
-    CITIES = cities || [];
-    const rows = posts || [];
+    CITIES = TV.liveCities(cities);
+    const live = new Set(CITIES.map(c => c.id));
+    const rows = (posts || []).filter(p => !p.city_id || live.has(p.city_id));
     rows.forEach(p=>{ if(p.city_id) COUNTS[p.city_id] = (COUNTS[p.city_id]||0) + 1; });
     TOTALS.takes = rows.length;
     TOTALS.locals = new Set(rows.map(p=>p.author_id).filter(Boolean)).size;
