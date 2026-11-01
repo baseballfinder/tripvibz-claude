@@ -1,0 +1,297 @@
+{
+ "_note": "Key Biscayne was removed from TripVibz on 2026-11-01 (migration 20261101160000_remove_key_biscayne.sql). Editorial rows kept here so the city can be restored. The one take was a rejected test post; the single local_checks row (2 presence days, unverified) is not kept.",
+ "city": {
+  "id": "434cbcd2-bc25-48c7-bea8-bdd308cdae09",
+  "name": "Key Biscayne",
+  "state": "FL",
+  "slug": "key-biscayne",
+  "lat": 25.6907,
+  "lng": -80.1626,
+  "blurb": "Miami's quiet island — pay the toll, skip the crowds.",
+  "sort": 4,
+  "created_at": "2026-06-25T22:13:44.023829+00:00",
+  "photo": null
+ },
+ "editorial_intro": "Key Biscayne is a quiet island suburb, not a party beach, and most of it is residential. The Rickenbacker Causeway is the only road in, so sunny weekends and holidays back traffic up for miles; go early on a weekday. Bill Baggs Cape Florida and Crandon Park charge their own entry and parking, and the lots fill by late morning on nice days.",
+ "og_card": {
+  "prompt": "Bill Baggs Cape Florida or Crandon Park for a beach day?"
+ },
+ "posts": [
+  {
+   "id": "b203a977-5c37-4026-9198-6aea8206fcc8",
+   "type": "what_not_to_do",
+   "title": "Skip test. Locals test instead.",
+   "status": "rejected",
+   "created_at": "2026-10-17T19:32:56.081491+00:00"
+  }
+ ],
+ "questions": [
+  {
+   "prompt": "Crossing the Rickenbacker on a Sunday afternoon: fine, or avoid?",
+   "options": [
+    {
+     "id": "fine",
+     "label": "Fine"
+    },
+    {
+     "id": "avoid",
+     "label": "Avoid it"
+    },
+    {
+     "id": "early",
+     "label": "Go early or late"
+    }
+   ],
+   "place_label": "Rickenbacker Causeway",
+   "sort": 1,
+   "active": false
+  },
+  {
+   "prompt": "Key Biscayne for a beach day: worth the drive from Miami?",
+   "options": [
+    {
+     "id": "yes",
+     "label": "Worth it"
+    },
+    {
+     "id": "no",
+     "label": "Not worth it"
+    },
+    {
+     "id": "weekday",
+     "label": "Weekdays only"
+    }
+   ],
+   "place_label": "Whole island",
+   "sort": 2,
+   "active": false
+  },
+  {
+   "prompt": "Biking the island: best way to see it, or overrated?",
+   "options": [
+    {
+     "id": "best",
+     "label": "Best way"
+    },
+    {
+     "id": "overrated",
+     "label": "Overrated"
+    },
+    {
+     "id": "heat",
+     "label": "Only when it's not too hot"
+    }
+   ],
+   "place_label": "Whole island",
+   "sort": 3,
+   "active": false
+  },
+  {
+   "prompt": "Worst time to visit Key Biscayne?",
+   "options": [
+    {
+     "id": "weekend",
+     "label": "Holiday weekends"
+    },
+    {
+     "id": "summer",
+     "label": "Summer"
+    },
+    {
+     "id": "spring",
+     "label": "Spring break"
+    },
+    {
+     "id": "none",
+     "label": "No bad time"
+    }
+   ],
+   "place_label": "Whole island",
+   "sort": 5,
+   "active": false
+  },
+  {
+   "prompt": "Bill Baggs Cape Florida or Crandon Park for a beach day?",
+   "options": [
+    {
+     "id": "crandon",
+     "label": "Crandon Park"
+    },
+    {
+     "id": "baggs",
+     "label": "Bill Baggs"
+    },
+    {
+     "id": "both",
+     "label": "Both, in one day"
+    }
+   ],
+   "place_label": "Beaches",
+   "sort": 1,
+   "active": true
+  },
+  {
+   "prompt": "Crossing the Rickenbacker Causeway on a Sunday: fine, or avoid?",
+   "options": [
+    {
+     "id": "fine",
+     "label": "Fine"
+    },
+    {
+     "id": "avoid",
+     "label": "Avoid"
+    },
+    {
+     "id": "only-before-noon",
+     "label": "Only before noon"
+    }
+   ],
+   "place_label": "Rickenbacker Causeway",
+   "sort": 2,
+   "active": true
+  },
+  {
+   "prompt": "Key Biscayne for a beach day: worth the drive from Miami?",
+   "options": [
+    {
+     "id": "worth-it",
+     "label": "Worth it"
+    },
+    {
+     "id": "skip-it",
+     "label": "Skip it"
+    },
+    {
+     "id": "weekdays-only",
+     "label": "Weekdays only"
+    }
+   ],
+   "place_label": "Whole island",
+   "sort": 3,
+   "active": true
+  },
+  {
+   "prompt": "Biking Key Biscayne: best way to see it, or overrated?",
+   "options": [
+    {
+     "id": "best-way",
+     "label": "Best way"
+    },
+    {
+     "id": "overrated",
+     "label": "Overrated"
+    },
+    {
+     "id": "only-to-the-lighthouse",
+     "label": "Only to the lighthouse"
+    }
+   ],
+   "place_label": "Whole island",
+   "sort": 4,
+   "active": true
+  },
+  {
+   "prompt": "Best time to visit Key Biscayne?",
+   "options": [
+    {
+     "id": "spring",
+     "label": "Spring"
+    },
+    {
+     "id": "summer",
+     "label": "Summer"
+    },
+    {
+     "id": "fall",
+     "label": "Fall"
+    },
+    {
+     "id": "winter",
+     "label": "Winter"
+    }
+   ],
+   "place_label": "Whole city",
+   "sort": 5,
+   "active": true
+  }
+ ],
+ "city_events": [
+  {
+   "name": "Sargassum season",
+   "blurb": "Miami-Dade's sargassum season runs from March through October, and the island's ocean-facing beaches can get heavy seaweed in some years.",
+   "kind": "weather",
+   "severity": "busy",
+   "start_month": 3,
+   "end_month": 10,
+   "status": "approved",
+   "source": "https://www.miamidade.gov/global/recreation/sargassum.page"
+  },
+  {
+   "name": "Rainy season",
+   "blurb": "From mid-May to mid-October, expect heat, humidity and frequent thunderstorms. Plan beach time for the morning.",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 5,
+   "end_month": 10,
+   "status": "approved",
+   "source": "https://www.weather.gov/media/mfl/news/RainySeasonOutlook2025.pdf"
+  },
+  {
+   "name": "Summer weekend crowds",
+   "blurb": "On summer weekends, Crandon Park's 3,000 parking spaces fill up and shaded picnic tables go early. Come on a weekday or arrive early.",
+   "kind": "season",
+   "severity": "busy",
+   "start_month": 6,
+   "end_month": 8,
+   "status": "approved",
+   "source": "https://www.floridarambler.com/florida-best-beaches/crandon-park-beach/"
+  },
+  {
+   "name": "Fourth of July Parade",
+   "blurb": "Held every July 4 since 1959, the morning parade runs along Crandon Boulevard, the island's main road.",
+   "kind": "holiday",
+   "severity": "busy",
+   "start_month": 7,
+   "end_month": 7,
+   "status": "approved",
+   "source": "https://miamiandbeaches.com/event/key-biscayne-fourth-of-july-parade/8801"
+  },
+  {
+   "name": "Hurricane season peak",
+   "blurb": "Most Atlantic hurricane activity comes between mid-August and mid-October. The Rickenbacker Causeway is the only road on and off the island.",
+   "kind": "weather",
+   "severity": "avoid",
+   "start_month": 8,
+   "end_month": 10,
+   "status": "approved",
+   "source": "https://www.nhc.noaa.gov/climo/"
+  },
+  {
+   "name": "Winter weekdays",
+   "blurb": "Crandon Park Beach is much less crowded in winter, and on weekdays you may have long stretches of sand nearly to yourself.",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 12,
+   "end_month": 3,
+   "status": "approved",
+   "source": "https://www.floridarambler.com/florida-best-beaches/crandon-park-beach/"
+  }
+ ],
+ "places": [
+  {
+   "name": "Bill Baggs Cape Florida",
+   "category": "beach",
+   "neighborhood": "Key Biscayne",
+   "lat": 25.6665,
+   "lng": -80.1559
+  },
+  {
+   "name": "Crandon Park",
+   "category": "beach",
+   "neighborhood": "Key Biscayne",
+   "lat": 25.715,
+   "lng": -80.156
+  }
+ ],
+ "places_catalog_rows": 705
+}

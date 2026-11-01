@@ -271,7 +271,8 @@ await test("Home and /cities/: Organization (name, url, logo) + WebSite; cities 
     assert(site && site.name && isSite(site.url), `${p.file}: WebSite needs name and url`);
   }
   const list = cities.nodes.find(n => n["@type"] === "ItemList");
-  const dbCities = await (await fetch(`${SB}/rest/v1/cities?select=slug`, { headers: { apikey: KEY } })).json();
+  let REMOVED = {}; try { REMOVED = JSON.parse(await readFile("data/removed-cities.json", "utf8")); } catch {}
+  const dbCities = (await (await fetch(`${SB}/rest/v1/cities?select=slug`, { headers: { apikey: KEY } })).json()).filter(c => !REMOVED[c.slug]);
   assert(list && list.itemListElement.length === dbCities.length, `${cities.file}: ItemList has ${list && list.itemListElement.length} cities, database has ${dbCities.length}`);
 });
 

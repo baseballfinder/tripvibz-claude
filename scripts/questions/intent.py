@@ -27,7 +27,7 @@ CITY_WORDS = {
  "asheville":"asheville nc north carolina","austin":"austin tx texas","charleston":"charleston sc south carolina",
  "chicago":"chicago il illinois","daytona-beach":"daytona beach fl florida","denver":"denver co colorado",
  "fort-lauderdale":"fort lauderdale ft fl florida","fort-myers":"fort myers fl florida","honolulu":"hawaii oahu honolulu hi",
- "key-biscayne":"key biscayne fl florida miami","key-west":"key west fl florida keys","knoxville":"knoxville tn tennessee",
+"key-west":"key west fl florida keys","knoxville":"knoxville tn tennessee",
  "las-vegas":"las vegas nv nevada","miami":"miami fl florida","miami-beach":"miami beach fl florida","naples":"naples fl florida",
  "nashville":"nashville tn tennessee","new-orleans":"new orleans nola la louisiana","new-york":"new york nyc ny city manhattan",
  "orlando":"orlando fl florida","san-diego":"san diego ca california","san-francisco":"san francisco sf ca california",
