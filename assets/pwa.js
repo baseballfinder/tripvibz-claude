@@ -35,7 +35,9 @@
   // 3. The offer. Only on browsing pages (not mid-task on add/vote/thread), only
   //    from the second visit, and not again for a month after "Not now".
   s.visits = (s.visits || 0) + 1; save(s);
-  var browsing = !/^\/(admin|t\/)|\/(add|vote)\/?$/.test(location.pathname);
+  var path = location.pathname;
+  var midTask = /^\/(admin|t\/)/.test(path) || /\/(add|vote)\/?$/.test(path);   // admin, a take's page, add, vote
+  var browsing = !midTask;
   var deferred = null;
   window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); deferred = e; schedule(); });
   window.addEventListener("appinstalled", function () { var t = state(); t.installed = true; save(t); hide(); track("pwa_installed"); });
@@ -47,7 +49,6 @@
   }
   var timer = null;
   function schedule() { if (timer || !eligible()) return; timer = setTimeout(show, SHOW_AFTER_MS); }
-  function esc(x) { return String(x).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function show() {
     if (!eligible()) return;
     var box = document.createElement("div");
