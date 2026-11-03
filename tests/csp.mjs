@@ -38,7 +38,9 @@ const PAGES = ["/", "/cities/", "/how-we-verify-locals/", `/${slug}/`, `/${slug}
   `/${slug}/add/`, `/${slug}/vote/`, "/t/00000000-0000-0000-0000-000000000000", "/admin.html", "/about/", "/privacy/", "/terms/", "/does-not-exist"];
 
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+// Service workers are blocked here: a worker-served page would skip the route below and silently
+// load without the policy (tests/security.mjs checks the CSP allows the worker; e2e exercises it).
+const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
 let failures = 0;
 for (const path of PAGES) {
   const page = await ctx.newPage();

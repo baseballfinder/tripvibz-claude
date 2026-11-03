@@ -19,7 +19,7 @@
    still ships to the browser.
    ========================================================================== */
 
-import { readdir, readFile, writeFile, mkdir, rm } from "node:fs/promises";
+import { readdir, readFile, writeFile, mkdir, rm, stat } from "node:fs/promises";
 import { join, extname, dirname } from "node:path";
 import { createHash } from "node:crypto";
 
@@ -866,7 +866,11 @@ function collectInlineHashes(html) {
   }
 }
 
-const ICON_LINKS = `<link rel="icon" href="/favicon.ico" sizes="48x48"><link rel="icon" href="/assets/brand/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><meta name="theme-color" content="#ff5630">`;
+const ICON_LINKS = `<link rel="icon" href="/favicon.ico" sizes="48x48"><link rel="icon" href="/assets/brand/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><meta name="theme-color" content="#ff5630">`
+  // Installed from the home screen, the site opens full-screen like an app (site.webmanifest; these are the iOS equivalents).
+  + `<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="TripVibz"><meta name="apple-mobile-web-app-status-bar-style" content="default">`;
+// Service-worker registration + the "add to home screen" offer (assets/pwa.js), deferred, on every page.
+const PWA_SCRIPT = `<script src="/assets/pwa.js" defer></script>`;
 
 // One footer on every public page (About, Privacy, Terms, contact). Pages that
 // carried their own footer get this one instead; the admin page gets none.
@@ -882,6 +886,7 @@ async function emit(path, html) {
   }
   if (typeof html === "string" && path.endsWith(".html")) {
     if (!html.includes('rel="icon"')) html = html.replace(/<\/head>/i, () => ICON_LINKS + "</head>");
+    if (!html.includes("/assets/pwa.js") && !/(^|\/)admin\.html$/.test(path)) html = html.replace(/<\/head>/i, () => PWA_SCRIPT + "</head>");
     // Photo fallback handler first in <head>, before any <img> can fail.
     if (!html.includes(IMG_ERROR_SCRIPT)) html = /<meta charset=[^>]*>/i.test(html)
       ? html.replace(/<meta charset=[^>]*>/i, m => m + IMG_ERROR_SCRIPT)
@@ -1143,6 +1148,12 @@ ${secLines}
   ! Cache-Control
   Cache-Control: public, max-age=31536000, immutable
 
+# The service worker must never be served stale: a deploy is only live for
+# installed copies once the browser sees the new sw.js.
+/sw.js
+  ! Cache-Control
+  Cache-Control: no-cache
+
 /*.webp
   ! Cache-Control
   Cache-Control: public, max-age=604800
@@ -1153,6 +1164,25 @@ ${secLines}
 `);
 
 await emit("sitemap.xml", sitemap);
+
+/* ---------------- service worker (lib/sw.js) ----------------
+   BUILD is the deploy's commit (Cloudflare Pages / GitHub Actions set it), so
+   every deploy installs a fresh worker and drops the previous build's caches.
+   SHELL is what gets saved up front: the home and cities pages, the offline
+   page, the manifest, the scripts (with their content hashes) and the fonts. */
+const BUILD = (process.env.CF_PAGES_COMMIT_SHA || process.env.GITHUB_SHA || "").slice(0, 12) || `dev-${Date.now().toString(36)}`;
+const SHELL = [
+  "/", "/cities/", "/offline/", "/site.webmanifest", "/assets/brand/icon-192.png", "/assets/brand/mark.svg",
+  ...["tv.js", "v2.js", "supabase.js", "analytics.js", "pwa.js"].map(f => `/assets/${f}?v=${ASSET_VERSION[f]}`),
+  ...FONTS.map(f => f.url)
+];
+for (const u of SHELL) {
+  const file = u === "/" ? "index.html" : u.replace(/\?.*$/, "").replace(/\/$/, "/index.html").replace(/^\//, "");
+  await stat(join(OUT, file)).catch(() => { throw new Error(`sw.js precache: ${u} is not in dist (${file})`); });
+}
+const swSrc = (await readFile("lib/sw.js", "utf8")).replaceAll("__BUILD__", BUILD).replaceAll("__SHELL__", JSON.stringify(SHELL));
+await emit("sw.js", (await transform(swSrc, { loader: "js", minify: true, target: "es2020" })).code);
+console.log(`  service worker: build ${BUILD}, ${SHELL.length} shell files`);
 
 await emit("robots.txt", `User-agent: *
 Allow: /

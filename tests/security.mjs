@@ -300,6 +300,14 @@ await test("Every SECURITY DEFINER function in a migration pins search_path (no 
 });
 
 for (const r of results) console.log(r.join("  "));
+await test("CSP lets the service worker run (worker-src or script-src allows 'self') and nothing else", async () => {
+  const { CSP } = await import("../functions/_security.js");
+  const dir = name => (CSP.split(";").map(x => x.trim()).find(x => x.startsWith(name + " ")) || "").slice(name.length + 1);
+  const worker = dir("worker-src") || dir("child-src") || dir("script-src");
+  assert(/(^|\s)'self'(\s|$)/.test(worker), "the directive that governs workers must allow 'self' or sw.js cannot register");
+  assert(!/worker-src[^;]*(\*|https?:)/.test(CSP), "worker-src must not allow remote workers");
+});
+
 const failed = results.filter(r => r[0] === "FAIL");
 console.log(`\n${results.length - failed.length}/${results.length} passed`);
 process.exit(failed.length ? 1 : 0);

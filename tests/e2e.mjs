@@ -101,7 +101,9 @@ const api = async path => (await fetch(`${SB}/rest/v1/${path}`, { headers: { api
 const server = BASE ? null : await serve();
 BASE = BASE || "http://localhost:8090";
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+// Service workers stay out of the main context so route() keeps seeing every request; the PWA test below
+// opens its own context with the worker allowed.
+const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
 await intercept(ctx);
 const page = await ctx.newPage();
 const errors = [];
@@ -382,7 +384,7 @@ await test("Locals' top 3 restaurants: section on city pages; anonymous sees sig
   const jwt = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub: me, role: "authenticated", is_anonymous: false, exp: exp2, aud: "authenticated" })}.sig`;
   const user = { id: me, aud: "authenticated", role: "authenticated", is_anonymous: false, app_metadata: { provider: "google" }, user_metadata: { full_name: "Test Local" }, created_at: new Date().toISOString() };
   const session = { access_token: jwt, token_type: "bearer", expires_in: 3600, expires_at: exp2, refresh_token: "test2", user };
-  const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
   await ctx2.addInitScript(([k, v]) => { try { localStorage.setItem(k, v); } catch {} }, ["sb-nkxorlktzbgwqnfwmuus-auth-token", JSON.stringify(session)]);
   await ctx2.route(`${SB}/auth/v1/**`, r => r.fulfill({ json: r.request().url().includes("/user") ? user : session }));
   const before = writes.length;
@@ -462,6 +464,56 @@ await test("Thread: split bar, replies, typed reply", async () => {
   await page.click("#send");
   await page.waitForTimeout(800);
   assert(writes.some(w => w.table === "comments" && w.body.kind === "disagree"), "reply not sent");
+});
+
+await test("Installable (PWA): the service worker registers and saves the shell, a visited city page opens offline, unvisited pages get the offline page, and repeat visitors get the home-screen offer", async () => {
+  // Chromium with an iPhone user agent: Safari-style "Share → Add to Home Screen" offer (Chrome's own prompt never fires headless).
+  const ctx3 = await browser.newContext({ viewport: { width: 390, height: 844 },
+    userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (Version/17.5 Mobile/15E148 Safari/604.1" });
+  const errs3 = [];
+  try {
+    const p3 = await ctx3.newPage();
+    p3.on("pageerror", e => errs3.push(e.message));
+    await p3.goto(BASE + "/", { waitUntil: "networkidle" });
+    const reg = await p3.evaluate(() => Promise.race([
+      navigator.serviceWorker.ready.then(r => ({ scope: r.scope, active: !!r.active })),
+      new Promise(res => setTimeout(() => res({ timeout: true }), 10000))
+    ]));
+    assert(reg.active && /\/$/.test(reg.scope), `service worker did not register: ${JSON.stringify(reg)}`);
+    // Precache lands shortly after install.
+    let keys = [];
+    for (let i = 0; i < 20 && !keys.some(k => k.startsWith("tv-shell-")); i++) { await p3.waitForTimeout(250); keys = await p3.evaluate(() => caches.keys()); }
+    assert(keys.some(k => k.startsWith("tv-shell-")), `shell cache missing: ${keys.join(", ")}`);
+    const shell = await p3.evaluate(async () => { const c = await caches.open((await caches.keys()).find(k => k.startsWith("tv-shell-"))); return (await c.keys()).map(r => new URL(r.url).pathname); });
+    for (const want of ["/", "/offline/", "/cities/", "/assets/tv.js", "/site.webmanifest"]) assert(shell.includes(want), `shell cache lacks ${want}: ${shell.join(", ")}`);
+    assert(await p3.locator(".a2hs").count() === 0, "first visit must not show the home-screen offer");
+    // Second visit: the offer appears, says how on iOS, and "Not now" keeps it away.
+    await p3.goto(BASE + "/miami/", { waitUntil: "networkidle" });
+    await p3.waitForSelector(".a2hs.in", { timeout: 8000 });
+    assert(/Add to Home Screen/.test(await p3.textContent(".a2hs")), "iOS offer should explain Share → Add to Home Screen");
+    assert(await p3.locator(".a2hs .a2hs-add").count() === 0, "iOS has no install prompt, so no Add button");
+    await p3.click(".a2hs .a2hs-x"); await p3.waitForTimeout(400);
+    assert(await p3.locator(".a2hs").count() === 0, "Not now should close the offer");
+    assert((await p3.evaluate(() => JSON.parse(localStorage.getItem("tv.a2hs")).dismissed)) > 0, "dismissal should be remembered");
+    await p3.reload({ waitUntil: "networkidle" }); await p3.waitForTimeout(4500);
+    assert(await p3.locator(".a2hs").count() === 0, "dismissed offer came back on the next visit");
+    // Offline: the city page just visited still opens; one never visited gets the offline page; back online, live again.
+    await ctx3.setOffline(true);
+    await p3.goto(BASE + "/miami/", { waitUntil: "domcontentloaded" }); await p3.waitForTimeout(500);
+    assert(/What locals say about Miami/.test(await p3.textContent("h1")), "visited city page should open from the cache when offline");
+    await p3.goto(BASE + "/asheville/", { waitUntil: "domcontentloaded" }); await p3.waitForTimeout(500);
+    assert(/You're offline/.test(await p3.textContent("h1")), "an unvisited page should show the offline page");
+    await ctx3.setOffline(false);
+    await p3.goto(BASE + "/asheville/", { waitUntil: "domcontentloaded" }); await p3.waitForTimeout(500);
+    assert(/What locals say about Asheville/.test(await p3.textContent("h1")), "back online, the live page should load");
+    // Standalone (opened from the home screen): no offer, ever.
+    const p4 = await ctx3.newPage();
+    await p4.addInitScript(() => { Object.defineProperty(navigator, "standalone", { get: () => true }); });
+    await p4.evaluate(() => {}).catch(() => {});
+    await p4.goto(BASE + "/cities/", { waitUntil: "networkidle" }); await p4.waitForTimeout(4500);
+    assert(await p4.locator(".a2hs").count() === 0, "installed app must not be asked to install");
+    assert(errs3.length === 0, "JS errors in the PWA context: " + errs3.join(" | "));
+  } finally { await ctx3.close(); }
 });
 
 await test("No JavaScript errors on any page", async () => {

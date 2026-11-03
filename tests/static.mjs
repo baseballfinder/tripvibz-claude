@@ -8,6 +8,14 @@ const SB = "https://nkxorlktzbgwqnfwmuus.supabase.co";
 const KEY = "sb_publishable_5UOevsS8KmWWGrQYNWsabg_0sVOIPmB";
 const api = async p => (await fetch(`${SB}/rest/v1/${p}`, { headers: { apikey: KEY } })).json();
 const exists = async p => { try { await stat(p); return true; } catch { return false; } };
+async function files(dir, pred = () => true) {
+  const out = [];
+  for (const e of await readdir(dir, { withFileTypes: true })) {
+    const p = join(dir, e.name);
+    if (e.isDirectory()) out.push(...await files(p, pred)); else if (pred(p)) out.push(p);
+  }
+  return out;
+}
 
 const results = [];
 async function test(name, fn) {
@@ -355,6 +363,40 @@ await test("Logo files present (favicon, app icons, manifest)", async () => {
   for (const p of ["favicon.ico", "site.webmanifest", "assets/brand/favicon.svg", "assets/brand/apple-touch-icon.png",
     "assets/brand/icon-192.png", "assets/brand/icon-512.png", "assets/brand/logo.svg"])
     assert(await exists(join("dist", p)), `dist/${p} missing`);
+});
+
+await test("Installable (PWA): manifest, service worker with a build id and an existing shell, offline page, home-screen tags, pwa.js on every page", async () => {
+  const m = JSON.parse(await readFile("dist/site.webmanifest", "utf8"));
+  assert(m.id === "/" && m.scope === "/" && /^\//.test(m.start_url) && m.display === "standalone", "manifest needs id, scope, start_url and display=standalone");
+  assert(m.name && m.short_name && m.theme_color && m.background_color, "manifest needs name, short_name, theme_color, background_color");
+  for (const size of ["192x192", "512x512"]) assert(m.icons.some(i => i.sizes === size && !i.purpose), `manifest needs a ${size} any-purpose icon`);
+  assert(m.icons.some(i => i.purpose === "maskable" && /maskable/.test(i.src)), "manifest needs a dedicated maskable icon (the full-bleed one gets cropped)");
+  for (const i of m.icons) assert(await exists(join("dist", i.src)), `manifest icon ${i.src} missing from dist`);
+  const sw = await readFile("dist/sw.js", "utf8");
+  const build = (sw.match(/BUILD="([^"]+)"/) || [])[1];
+  assert(build && build !== "__BUILD__", "sw.js must carry the build id (lib/sw.js __BUILD__ was not filled in)");
+  const shell = JSON.parse((sw.match(/SHELL=(\[[^\]]*\])/) || [])[1] || "null");
+  assert(Array.isArray(shell) && shell.includes("/") && shell.includes("/offline/") && shell.some(u => /\/assets\/tv\.js\?v=/.test(u)) && shell.some(u => /\/assets\/fonts\//.test(u)),
+    "sw.js shell must precache the home page, the offline page, the versioned scripts and the fonts");
+  for (const u of shell) {
+    const file = u === "/" ? "index.html" : u.replace(/\?.*$/, "").replace(/\/$/, "/index.html").replace(/^\//, "");
+    assert(await exists(join("dist", file)), `sw.js precaches ${u} but dist/${file} does not exist (install would fail)`);
+  }
+  const swSrc = await readFile("lib/sw.js", "utf8");   // the minifier rewrites the conditions, so read the intent from the source
+  assert(/url\.origin !== self\.location\.origin\) return;/.test(swSrc), "lib/sw.js must leave cross-origin requests (Supabase, analytics) alone");
+  assert(/url\.pathname\.startsWith\("\/api\/"\)\) return;/.test(swSrc), "lib/sw.js must leave /api/* alone");
+  assert(/req\.method !== "GET"\) return;/.test(swSrc), "lib/sw.js must only ever handle GET");
+  assert(/\/sw\.js\n\s+! Cache-Control\n\s+Cache-Control: no-cache/.test(await readFile("dist/_headers", "utf8")), "_headers must serve /sw.js with no-cache so deploys reach installed copies");
+  const off = await readFile("dist/offline/index.html", "utf8");
+  assert(/noindex/.test(off) && /You're offline/.test(off), "offline page must be noindex and say so");
+  assert(!(await readFile("dist/sitemap.xml", "utf8")).includes("/offline/"), "offline page must not be in the sitemap");
+  const pages = (await files("dist", p => p.endsWith(".html"))).filter(p => !/\/admin\.html$/.test(p));
+  for (const f of pages) {
+    const h = await readFile(f, "utf8");
+    assert(/<script src="\/assets\/pwa\.js\?v=[0-9a-f]+" defer><\/script>/.test(h), `${f}: pwa.js missing`);
+    if (h.includes('rel="manifest"')) assert(/apple-mobile-web-app-title/.test(h) && /mobile-web-app-capable/.test(h), `${f}: home-screen metas missing`);
+  }
+  assert((await readFile("dist/index.html", "utf8")).includes('rel="manifest" href="/site.webmanifest"'), "home page must link the manifest");
 });
 
 await test("Research data and scripts are not published", async () => {
