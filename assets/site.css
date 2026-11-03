@@ -150,3 +150,16 @@ footer{border-top:1px solid var(--line);padding:26px 0;font-size:13px;color:var(
 .email-msg{font-size:13px;line-height:1.45;color:#0c6b5e;margin:-2px 0 10px}
 .email-msg.err{color:#a52d15}
 .email-msg[hidden]{display:none}
+
+/* "Add to home screen" offer (assets/pwa.js): slides in under the nav, never shifts the page */
+.a2hs{position:fixed;left:12px;right:12px;top:74px;z-index:60;margin:0 auto;max-width:460px;display:flex;align-items:center;gap:12px;padding:10px 10px 10px 12px;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 32px rgba(22,20,15,.16);opacity:0;transform:translateY(-8px);transition:opacity .25s ease,transform .25s ease}
+.a2hs.in{opacity:1;transform:none}
+.a2hs img{width:44px;height:44px;border-radius:11px;flex:none}
+.a2hs-t{flex:1;min-width:0;font-size:13px;line-height:1.35;color:var(--muted)}
+.a2hs-t b{display:block;font-family:"Archivo";font-weight:800;font-size:14.5px;color:var(--ink)}
+.a2hs-t small b{display:inline;font:inherit;font-weight:800;color:var(--ink)}
+.a2hs-t small{display:block;font-size:12.5px;margin-top:2px}
+.a2hs-add{flex:none;min-height:40px;padding:0 16px;border:0;border-radius:999px;background:var(--ink);color:#fff;font:800 14px "Public Sans",sans-serif;cursor:pointer}
+.a2hs-x{flex:none;width:36px;height:36px;border:0;border-radius:50%;background:transparent;color:var(--muted);font-size:22px;line-height:1;cursor:pointer}
+.a2hs-x:hover{background:var(--sand);color:var(--ink)}
+@media (prefers-reduced-motion: reduce){.a2hs{transition:none}}

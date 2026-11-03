@@ -54,6 +54,7 @@ The database lint needs the database URL: `psql "$SUPABASE_DB_URL" -f tests/db-s
 | Domain | No links to `https://tripvibz.com` (no www), sitemap and robots on www | static |
 | Assets | Every `/assets/...` file a page references exists | static |
 | Logo | favicon.ico, SVG favicon, app icons, manifest, logo files | static |
+| Installable (PWA) | Manifest fields and icons (incl. a maskable one), `sw.js` carries the build id and every precached file exists, `/sw.js` served no-cache, offline page noindex, `pwa.js` on every page, home-screen metas; CSP lets the worker run; in a browser: worker registers and saves the shell, a visited city page opens offline, unvisited pages get the offline page, the home-screen offer shows on the second visit (iOS wording) and stays dismissed, never in standalone | static, security, e2e |
 | Old UI | No "Cosign", "Add to this article", "Add my take" or "Back to feed" anywhere; no old add button on city pages | static |
 | Private files | `data/`, `scripts/`, `tests/` are not published | static |
 | Security headers | CSP, HSTS, frame-ancestors, nosniff, Referrer-Policy, Permissions-Policy in `_headers` and on Function HTML | security |
