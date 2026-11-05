@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,follow">
-<title>Locals, settle this · TripVibz</title>
+<title>Settle this · TripVibz</title>
 <link rel="preconnect" href="https://nkxorlktzbgwqnfwmuus.supabase.co" crossorigin>
 <!--fonts-->
 <link rel="stylesheet" href="/assets/site.css">
@@ -56,7 +56,7 @@
     if (voted) {
       const share = total ? Math.round(100 * (Q.counts[Q.mine] || 0) / total) : 100;
       verdict = total <= 1 ? "You're the first to answer. Tell visitors why."
-        : share >= 50 ? `${share}% of locals agree with you.`
+        : share >= 50 ? `${share}% of people agree with you.`
         : `Only ${share}% picked that. Tell them why.`;
     }
     $("#root").innerHTML = `
@@ -64,9 +64,9 @@
         <a class="back" href="/${CITY.slug}/">← ${esc(CITY.name)}</a>
         <span style="font-size:12.5px;color:#c9c2b4;font-weight:600">Question ${idx + 1} of ${QS.length}</span>
       </div>
-      <div class="kicker" style="color:#ff9b80;margin-top:22px">Locals, settle this</div>
+      <div class="kicker" style="color:#ff9b80;margin-top:22px">Settle this</div>
       <h1>${esc(Q.prompt)}</h1>
-      <p class="lede">Visitors planning a trip see what locals picked.</p>
+      <p class="lede">People planning a trip see what you picked.</p>
       <div class="qopts" id="opts">${T2.qOptionsHtml(Q, false)}</div>
       ${voted ? `
         <div class="verdict">${esc(verdict)}</div>
@@ -76,7 +76,7 @@
         <div id="slot">${ERR ? `<div class="err">${esc(ERR)}</div>` : ""}</div>
         <div class="vbtns">
           <button class="p" id="post">Post my take</button>
-          ${nextQ ? `<a class="s" href="/${CITY.slug}/vote/?q=${nextQ.id}">Skip · next question</a>` : `<a class="s" href="/${CITY.slug}/">See what locals said</a>`}
+          ${nextQ ? `<a class="s" href="/${CITY.slug}/vote/?q=${nextQ.id}">Skip · next question</a>` : `<a class="s" href="/${CITY.slug}/">See what others said</a>`}
         </div>
         <button class="vshare" id="share-q">${T2.ICON.share}Ask your friends what they'd pick</button>` : ""}`;
     $("#opts").addEventListener("click", async e => {

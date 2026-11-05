@@ -41,7 +41,7 @@
 .stay-tips{margin-top:16px}
 .stay-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
 .stay-links .s22-link{margin:0}
-/* Live here? Add your take: one fixed bar, in reach of a thumb */
+/* Know the city? Add your take: one fixed bar, in reach of a thumb */
 .cta-bar{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:640px;margin:0 auto;padding:10px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(251,250,247,.94);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
 .cta-t{font-size:13px;color:var(--muted);line-height:1.3}
 .cta-t small{display:block;font-size:12px;color:var(--coral-ink);font-weight:700}
@@ -153,7 +153,7 @@
     return `<details class="nt" id="nt" ${open ? "open" : ""}>
       <summary><span><b>Something we didn't ask about?</b><small>Start your own topic</small></span><i aria-hidden="true"></i></summary>
       <div class="nt-body">
-      <p>Tell visitors what they get wrong in ${esc(CITY.name)}. New topics get a quick check before they go live.</p>
+      <p>Tell a friend something about ${esc(CITY.name)} we didn't ask. New topics get a quick check before they go live.</p>
       <label for="nt-topic">What's it about?</label>
       <input id="nt-topic" maxlength="80" autocapitalize="sentences" autocorrect="on" spellcheck="true" placeholder="e.g. Parking downtown, ${esc(CITY.name)} in August" value="${esc(NT.topic)}">
       <label>Your take is…</label>
@@ -201,7 +201,7 @@
         <div class="qnote">${T2.qTotal(last)} votes so far. New questions every week.</div></div>`;
     }
     const total = T2.qTotal(q);
-    return `<div class="qcard lite"><div class="qk">Locals, settle this</div>
+    return `<div class="qcard lite"><div class="qk">Settle this</div>
       <div class="qp">${esc(q.prompt)}</div>
       <div class="qopts">${T2.qOptionsHtml(q, true, base)}</div>
       <div class="qnote">One tap. ${total ? `See what ${total} other ${total === 1 ? "person" : "people"} said.` : "Be the first to answer."}</div></div>`;
@@ -210,7 +210,7 @@
   // When to go: the month strip and summary (same data as the worst-times calendar).
   function whenPanel(){
     if (!EVENTS.length) return `<div class="empty2"><b>No calendar for ${esc(CITY.name)} yet</b>We're still checking the seasons and big events here.${
-      POSTS.some(p => p.type === "worst_times") ? " Locals' “when to go” takes are under Takes." : ` Live in ${esc(CITY.name)}? Tell visitors which months to skip.`}</div>`;
+      POSTS.some(p => p.type === "worst_times") ? " “When to go” takes are under Takes." : ` Know ${esc(CITY.name)}? Tell a friend which months to skip.`}</div>`;
     return `<a class="when" href="/${esc(CITY.slug)}/worst-times-to-visit/">
       <div class="when-k">Best and worst months</div>
       <div class="when-strip">${T2.whenStrip(EVENTS)}</div>
@@ -222,7 +222,7 @@
   function stayPanel(){
     const seen = new Set();
     const tips = POSTS.map(p => T2.stay22TakeLink(p, CTX, CITY, "city_stay")).filter(h => h && !seen.has(h) && seen.add(h));
-    return `${T2.stay22MapHtml(CITY, "city_map")}${tips.length ? `<div class="stay-tips"><div class="when-k">Where locals point visitors</div><div class="stay-links">${tips.join("")}</div></div>` : ""}`;
+    return `${T2.stay22MapHtml(CITY, "city_map")}${tips.length ? `<div class="stay-tips"><div class="when-k">Where people point friends</div><div class="stay-links">${tips.join("")}</div></div>` : ""}`;
   }
 
   /* ---------- Locals' top 3 restaurants ----------
@@ -276,12 +276,12 @@
     const people = new Set(EATS.picks.map(x => x.user_id)).size;
     const list = EATS.rows.length ? `<ol class="eats-list">${EATS.rows.map(r => `<li>
       <div class="eat-main"><b class="eat-name">${esc(r.name)}</b>${r.address ? `<span class="eat-nb">${esc(r.address)}${r.neighborhood ? ", " + esc(r.neighborhood) : ""}</span>` : r.neighborhood ? `<span class="eat-nb">${esc(r.neighborhood)}</span>` : ""}
-      <div class="eat-meta">${r.picks} local${r.picks === 1 ? "" : "s"}${r.verified_picks ? ` · ${r.verified_picks} verified ✓` : ""}${r.firsts ? ` · #1 for ${r.firsts}` : ""}</div>
+      <div class="eat-meta">${r.picks} pick${r.picks === 1 ? "" : "s"}${r.verified_picks ? ` · ${r.verified_picks} verified ✓` : ""}${r.firsts ? ` · #1 for ${r.firsts}` : ""}</div>
       ${whyFor(r.restaurant_id)}${eatLinks(r)}</div></li>`).join("")}</ol>
       <div class="eats-attrib">Addresses and phone numbers from <a href="https://overturemaps.org/" target="_blank" rel="noopener">Overture Maps</a> (open data); please <a href="/about/#contact">tell us</a> if one is wrong.</div>`
-      : `<div class="empty2"><b>No picks yet</b>Live in ${esc(CITY.name)}? Be the first to name the three places you'd actually send a visitor.</div>`;
+      : `<div class="empty2"><b>No picks yet</b>Know ${esc(CITY.name)}? Be the first to name the three places you'd take a friend.</div>`;
     return `<section class="eats" id="tv-eats" aria-labelledby="eats-h">
-      <div class="eats-h"><h2 id="eats-h">Locals' top 3 restaurants</h2>${people ? `<span class="eats-n">${people} local${people === 1 ? "" : "s"} picked</span>` : ""}</div>
+      <div class="eats-h"><h2 id="eats-h">Where they'd take a friend to eat</h2>${people ? `<span class="eats-n">${people} ${people === 1 ? "person" : "people"} picked</span>` : ""}</div>
       ${list}
       ${top3Box()}
     </section>`;
@@ -290,7 +290,7 @@
   // The picker. Signed in: three name + why rows. Otherwise: a sign-in button.
   function top3Box(){
     const me = signedInUser();
-    if (!me) return `<div class="eats-add" id="top3"><button class="btn2" id="top3-signin">Live here? Add your top 3</button><span class="eats-note">Sign in and pick three; verified locals' picks lead. <a href="/how-we-verify-locals/">How badges work</a>.</span></div>`;
+    if (!me) return `<div class="eats-add" id="top3"><button class="btn2" id="top3-signin">Know it? Add your top 3</button><span class="eats-note">Sign in and pick three; verified locals' picks lead. <a href="/how-we-verify-locals/">How badges work</a>.</span></div>`;
     if (!EATS.open) {
       const mine = EATS.mine.map(x => (EATS.rests.find(r => r.id === x.restaurant_id) || {}).name).filter(Boolean);
       return `<div class="eats-add" id="top3"><button class="btn2${mine.length ? " ghost" : ""}" id="top3-open">${mine.length ? "Edit your top 3" : "Add your top 3"}</button>${
@@ -319,7 +319,7 @@
   EATS.sugg = {}; EATS.timers = {}; EATS.popular = null;
   // One suggestion row: name, address, and how well known it is (reviews, or TripVibz picks).
   const suggItem = (r, rank) => `<button type="button" data-pick="${esc(r.id)}" data-rank="${rank}"><b>${esc(r.name)}</b><small>${esc([r.address, r.locality].filter(Boolean).join(", "))}${
-    r.review_count ? ` · ${Number(r.review_count).toLocaleString()} reviews` : r.picks ? ` · picked by ${r.picks} local${r.picks === 1 ? "" : "s"}` : ""}${r.status === "closed" ? " · may be closed" : ""}</small></button>`;
+    r.review_count ? ` · ${Number(r.review_count).toLocaleString()} reviews` : r.picks ? ` · picked by ${r.picks} ${r.picks === 1 ? "person" : "people"}` : ""}${r.status === "closed" ? " · may be closed" : ""}</small></button>`;
   // Before typing: the city's best-known places (popular_places), one tap away.
   async function showPopular(rank){
     const box = $(`#top3-s${rank}`); if (!box) return;
@@ -412,8 +412,8 @@
     const img = HERO_HTML || `<img class="city-hero band" ${TV.cityPhotoAttrs(CITY, "(max-width: 640px) calc(100vw - 32px), 608px")} alt="${esc(CITY.name)}" width="800" height="400" fetchpriority="high" decoding="async">`;
     return `<div class="hero-band">${img}<div class="hero-txt">
         <div class="kicker">${esc(CITY.name)}${CITY.state ? ", " + esc(CITY.state) : ""}</div>
-        <h1>What locals say about ${esc(CITY.name)}</h1>
-        <div class="hero-n">${n ? `${n} take${n === 1 ? "" : "s"} from people who live here` : "Be the first local to weigh in"}</div></div></div>
+        <h1>Where would you take a friend in ${esc(CITY.name)}?</h1>
+        <div class="hero-n">${n ? `${n} take${n === 1 ? "" : "s"} from people who know it` : "Be the first to weigh in"}</div></div></div>
       ${PHOTO_CREDIT[CITY.slug] ? `<a class="photo-credit" href="${PHOTO_CREDIT[CITY.slug][1]}" target="_blank" rel="noopener">Photo: ${esc(PHOTO_CREDIT[CITY.slug][0])}</a>` : ""}`;
   }
 
@@ -434,7 +434,7 @@
       <div class="seg" role="group" aria-label="Sort" style="margin:2px 0 12px">${[["top","Top"],["hot","Hot"],["new","New"]].map(([id,l]) => `<button data-sort="${id}" aria-pressed="${SORT===id}">${l}</button>`).join("")}</div>` : ""}
       <div class="feed" id="feed">${list.length ? list.map(p => T2.takeHtml(p, CTX, { city: CITY, placement: "city_feed" })).join("") :
         POSTS.length ? `<div class="empty2"><b>Nothing in this section yet</b>Try “Everything”, or add one below.</div>` :
-        `<div class="empty2"><b>No takes yet</b>Live in ${esc(CITY.name)}? Tap an answer in the question above, or start your own topic below. The first 10 signed-in locals become founding locals.</div>`}</div>
+        `<div class="empty2"><b>No takes yet</b>Know ${esc(CITY.name)}? Tap an answer in the question above, or start your own topic below. The first 10 signed-in locals become founding locals.</div>`}</div>
       ${topicBox()}
       ${POSTS.length ? `<div class="more-topics">By topic: ${topics.filter(t => POSTS.some(p => p.type === t[0])).map(t => `<a href="/${esc(CITY.slug)}/${t[1]}/">${t[2]}</a>`).join(" · ")}</div>` : ""}`;
   }
@@ -443,7 +443,7 @@
   function ctaBar(){
     const taken = CTX ? CTX.founderCount : 0, left = taken > 0 && taken < 10 ? 10 - taken : 0;
     const eat = TAB === "eat";
-    return `<div class="cta-bar"><div class="cta-t">Live here?${!eat && left ? `<small>${left} founding local spot${left === 1 ? "" : "s"} left</small>` : ""}</div>${
+    return `<div class="cta-bar"><div class="cta-t">Know ${esc(CITY.name)}?${!eat && left ? `<small>${left} founding local spot${left === 1 ? "" : "s"} left</small>` : ""}</div>${
       eat ? `<a class="cta-btn" href="#top3">Add your top 3</a>` : `<a class="cta-btn" href="/${esc(CITY.slug)}/add/">Add your take</a>`}</div>`;
   }
 
@@ -533,7 +533,7 @@
     if (!SLUG) { $("#city").innerHTML = `<div class="state"><b>No city</b><a href="/cities/">Pick a city</a></div>`; return; }
     CITY = await T2.loadCity(SLUG);
     if (!CITY) { $("#city").innerHTML = `<div class="state"><b>City not found</b><a href="/cities/">← All cities</a></div>`; return; }
-    document.title = `What locals say about ${CITY.name} · TripVibz`;
+    document.title = `Where would you take a friend in ${CITY.name}? · TripVibz`;
     await auth.ensure();
     await T2.finishClaim();
     POSTS = await T2.loadPosts(CITY.id, ["what_not_to_do","worst_times","hidden_gem","take"]);

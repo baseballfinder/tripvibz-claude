@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>TripVibz — what locals know that travel sites don't</title>
-<meta name="description" content="Locals tell visitors what to avoid, when not to come, and what the guidebooks get wrong. One sentence at a time." />
+<title>TripVibz — where would you take a friend?</title>
+<meta name="description" content="People who know a city say where they'd take a friend, what to skip and when to come. One sentence at a time." />
 <link rel="preconnect" href="https://nkxorlktzbgwqnfwmuus.supabase.co" crossorigin>
 <!--fonts-->
 <link rel="stylesheet" href="/assets/site.css">
@@ -104,10 +104,10 @@
 <main>
   <div class="wrap">
     <section class="hero">
-      <div class="eyebrow">What locals know that travel sites don't</div>
-      <h1>The local take on every city.</h1>
-      <p class="lede">Locals tell you what to skip, when not to come, and what's actually
-        worth it. Live somewhere? One sentence is enough.</p>
+      <div class="eyebrow">Ask someone who knows</div>
+      <h1>Where would you take a friend?</h1>
+      <p class="lede">Where people who know a city would take you, what they'd skip, and
+        when they'd come. Know a city? One sentence is enough.</p>
     </section>
 
     <div class="stats" id="stats"></div>
@@ -120,7 +120,7 @@
       <div class="recent" id="recent"></div>
     </div>
 
-    <p class="visitor">Don't see your city? <a href="/cities/#request">Ask for it →</a><br>Just visiting somewhere? <a href="/cities/">Browse what locals said →</a></p>
+    <p class="visitor">Don't see your city? <a href="/cities/#request">Ask for it →</a><br>Just visiting somewhere? <a href="/cities/">See where people would take you →</a></p>
   </div>
 </main>
 
@@ -138,10 +138,10 @@
   const KINDS = {
     what_not_to_do: {
       short:"What not to do", hint:"Mistakes visitors make",
-      ask:c=>`What do tourists do in ${c} that drives you crazy?`,
+      ask:c=>`What would you tell a friend to skip in ${c}?`,
       egs:["Standing in the bike lane to take photos. It's a road, not a viewing platform.",
            "Renting a car. You'll pay $45 a night to park it and never once need it.",
-           "Wearing beachwear inland. Locals cover up the second they leave the sand."]
+           "Wearing beachwear inland. Cover up once you leave the sand."]
     },
     worst_times: {
       short:"Worst times", hint:"When not to come",
@@ -150,8 +150,8 @@
            "Race weekend — the downtown grid shuts and nothing moves for three days."]
     },
     hidden_gem: {
-      short:"What locals do", hint:"The stuff nobody lists",
-      ask:c=>`What do locals do that visitors never find?`,
+      short:"What locals do", hint:"Where you'd take a friend",
+      ask:c=>`Where would you take a friend in ${c}?`,
       egs:["The stretch of park behind the marina — same water view, none of the crowd.",
            "Dinner starts at 9 here. Show up at 6 and you'll eat alone in an empty room."]
     }
@@ -172,7 +172,7 @@
       return;
     }
     $("#stats").innerHTML = `
-      <div class="stat"><b>${TOTALS.takes}</b><span>local takes</span></div>
+      <div class="stat"><b>${TOTALS.takes}</b><span>takes</span></div>
       <div class="stat"><b>${TOTALS.locals}</b><span>contributors</span></div>
       <div class="stat"><b>${TOTALS.cities}</b><span>cities open</span></div>`;
   }

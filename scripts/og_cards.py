@@ -9,7 +9,7 @@ og:image at its card; functions/t/[id].js does the same for shared takes.
   <slug>-what-not-to-do.jpg        topic pages, one per city and topic
   <slug>-worst-times-to-visit.jpg
   <slug>-what-locals-do.jpg
-  <slug>-add.jpg                   "What do tourists get wrong here?" (the post page)
+  <slug>-add.jpg                   "A friend is visiting. Where do you take them?" (the post page)
   <slug>-take.jpg                  a shared take: "A <City> local says…" True / Nope
   home.jpg                         homepage
   cities.jpg                       the Cities page
@@ -33,8 +33,8 @@ JPEG = dict(quality=80, optimize=True, progressive=True)
 
 THEMES = {
     "what-not-to-do": ("What not to do in {c}", "The mistakes visitors make, voted on by people who live there."),
-    "worst-times-to-visit": ("Worst times to visit {c}", "The weeks to skip, and when to come instead. From locals."),
-    "what-locals-do": ("What locals actually do in {c}", "Where people who live here actually go. Never on the top-10 lists."),
+    "worst-times-to-visit": ("Worst times to visit {c}", "The weeks to skip, and when to come instead."),
+    "what-locals-do": ("What locals actually do in {c}", "Where people who know it take their friends. Never on the top-10 lists."),
 }
 # Homepage mosaic: cities whose photos read instantly at thumbnail size.
 HOME_CITIES = ["key-west", "new-orleans", "nashville", "chicago"]
@@ -157,10 +157,10 @@ def card_theme(city, slug, pb):
 
 def card_add(city, pb):
     base = photo_base(pb); d = ImageDraw.Draw(base)
-    kicker(d, f"LIVE IN {city['name'].upper()}?"); brand(base, d)
-    y = headline(d, "What do tourists get wrong here?", PAD + 90, lines=3, sizes=(88, 80, 72, 64))
-    subline(d, "Say it in one sentence. Locals vote it True or Nope.", y + 14)
-    chips(d, ["Never ___ because ___", "Skip ___. Do ___ instead."])
+    kicker(d, f"KNOW {city['name'].upper()}?"); brand(base, d)
+    y = headline(d, "A friend is visiting. Where do you take them?", PAD + 90, lines=3, sizes=(88, 80, 72, 64))
+    subline(d, "Say it in one sentence. Others vote it True or Nope.", y + 14)
+    chips(d, ["I'd take them to ___", "Skip ___. Go to ___ instead."])
     return base
 
 
@@ -169,7 +169,7 @@ def card_take(city, pb):
     kicker(d, f"A {city['name'].upper()} LOCAL SAYS"); brand(base, d)
     d.text((PAD - 4, PAD + 50), "“", font=font(190, 900), fill=CORAL)
     y = headline(d, "Is this true, or nope?", PAD + 190, lines=2, sizes=(84, 76, 70))
-    subline(d, "Locals are voting. Tap to see the take and add yours.", y + 10)
+    subline(d, "People are voting. Tap to see the take and add yours.", y + 10)
     chips(d, ["True", "Nope"], solid={"True": WHITE, "Nope": CORAL}, size=32)
     return base
 
@@ -195,7 +195,7 @@ def card_home(cities, photos, leads):
     mark = Image.open(MARK).convert("RGBA").resize((60, 60), Image.LANCZOS)
     base.paste(mark, (PAD, PAD - 6), mark)
     d.text((PAD + 74, PAD + 24), "TripVibz", font=font(34, 900), fill=WHITE, anchor="lm")
-    y = headline(d, "The local take on every city.", PAD + 96, max_w=600 - PAD - 30, lines=4, sizes=(64, 58, 54, 50))
+    y = headline(d, "Where would you take a friend?", PAD + 96, max_w=600 - PAD - 30, lines=4, sizes=(64, 58, 54, 50))
     # Two real lead questions as poll chips.
     qf = font(24, 700)
     y = max(y + 18, 420)
@@ -205,7 +205,7 @@ def card_home(cities, photos, leads):
         d.rounded_rectangle([PAD, y, PAD + w + 36, y + 48], radius=24, outline=WHITE, width=2)
         d.text((PAD + 18, y + 24), t, font=qf, fill=WHITE, anchor="lm")
         y += 60
-    d.text((PAD, H - 34), "Locals vote. Visitors stop guessing.", font=font(22, 700), fill=CORAL, anchor="ls")
+    d.text((PAD, H - 34), "Ask someone who knows.", font=font(22, 700), fill=CORAL, anchor="ls")
     return base
 
 
@@ -219,7 +219,7 @@ def card_cities(cities, photos):
     base = shade(base, left=225, right=140)
     d = ImageDraw.Draw(base)
     kicker(d, f"{len(cities)} CITIES AND COUNTING"); brand(base, d)
-    y = headline(d, "Pick your city. Settle what tourists get wrong.", PAD + 90, lines=3, sizes=(76, 70, 64))
+    y = headline(d, "Pick your city. Where would you take a friend?", PAD + 90, lines=3, sizes=(76, 70, 64))
     subline(d, "Don't see yours? One tap to ask for it.", y + 14)
     return base
 

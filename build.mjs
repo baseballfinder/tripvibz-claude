@@ -65,7 +65,7 @@ const THEMES = {
     nav: "What not to do",
     chip: "What not to do",
     title: c => `What not to do in ${c}`,
-    lede: c => `The mistakes visitors make in ${c}, according to people who live there. Ranked by how many locals say it's true.`,
+    lede: c => `What to skip in ${c}, from people who know it well. Ranked by how many people say it's true.`,
     desc: c => `Local advice on what not to do in ${c} — the mistakes visitors make, written and ranked by people who live there.`
   },
   worst_times: {
@@ -73,15 +73,15 @@ const THEMES = {
     nav: "Worst times to visit",
     chip: "Worst times",
     title: c => `Worst times to visit ${c}`,
-    lede: c => `The weeks, days and hours locals would tell you to avoid in ${c} — and what to do instead.`,
-    desc: c => `The worst times to visit ${c}, month by month — festivals, seasons and weeks locals say to avoid.`
+    lede: c => `The weeks, days and hours people who know ${c} would steer a friend away from — and what to do instead.`,
+    desc: c => `The worst times to visit ${c}, month by month — festivals, seasons and weeks to avoid.`
   },
   hidden_gem: {
     slug: "what-locals-do",
     nav: "What locals actually do",
     chip: "What locals do",
     title: c => `What locals actually do in ${c}`,
-    lede: c => `The parts of ${c} that don't show up on the top-ten lists, from people who never left.`,
+    lede: c => `Where people who know ${c} take their friends — the parts that don't show up on the top-ten lists.`,
     desc: c => `What locals actually do in ${c} — the spots and habits that never make the top-ten lists.`
   }
 };
@@ -245,8 +245,8 @@ const shareCard = city => {
   return {
     card: true,
     image: `${SITE}/assets/og/${city.slug}.jpg`,
-    title: `${c.prompt} (${city.name} locals vote)`,
-    desc: "One tap to vote, then see how many locals agree with you. Plus what tourists keep getting wrong."
+    title: `${c.prompt} (${city.name}, vote)`,
+    desc: "One tap to vote, then see how many people agree with you. Plus where people who know the city would take a friend."
   };
 };
 const photo = slug => `${SUPABASE_URL}/storage/v1/object/public/city-photos/` +
@@ -268,7 +268,7 @@ const ORG = {
   name: "TripVibz",
   url: `${SITE}/`,
   logo: `${SITE}/assets/brand/icon-512.png`,
-  description: "Local guides to what visitors get wrong, when not to come, and what residents actually do."
+  description: "Where people who know a city would take a friend, what to skip and when to come."
 };
 const WEBSITE = {
   "@type": "WebSite",
@@ -300,7 +300,7 @@ function homeLd(cities, lastmod) {
     "@type": "WebPage",
     "@id": `${SITE}/#webpage`,
     url: `${SITE}/`,
-    name: "TripVibz — what locals know that travel sites don't",
+    name: "TripVibz — where would you take a friend?",
     isPartOf: { "@id": `${SITE}/#website` },
     about: { "@id": `${SITE}/#org` },
     dateModified: isoDay(lastmod),
@@ -316,8 +316,8 @@ function citiesLd(cities, countsBySlug, lastmod) {
       "@type": "CollectionPage",
       "@id": `${url}#webpage`,
       url,
-      name: "Every city on TripVibz — local guides by residents",
-      description: "Browse cities where locals have written what visitors get wrong, when not to visit, and what residents actually do.",
+      name: "Every city on TripVibz — where people who know it would take you",
+      description: "Browse cities where people who know them say where they'd take a friend, what to skip and when to come.",
       isPartOf: { "@id": `${SITE}/#website` },
       breadcrumb: { "@id": `${url}#breadcrumb` },
       mainEntity: { "@id": `${url}#cities` },
@@ -475,7 +475,7 @@ function articleBody(city, theme, takes, events) {
     ? `<ol class="entries">${list.map(p => `<li class="entry"><a class="t" href="/t/${esc(p.id)}">${esc(p.title)}</a>${
         p.body ? `<div class="more">${esc(p.body)}</div>` : ""
       }<div class="foot"><span class="who">${p.ups} say true</span></div></li>`).join("")}</ol>`
-    : `<div class="empty-article"><b>Live in ${esc(city.name)}? What do tourists get wrong?</b>
+    : `<div class="empty-article"><b>A friend is visiting ${esc(city.name)}. Where do you take them?</b>
        <p>Say it here and visitors will actually read it. One sentence is enough.</p>
        <a class="btn coral" href="/${esc(city.slug)}/add/?kind=${theme}">Add your take</a></div>`;
 
@@ -534,13 +534,13 @@ function cityGrid(cities, countsBySlug) {
 // Home: the three counters above the grid (index.html renderStats).
 function homeStats(cities, posts) {
   const locals = new Set(posts.map(p => p.author_id).filter(Boolean)).size;
-  return `<div class="stat"><b>${posts.length}</b><span>local takes</span></div>
+  return `<div class="stat"><b>${posts.length}</b><span>takes</span></div>
       <div class="stat"><b>${locals}</b><span>contributors</span></div>
       <div class="stat"><b>${cities.length}</b><span>cities open</span></div>`;
 }
 
 // /cities/: the same card places.html draws (its card()), split into the
-// "Live now" and "Open for locals" grids the way its render() does.
+// "Live now" and "Open for takes" grids the way its render() does.
 function hueFor(name) { let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360; return h; }
 function cityCard(c, i, n) {
   const live = n > 0, h = hueFor(c.name);
@@ -553,7 +553,7 @@ function cityCard(c, i, n) {
       <div class="city-body">
         <h3>${esc(c.name)}</h3>
         <p>${esc(c.blurb || "")}</p>
-        <div class="city-foot${live ? "" : " soon"}">${live ? `${n} local take${n === 1 ? "" : "s"}` : "Needs locals — be the first"}</div>
+        <div class="city-foot${live ? "" : " soon"}">${live ? `${n} take${n === 1 ? "" : "s"}` : "No takes yet — be the first"}</div>
       </div></a>`;
 }
 function cityLists(cities, countsBySlug) {
@@ -584,7 +584,7 @@ function editorsHtml(city, intro) {
   return `<section class="editors" id="tv-editors" aria-label="From the TripVibz editors">
 <div class="editors-k">From the TripVibz editors</div>
 <p>${esc(intro)}</p>
-<div class="editors-note">Written by TripVibz, not by locals. Live in ${esc(city.name)}? <a href="/${esc(city.slug)}/add/">Add your take</a> and tell visitors what we missed.</div>
+<div class="editors-note">Written by TripVibz, not by locals. Know ${esc(city.name)}? <a href="/${esc(city.slug)}/add/">Add your take</a> and tell us what we missed.</div>
 </section>`;
 }
 
@@ -644,14 +644,14 @@ function eatsHtml(city, { eats, picks, localChecks, pickers }) {
   };
   const list = rows.length ? `<ol class="eats-list">${rows.map(r => `<li>
       <div class="eat-main"><b class="eat-name">${esc(r.name)}</b>${r.address ? `<span class="eat-nb">${esc(r.address)}${r.neighborhood ? ", " + esc(r.neighborhood) : ""}</span>` : r.neighborhood ? `<span class="eat-nb">${esc(r.neighborhood)}</span>` : ""}
-      <div class="eat-meta">${r.picks} local${r.picks === 1 ? "" : "s"}${r.verified_picks ? ` · ${r.verified_picks} verified ✓` : ""}${r.firsts ? ` · #1 for ${r.firsts}` : ""}</div>
+      <div class="eat-meta">${r.picks} pick${r.picks === 1 ? "" : "s"}${r.verified_picks ? ` · ${r.verified_picks} verified ✓` : ""}${r.firsts ? ` · #1 for ${r.firsts}` : ""}</div>
       ${whyFor(r.restaurant_id)}${links(r)}</div></li>`).join("")}</ol>
 <div class="eats-attrib">Addresses and phone numbers from <a href="https://overturemaps.org/" target="_blank" rel="noopener">Overture Maps</a> (open data); please <a href="/about/#contact">tell us</a> if one is wrong.</div>`
-    : `<div class="empty2"><b>No picks yet</b>Live in ${esc(city.name)}? Be the first to name the three places you'd actually send a visitor.</div>`;
+    : `<div class="empty2"><b>No picks yet</b>Know ${esc(city.name)}? Be the first to name the three places you'd take a friend.</div>`;
   return `<section class="eats" id="tv-eats" aria-labelledby="eats-h">
-<div class="eats-h"><h2 id="eats-h">Locals' top 3 restaurants</h2>${people ? `<span class="eats-n">${people} local${people === 1 ? "" : "s"} picked</span>` : ""}</div>
+<div class="eats-h"><h2 id="eats-h">Where they'd take a friend to eat</h2>${people ? `<span class="eats-n">${people} ${people === 1 ? "person" : "people"} picked</span>` : ""}</div>
 ${list}
-<div class="eats-add"><a class="btn2" href="/${esc(city.slug)}/#top3">Live here? Add your top 3</a><span class="eats-note">Sign in and pick three; verified locals' picks lead. <a href="/how-we-verify-locals/">How badges work</a>.</span></div>
+<div class="eats-add"><a class="btn2" href="/${esc(city.slug)}/#top3">Know it? Add your top 3</a><span class="eats-note">Sign in and pick three; verified locals' picks lead. <a href="/how-we-verify-locals/">How badges work</a>.</span></div>
 </section>`;
 }
 
@@ -684,13 +684,13 @@ function cityBody(city, counts, takes, intro = "", nearby = [], eatsData = null,
   const n = takes.length;
   const panel = (id, html) => `<section class="panel" id="panel-${id}" role="tabpanel" aria-labelledby="tab-${id}"${id === "takes" ? "" : " hidden"}>${html}</section>`;
   return `<div class="hero-band">${heroImg(city, { band: true })}<div class="hero-txt"><div class="kicker">${esc(city.name)}${city.state ? ", " + esc(city.state) : ""}</div>
-<h1>What locals say about ${esc(city.name)}</h1>
-<div class="hero-n">${n ? `${n} take${n === 1 ? "" : "s"} from people who live here` : "Be the first local to weigh in"}</div></div></div>
+<h1>Where would you take a friend in ${esc(city.name)}?</h1>
+<div class="hero-n">${n ? `${n} take${n === 1 ? "" : "s"} from people who know it` : "Be the first to weigh in"}</div></div></div>
 <div class="tabs" role="tablist" aria-label="Sections">${CITY_TABS.map(([id, l]) =>
     `<button role="tab" id="tab-${id}" data-tab="${id}" aria-selected="${id === "takes"}" aria-controls="panel-${id}" tabindex="${id === "takes" ? 0 : -1}">${l}</button>`).join("")}</div>
 ${panel("takes", `<div class="feed">${ranked.length ? ranked.map(p => `<article class="take"><a class="tt" href="/t/${esc(p.id)}">${esc(p.title)}</a>${
     p.body ? `<div class="more">${esc(p.body)}</div>` : ""}<div class="who">${p.ups} true · ${p.downs} nope</div></article>`).join("")
-  : `<div class="empty2"><b>No takes here yet</b>Live in ${esc(city.name)}? <a href="/${esc(city.slug)}/add/">Tell visitors what they get wrong.</a></div>`}</div>
+  : `<div class="empty2"><b>No takes here yet</b>Know ${esc(city.name)}? <a href="/${esc(city.slug)}/add/">Tell a friend where you'd take them.</a></div>`}</div>
 ${editorsHtml(city, intro)}
 ${n ? `<div class="more-topics">By topic: ${Object.keys(THEMES).filter(k => counts[k]).map(k =>
     `<a href="/${esc(city.slug)}/${THEMES[k].slug}/">${esc(THEMES[k].nav)}</a>`).join(" · ")}</div>` : ""}`)}
@@ -698,7 +698,7 @@ ${panel("eat", eatsData ? eatsHtml(city, eatsData) : "")}
 ${panel("when", whenHtml(city, events))}
 ${panel("stay", `<section class="s22"><h2>Where to stay in ${esc(city.name)}</h2><p>Prices and availability from Booking.com, Expedia and more. TripVibz may earn a commission when you book.</p></section>`)}
 ${nearbyHtml(nearby)}
-<div class="cta-bar"><div class="cta-t">Live here?</div><a class="cta-btn" href="/${esc(city.slug)}/add/">Add your take</a></div>`;
+<div class="cta-bar"><div class="cta-t">Know ${esc(city.name)}?</div><a class="cta-btn" href="/${esc(city.slug)}/add/">Add your take</a></div>`;
 }
 
 /* ---------------- inline CSS ----------------
@@ -933,7 +933,7 @@ const PWA_SCRIPT = `<script src="/assets/pwa.js" defer></script>`;
 // One footer on every public page (About, Privacy, Terms, contact). Pages that
 // carried their own footer get this one instead; the admin page gets none.
 const SITE_FOOTER = `<footer class="site-foot"><div class="wrap">
-<div class="sf-brand"><b>TripVibz</b><span class="tagline">The local take on every city.</span></div>
+<div class="sf-brand"><b>TripVibz</b><span class="tagline">Ask someone who knows.</span></div>
 <nav class="sf-links" aria-label="Site"><a href="/cities/">Cities</a><a href="/about/">About</a><a href="/how-we-verify-locals/">Local badges</a><a href="/about/#contact">Contact</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a></nav>
 <div class="sf-note">© ${new Date().getFullYear()} TripVibz · A city guide written by the people who live there.</div>
 </div></footer>`;
@@ -1041,12 +1041,12 @@ const newest = rows => rows.length
 // home + cities index
 pages.push({ path: "/", lastmod: newest(posts), priority: "1.0" });
 await emit("index.html", await minifyHtml(render(indexTpl, {
-  title: "TripVibz — what locals know that travel sites don't",
-  desc: "Locals tell visitors what to avoid, when not to come, and what the guidebooks get wrong. One sentence at a time.",
+  title: "TripVibz — where would you take a friend?",
+  desc: "People who know a city say where they'd take a friend, what to skip and when to come. One sentence at a time.",
   canonical: `${SITE}/`,
   image: `${SITE}/assets/og/home.jpg`,
-  og: ogCard("home.jpg", "The local take on every city.",
-    `${cities.length} cities and counting. One-tap questions like “Navy Pier: worth it, or skip it?” See what locals say before you book.`),
+  og: ogCard("home.jpg", "Where would you take a friend?",
+    `${cities.length} cities and counting. One-tap questions like “Navy Pier: worth it, or skip it?” See what people who know the city say before you book.`),
   body: cityGrid(cities, countsBySlug),
   mount: "needs",
   mounts: { stats: homeStats(cities, posts) },
@@ -1058,18 +1058,18 @@ pages.push({ path: "/about/", lastmod: CONTENT_EPOCH, priority: "0.3" });
 pages.push({ path: "/how-we-verify-locals/", lastmod: "2026-10-30", priority: "0.3" });
 const lists = cityLists(cities, countsBySlug);
 await emit("cities/index.html", await minifyHtml(render(placesTpl, {
-  title: "Every city on TripVibz — local guides by residents",
-  desc: "Browse cities where locals have written what visitors get wrong, when not to visit, and what residents actually do.",
+  title: "Every city on TripVibz — where people who know it would take you",
+  desc: "Browse cities where people who know them say where they'd take a friend, what to skip and when to come.",
   canonical: `${SITE}/cities/`,
   image: `${SITE}/assets/og/cities.jpg`,
-  og: ogCard("cities.jpg", "Pick your city: what do tourists get wrong there?",
-    `Locals in ${cities.length} cities vote on what visitors get wrong. Don't see yours? One tap to ask for it.`),
+  og: ogCard("cities.jpg", "Pick your city: where would you take a friend?",
+    `${cities.length} cities. Say where you'd take a friend. Don't see yours? One tap to ask for it.`),
   mounts: { "live-grid": lists.live, "soon-grid": lists.soon },
   jsonLd: citiesLd(cities, countsBySlug, newest(posts))
 })
   // Section labels: shown for the grids that have cities, worded as the script words them.
   .replace(/<h2 class="section-label" id="live-label" hidden>/, lists.hasLive ? `<h2 class="section-label" id="live-label">` : `<h2 class="section-label" id="live-label" hidden>`)
-  .replace(/<h2 class="section-label" id="soon-label" hidden>[^<]*<\/h2>/, `<h2 class="section-label" id="soon-label"${lists.hasSoon ? "" : " hidden"}>Open for locals</h2>`), null));
+  .replace(/<h2 class="section-label" id="soon-label" hidden>[^<]*<\/h2>/, `<h2 class="section-label" id="soon-label"${lists.hasSoon ? "" : " hidden"}>Open for takes</h2>`), null));
 
 let cityCount = 0, articleCount = 0;
 for (const city of cities) {
@@ -1082,7 +1082,7 @@ for (const city of cities) {
   // Indexable once there's something real: the editors' intro or 3+ takes.
   const cityIndexable = !!intro || cityPosts.length >= INTRO_MIN_TAKES;
 
-  const cityTitle = `${city.name}${city.state ? ", " + city.state : ""} — what locals say`;
+  const cityTitle = `${city.name}${city.state ? ", " + city.state : ""} — where to go, what to skip, when to come`;
   // A city-specific description (from the editors' intro) beats one template
   // line repeated across 27 pages.
   const cityDesc = intro ? clip(intro, 155) : `Local guides for ${city.name}: what not to do, the worst times to visit, and what residents actually do.`;
@@ -1110,17 +1110,17 @@ for (const city of cities) {
 
   // App pages: one-tap voting (email links land here) and posting. Not for Google.
   await emit(`${city.slug}/vote/index.html`, await minifyHtml(render(voteTpl, {
-    title: `Locals, settle this: ${city.name} · TripVibz`,
+    title: `Settle this: ${city.name} · TripVibz`,
     desc: `Quick questions for people who live in ${city.name}. One tap each.`,
     canonical: `${SITE}/${city.slug}/`, image: shareCard(city) ? shareCard(city).image : photo(city.slug),
     og: shareCard(city) || undefined, noindex: true
   }), null));
   await emit(`${city.slug}/add/index.html`, await minifyHtml(render(addTpl, {
-    title: `What do tourists get wrong about ${city.name}? · TripVibz`,
-    desc: `Tell visitors one thing they get wrong about ${city.name}. One sentence is enough.`,
+    title: `A friend is visiting ${city.name}. What do you tell them? · TripVibz`,
+    desc: `Where would you take a friend in ${city.name}? One sentence is enough.`,
     canonical: `${SITE}/${city.slug}/`, image: `${SITE}/assets/og/${city.slug}-add.jpg`, noindex: true,
-    og: ogCard(`${city.slug}-add.jpg`, `${city.name} locals: what do tourists get wrong?`,
-      "Say it in one sentence. Locals vote it True or Nope. The first 10 signed-in locals become founding locals.")
+    og: ogCard(`${city.slug}-add.jpg`, `A friend is visiting ${city.name}. Where do you take them?`,
+      "Say it in one sentence. Others vote it True or Nope. The first 10 signed-in locals become founding locals.")
   }), null));
 
   for (const theme of Object.keys(THEMES)) {
