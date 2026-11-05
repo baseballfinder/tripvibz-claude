@@ -1,0 +1,106 @@
+# Covers the whole site with "Back in a few minutes" while an update that
+# changes the database goes live, then uncovers it.
+#
+# Runs on merges to main that add or change a migration (supabase/migrations/).
+# Merges that only change pages, copy or styles deploy with no cover: Cloudflare
+# Pages swaps versions all at once, so visitors never see a half-deployed site.
+#
+#   1. Switch on   public.site_status.maintenance (functions/_middleware.js
+#                  shows the cover page with a 503 while it's on). The switch
+#                  carries a 20-minute end time as a safety stop.
+#   2. Wait        until the live site serves this commit (its build id is in
+#                  /sw.js) and the newest migration is recorded as applied.
+#   3. Switch off  always, even if a wait timed out or a step failed.
+#
+# Manual use (Actions tab > this workflow > Run workflow): "on" covers the site
+# for up to 60 minutes, "off" uncovers it now.
+# To see the real site while it's covered, open any page with ?preview=live.
+
+name: Cover the site during database updates
+
+on:
+  push:
+    branches: [main]
+    paths: ["supabase/migrations/**"]
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Turn the cover page on (for up to 60 minutes) or off"
+        required: true
+        default: "off"
+        type: choice
+        options: ["on", "off"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: maintenance-cover
+  cancel-in-progress: false
+
+jobs:
+  cover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SITE: https://www.tripvibz.com
+      ACTION: ${{ github.event_name == 'workflow_dispatch' && inputs.action || 'deploy' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check the database secret is set
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then echo "::error::SUPABASE_DB_URL is not set, so the cover page can't be switched."; exit 1; fi
+
+      # Before the site_status migration has applied there is nothing to switch:
+      # skip quietly (the first merge that adds the switch deploys uncovered).
+      - name: Turn the cover page on
+        if: env.ACTION != 'off'
+        run: |
+          MINUTES=20; [ "$ACTION" = "on" ] && MINUTES=60
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -q -v minutes="$MINUTES" -v reason="${ACTION} ${GITHUB_SHA::7}" <<'SQL'
+          select to_regclass('public.site_status') is not null as has_switch \gset
+          \if :has_switch
+            update public.site_status
+               set maintenance = true, reason = :'reason',
+                   until = now() + make_interval(mins => :minutes), updated_at = now()
+             where id = 1;
+            select 'cover ON until ' || to_char(until at time zone 'America/New_York', 'HH12:MI am') || ' Eastern' from public.site_status where id = 1;
+          \else
+            select 'site_status table not there yet: deploying without a cover';
+          \endif
+          SQL
+
+      - name: Wait for the new version on Cloudflare
+        if: env.ACTION == 'deploy'
+        run: |
+          BUILD="${GITHUB_SHA::12}"
+          for i in $(seq 1 60); do
+            if curl -fsS -m 10 "$SITE/sw.js?check=$i" | grep -q "BUILD=\"$BUILD\""; then echo "Live: $BUILD"; exit 0; fi
+            sleep 15
+          done
+          echo "::error::$SITE didn't serve $BUILD within 15 minutes. Check the Cloudflare Pages deployment."; exit 1
+
+      - name: Wait for the migration to apply
+        if: env.ACTION == 'deploy'
+        run: |
+          NEWEST=$(ls supabase/migrations/*.sql | xargs -n1 basename | grep -oE '^[0-9]{14}' | sort | tail -1)
+          echo "Waiting for migration $NEWEST"
+          for i in $(seq 1 40); do
+            DONE=$(psql "$SUPABASE_DB_URL" -tA -c "select count(*) from supabase_migrations.schema_migrations where version = '$NEWEST'")
+            if [ "$DONE" = "1" ]; then echo "Applied: $NEWEST"; exit 0; fi
+            sleep 15
+          done
+          echo "::error::Migration $NEWEST wasn't recorded as applied within 10 minutes. Check the Supabase GitHub integration."; exit 1
+
+      - name: Turn the cover page off
+        if: always() && env.ACTION != 'on'
+        run: |
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -q <<'SQL'
+          select to_regclass('public.site_status') is not null as has_switch \gset
+          \if :has_switch
+            update public.site_status set maintenance = false, reason = null, until = null, updated_at = now() where id = 1;
+            select 'cover OFF';
+          \endif
+          SQL
