@@ -209,7 +209,7 @@ await test("Locals' top 3 restaurants: section pre-rendered on every city page; 
     assert(h.includes('<section class="eats" id="tv-eats"') && /Where they'd take a friend to eat/.test(h), `${c.slug}: top-3 section missing`);
     assert(h.includes("/how-we-verify-locals/"), `${c.slug}: top-3 section should link to how badges work`);
   }
-  const city = await readFile("city.html", "utf8");
+  const city = (await readFile("city.html", "utf8")) + (await readFile("assets/city.js", "utf8"));
   assert(/from\("city_top_restaurants"\)/.test(city) && /from\("top3_picks"\)\.delete\(\)/.test(city) && /from\("restaurants"\)\.insert\(/.test(city), "city page must read the roll-up and replace the person's list wholesale");
   assert(/created_by: me\.id/.test(city), "new restaurant rows must carry created_by (RLS requires it)");
   assert(/const nameKey = /.test(city) && /\[\^a-z0-9\]\+/.test(city), "client must match names with the same key the database uses");
@@ -235,7 +235,8 @@ await test("Locals' top 3 restaurants: section pre-rendered on every city page; 
   const loader = await readFile("scripts/places_catalog.py", "utf8");
   assert(/overturemaps-us-west-2/.test(loader) && /CDLA-Permissive/.test(loader) && /operating_status/.test(loader), "catalogue loader must read Overture places and note the licence");
   assert((await readFile(".github/workflows/places-catalog.yml", "utf8")).includes("scripts/places_catalog.py"), "monthly catalogue workflow missing");
-  for (const c of cities.slice(0, 3)) assert(/<a href="https:\/\/overturemaps\.org\/"[^>]*>Overture Maps<\/a>/.test(await readFile(join("dist", c.slug, "index.html"), "utf8")), `${c.slug}: Overture attribution missing from the section`);
+  // Shown with the list wherever it is drawn: the page script (assets/city.js) and the pre-render (build.mjs eatsHtml).
+  for (const f of ["assets/city.js", "build.mjs"]) assert(/<a href="https:\/\/overturemaps\.org\/"[^>]*>Overture Maps<\/a>/.test(await readFile(f, "utf8")), `${f}: Overture attribution missing from the top-3 list`);
 });
 
 await test("How-we-verify-locals page: exists, linked, describes the method without the exact thresholds", async () => {
@@ -309,7 +310,7 @@ await test("Stay22: TripVibz's own affiliate ID, never Miami Take's; campaign la
   assert(/var STAY22_AID = "tripvibz";/.test(v2), "Stay22 ID should be tripvibz");
   for (const f of pages) assert(!/aid=miamitake|STAY22_AID = "miamitake"/i.test(await readFile(f, "utf8")), `${f}: Miami Take's Stay22 ID`);
   assert(/\.replace\(\/-\/g, "_"\)/.test(v2), "campaign labels must not contain hyphens (Stay22 splits on them)");
-  for (const f of ["city.html", "article.html"]) assert((await readFile(f, "utf8")).includes("stay22MapHtml"), `${f}: hotel map missing`);
+  for (const f of ["assets/city.js", "article.html"]) assert((await readFile(f, "utf8")).includes("stay22MapHtml"), `${f}: hotel map missing`);
 });
 
 await test("Old UI is gone (no Cosign / Add to this article)", async () => {
@@ -349,7 +350,7 @@ await test("City pages: editors' intro is labeled, never a take; index rule = in
     const d = (html.match(/<meta name="description" content="([^"]*)"/) || [])[1];
     if (indexable) { assert(d && !descs.has(d), `${c.slug}: description missing or duplicated`); descs.add(d); }
   }
-  const city = await readFile("city.html", "utf8");
+  const city = (await readFile("city.html", "utf8")) + (await readFile("assets/city.js", "utf8"));
   assert(city.includes('keep("tv-editors")') && city.includes("EDITORS_HTML"), "city.html must keep the editors' intro after hydration");
 });
 
@@ -397,6 +398,40 @@ await test("Installable (PWA): manifest, service worker with a build id and an e
     if (h.includes('rel="manifest"')) assert(/apple-mobile-web-app-title/.test(h) && /mobile-web-app-capable/.test(h), `${f}: home-screen metas missing`);
   }
   assert((await readFile("dist/index.html", "utf8")).includes('rel="manifest" href="/site.webmanifest"'), "home page must link the manifest");
+});
+
+await test("Vibes: the list in assets/v2.js matches the migration; recommendations only; tags can't be edited or spoofed; vibe pages indexed from 3 entries", async () => {
+  const mig = await readFile("supabase/migrations/20261105200000_vibes.sql", "utf8");
+  const seed = [...mig.matchAll(/\('([a-z-]+)',\s*'([^']+)',\s*'(who|mood)',\s*\d+,\s*(true|false),\s*(true|false)\)/g)]
+    .map(m => [m[1], m[2], m[3], m[4] === "true", m[5] === "true"].join("|"));
+  const v2 = await readFile("assets/v2.js", "utf8");
+  const list = [...v2.matchAll(/\{ slug: "([a-z-]+)",\s*label: "([^"]+)",\s*kind: "(who|mood)",\s*takes: (true|false),\s*rests: (true|false) \}/g)]
+    .map(m => [m[1], m[2], m[3], m[4] === "true", m[5] === "true"].join("|"));
+  assert(seed.length === 12 && seed.join() === list.join(), `vibe list differs between the migration and assets/v2.js:\n${seed.join("\n")}\nvs\n${list.join("\n")}`);
+  assert(/var VIBE_KINDS = \{ hidden_gem: 1, take: 1 \}/.test(v2), "only 'Do this' and 'It depends' takes may carry a vibe (client)");
+  assert(/t not in \('hidden_gem', 'take'\)/.test(mig), "only 'Do this' and 'It depends' takes may carry a vibe (database)");
+  assert(/VIBE_TWO_MAX/.test(mig) && /n >= 40 then raise exception 'RATE_LIMITED'/.test(mig), "two vibes per person per item and a daily cap");
+  assert(/new\.city_id := c;/.test(mig), "city_id must come from the tagged item");
+  assert(/grant insert \(user_id, vibe, post_id, restaurant_id\), delete on public\.vibe_tags to authenticated;/.test(mig) && !/grant[^;]*update[^;]*vibe_tags/i.test(mig), "tags: insert own columns and delete only, never update");
+  assert(/with check \(auth\.uid\(\) = user_id\)/.test(mig), "a tag must carry the tagger's own id");
+  const built = await readFile("build.mjs", "utf8");
+  assert(/const VIBE_PAGE_INDEX_MIN = 3;/.test(built), "vibe pages go into Google at 3 entries");
+  const sitemap = await readFile("dist/sitemap.xml", "utf8");
+  const slugs = list.map(x => x.split("|")[0]);
+  let pagesSeen = 0;
+  for (const c of cities) for (const v of slugs) {
+    const f = join("dist", c.slug, v, "index.html");
+    if (!(await exists(f))) { assert(!sitemap.includes(`/${c.slug}/${v}/`), `${c.slug}/${v}: in the sitemap with no page`); continue; }
+    pagesSeen++;
+    const h = await readFile(f, "utf8");
+    const n = (h.match(/<li[ >]/g) || []).length;
+    assert(n >= 1, `${c.slug}/${v}: empty vibe page`);
+    const noindex = /<meta name="robots" content="noindex/.test(h);
+    assert(noindex === (n < 3), `${c.slug}/${v}: ${n} entries but noindex=${noindex}`);
+    assert(sitemap.includes(`/${c.slug}/${v}/`) === !noindex, `${c.slug}/${v}: sitemap and robots disagree`);
+    assert(h.includes(`href="/${c.slug}/${v}/"`) || (await readFile(join("dist", c.slug, "index.html"), "utf8")).includes(`href="/${c.slug}/${v}/"`), `${c.slug}/${v}: not linked from the city page`);
+  }
+  console.log(`      (${pagesSeen} vibe pages checked)`);
 });
 
 await test("Research data and scripts are not published", async () => {

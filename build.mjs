@@ -22,6 +22,8 @@
 import { readdir, readFile, writeFile, mkdir, rm, stat } from "node:fs/promises";
 import { join, extname, dirname } from "node:path";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import vm from "node:vm";
 
 // Dynamic so a missing dependency produces an instruction rather than a
 // module-resolution stack trace.
@@ -54,7 +56,7 @@ const SKIP = new Set([
   "dist", "node_modules", ".git", "supabase", ".github", "functions",
   "build.mjs", "package.json", "package-lock.json", "lighthouserc.json", "lighthouserc.mobile.json",
   // Maintenance scripts, bundle sources and docs are not site content; never publish them.
-  "scripts", "lib", "data", "tests", "README.md", "vote.html", "add.html"
+  "scripts", "lib", "data", "tests", "README.md", "vote.html", "add.html", "vibe.html"
 ]);
 
 const THEMES = {
@@ -106,16 +108,18 @@ async function loadContent() {
   try {
     // Tables from a migration that may not have landed yet come back empty rather than failing the build.
     const maybe = (name, query) => fetchTable(name, query).catch(() => []);
-    const [cities, posts, events, eats, picks, localChecks, pickers] = await Promise.all([
+    const [cities, posts, events, eats, picks, localChecks, pickers, postVibes, restVibes] = await Promise.all([
       fetchTable("cities", "select=id,name,state,slug,photo,blurb,lat,lng&order=sort"),
       fetchTable("posts", "select=id,title,body,type,ups,downs,created_at,city_id,author_id"),
       fetchTable("city_events", "select=id,name,blurb,kind,severity,start_month,end_month,city_id"),
       maybe("city_top_restaurants", "select=*"),
       maybe("top3_picks", "select=user_id,city_id,rank,restaurant_id,why"),
       maybe("local_checks", "select=user_id,city_id,verified,revoked&verified=is.true"),
-      maybe("profiles", "select=id,display_name,username")
+      maybe("profiles", "select=id,display_name,username"),
+      maybe("post_vibes", "select=post_id,city_id,vibe,people"),
+      maybe("restaurant_vibes", "select=restaurant_id,city_id,vibe,people")
     ]);
-    return { cities, posts, events, eats, picks, localChecks, pickers };
+    return { cities, posts, events, eats, picks, localChecks, pickers, postVibes, restVibes };
   } catch (err) {
     // Offline fallback for local development only. It is gitignored, so CI
     // and Cloudflare always build from live data — a stale snapshot must
@@ -136,6 +140,17 @@ async function loadContent() {
 
 const MONTHS = ["January","February","March","April","May","June","July",
                 "August","September","October","November","December"];
+
+/* Vibes: the list lives in assets/v2.js (VIBES, mirrored by the migration's
+   public.vibes rows); the build reads it from there so the two never drift. */
+const V2 = (() => {
+  const noop = () => {};
+  const ctx = { window: {}, document: { addEventListener: noop, body: { appendChild: noop } } };
+  ctx.window.TV = { sb: null, auth: null, escapeHtml: s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])) };
+  vm.runInNewContext(readFileSync("assets/v2.js", "utf8"), ctx);
+  return ctx.window.TV2;
+})();
+const VIBE_PAGE_INDEX_MIN = 3;   // a vibe page goes into Google (and the sitemap) at 3 entries
 
 let REMOVED_META = "";   // set once data/removed-cities.json is read (below)
 function head({ title, desc, canonical, image, noindex, og = {}, preloadImage }) {
@@ -560,7 +575,9 @@ const shortName = p => {
   const n = ((p && (p.display_name || p.username)) || "").trim().split(/\s+/);
   return !n[0] ? "A local" : n.length > 1 ? `${n[0]} ${n[n.length - 1][0]}.` : n[0];
 };
-function eatsHtml(city, { eats, picks, localChecks, pickers }) {
+function eatsHtml(city, { eats, picks, localChecks, pickers, restVibes = [] }) {
+  const rvc = {};
+  restVibes.filter(x => x.city_id === city.id).forEach(x => { (rvc[x.restaurant_id] = rvc[x.restaurant_id] || {})[x.vibe] = x.people; });
   const verified = new Set(localChecks.filter(l => l.city_id === city.id && l.verified && !l.revoked).map(l => l.user_id));
   const profile = Object.fromEntries(pickers.map(p => [p.id, p]));
   const rows = eats.filter(r => r.city_id === city.id)
@@ -587,7 +604,7 @@ function eatsHtml(city, { eats, picks, localChecks, pickers }) {
   const list = rows.length ? `<ol class="eats-list">${rows.map(r => `<li>
       <div class="eat-main"><b class="eat-name">${esc(r.name)}</b>${r.address ? `<span class="eat-nb">${esc(r.address)}${r.neighborhood ? ", " + esc(r.neighborhood) : ""}</span>` : r.neighborhood ? `<span class="eat-nb">${esc(r.neighborhood)}</span>` : ""}
       <div class="eat-meta">${r.picks} pick${r.picks === 1 ? "" : "s"}${r.verified_picks ? ` · ${r.verified_picks} verified ✓` : ""}${r.firsts ? ` · #1 for ${r.firsts}` : ""}</div>
-      ${whyFor(r.restaurant_id)}${links(r)}</div></li>`).join("")}</ol>
+      ${V2.vibeTagsHtml(rvc[r.restaurant_id], [])}${whyFor(r.restaurant_id)}${links(r)}</div></li>`).join("")}</ol>
 <div class="eats-attrib">Addresses and phone numbers from <a href="https://overturemaps.org/" target="_blank" rel="noopener">Overture Maps</a> (open data); please <a href="/about/#contact">tell us</a> if one is wrong.</div>`
     : `<div class="empty2"><b>No picks yet</b>Know ${esc(city.name)}? Be the first to name the three places you'd take a friend.</div>`;
   return `<section class="eats" id="tv-eats" aria-labelledby="eats-h">
@@ -617,11 +634,69 @@ function whenHtml(city, events) {
   }</div><div class="when-go">Month-by-month calendar →</div></a>`;
 }
 
+/* ---------------- vibe pages ----------------
+   /<city>/<vibe>/ lists the takes and restaurants that 2+ people gave a vibe.
+   A page exists once it has one entry and is indexed from VIBE_PAGE_INDEX_MIN. */
+function cityVibeEntries(city, takes, cityEats, pv, rv) {
+  const out = {};
+  const shown = n => n >= V2.VIBE_SHOW_AT;
+  for (const v of V2.VIBES) out[v.slug] = { vibe: v, takes: [], rests: [] };
+  const takeById = Object.fromEntries(takes.map(t => [t.id, t]));
+  for (const x of pv) if (shown(x.people) && takeById[x.post_id] && out[x.vibe]) out[x.vibe].takes.push({ ...takeById[x.post_id], people: x.people });
+  const restById = Object.fromEntries(cityEats.map(r => [r.restaurant_id, r]));
+  for (const x of rv) if (shown(x.people) && restById[x.restaurant_id] && out[x.vibe]) out[x.vibe].rests.push({ ...restById[x.restaurant_id], people: x.people });
+  for (const k of Object.keys(out)) {
+    out[k].takes.sort((a, b) => b.people - a.people || (b.ups - b.downs) - (a.ups - a.downs));
+    out[k].rests.sort((a, b) => b.people - a.people || (b.points || 0) - (a.points || 0));
+    out[k].n = out[k].takes.length + out[k].rests.length;
+    if (!out[k].n) delete out[k];
+  }
+  return out;
+}
+function vibeLinksHtml(city, entries, current) {
+  const list = V2.VIBES.filter(v => entries[v.slug] && v.slug !== current);
+  return list.length ? `<div class="more-topics vibe-links">${current ? "More vibes" : "By vibe"}: ${list.map(v =>
+    `<a href="/${esc(city.slug)}/${v.slug}/">${esc(v.label)}</a>`).join(" · ")}</div>` : "";
+}
+function vibePageBody(city, e, entries) {
+  const v = e.vibe, n = e.n;
+  const takes = e.takes.length ? `<section class="vsec"><h2>Takes</h2><ol class="vlist">${e.takes.map(t => `<li><a class="t" href="/t/${esc(t.id)}">${esc(t.title)}</a>
+<div class="m">${t.people} people say “${esc(v.label)}”${t.ups ? ` · ${t.ups} true` : ""}</div></li>`).join("")}</ol></section>` : "";
+  const rests = e.rests.length ? `<section class="vsec"><h2>Restaurants</h2><ol class="vlist">${e.rests.map(r => `<li id="r-${esc(r.restaurant_id)}"><b class="t">${esc(r.name)}</b>
+<div class="m">${[r.address || r.neighborhood || "", `${r.people} people say “${esc(v.label)}”`, r.picks ? `in ${r.picks} top 3 list${r.picks === 1 ? "" : "s"}` : ""].filter(Boolean).map(x => x.includes("“") ? x : esc(x)).join(" · ")}</div></li>`).join("")}</ol></section>` : "";
+  return `<a class="back" href="/${esc(city.slug)}/">← ${esc(city.name)}</a>
+<div class="hd">
+  <div class="kicker">${esc(city.name)}${city.state ? ", " + esc(city.state) : ""}</div>
+  <h1>${esc(v.label)} in ${esc(city.name)}</h1>
+  <p class="lede">Where people who know ${esc(city.name)} would go for “${esc(v.label.toLowerCase())}”. A place shows here once two different people give it this vibe.</p>
+  <div class="by">${n} place${n === 1 ? "" : "s"} and take${n === 1 ? "" : "s"}</div>
+</div>
+${takes}
+${rests}
+<div class="vcta"><b>Know a ${esc(v.label.toLowerCase())} spot in ${esc(city.name)}?</b>Add a <a href="/${esc(city.slug)}/add/?kind=hidden_gem">“Do this” take</a> or <a href="/${esc(city.slug)}/#top3">your top 3 restaurants</a> and tag the vibe.</div>
+${vibeLinksHtml(city, entries, v.slug).replace("more-topics vibe-links", "vmore")}`;
+}
+function vibeLd(city, e, url, title, desc) {
+  const items = [...e.takes.map(t => ({ name: t.title, url: `${SITE}/t/${t.id}` })), ...e.rests.map(r => ({ name: r.name, url: `${url}#r-${r.restaurant_id}` }))];
+  return ld(siteGraph(
+    {
+      "@type": "CollectionPage", "@id": `${url}#webpage`, url, name: title, description: desc,
+      isPartOf: { "@id": `${SITE}/#website` }, about: placeOf(city), inLanguage: "en-US",
+      breadcrumb: { "@id": `${url}#breadcrumb` }, mainEntity: { "@id": `${url}#list` }
+    },
+    { ...breadcrumbLd([{ name: "TripVibz", url: `${SITE}/` }, { name: city.name, url: `${SITE}/${city.slug}/` }, { name: e.vibe.label, url }]), "@id": `${url}#breadcrumb` },
+    {
+      "@type": "ItemList", "@id": `${url}#list`, name: title, numberOfItems: items.length,
+      itemListElement: items.map((it, i) => ({ "@type": "ListItem", position: i + 1, name: it.name, url: it.url }))
+    }
+  ));
+}
+
 // Crawler-readable version of the city page; the page script replaces it
 // (keeping the hero, the editors' intro, the top 3 and nearby links, see
 // city.html). Same skeleton as the script draws: hero band, four tabs, panels.
 const CITY_TABS = [["takes", "Takes"], ["eat", "Eat"], ["when", "When to go"], ["stay", "Stay"]];
-function cityBody(city, counts, takes, intro = "", nearby = [], eatsData = null, events = []) {
+function cityBody(city, counts, takes, intro = "", nearby = [], eatsData = null, events = [], vibeEntries = {}) {
   const ranked = takes.slice().sort((a, b) => (b.ups - b.downs) - (a.ups - a.downs));
   const n = takes.length;
   const panel = (id, html) => `<section class="panel" id="panel-${id}" role="tabpanel" aria-labelledby="tab-${id}"${id === "takes" ? "" : " hidden"}>${html}</section>`;
@@ -635,7 +710,8 @@ ${panel("takes", `<div class="feed">${ranked.length ? ranked.map(p => `<article 
   : `<div class="empty2"><b>No takes here yet</b>Know ${esc(city.name)}? <a href="/${esc(city.slug)}/add/">Tell a friend where you'd take them.</a></div>`}</div>
 ${editorsHtml(city, intro)}
 ${n ? `<div class="more-topics">By topic: ${Object.keys(THEMES).filter(k => counts[k]).map(k =>
-    `<a href="/${esc(city.slug)}/${THEMES[k].slug}/">${esc(THEMES[k].nav)}</a>`).join(" · ")}</div>` : ""}`)}
+    `<a href="/${esc(city.slug)}/${THEMES[k].slug}/">${esc(THEMES[k].nav)}</a>`).join(" · ")}</div>` : ""}
+${vibeLinksHtml(city, vibeEntries)}`)}
 ${panel("eat", eatsData ? eatsHtml(city, eatsData) : "")}
 ${panel("when", whenHtml(city, events))}
 ${panel("stay", `<section class="s22"><h2>Where to stay in ${esc(city.name)}</h2><p>Prices and availability from Booking.com, Expedia and more. TripVibz may earn a commission when you book.</p></section>`)}
@@ -952,7 +1028,7 @@ const removedCount = content.cities.filter(c => REMOVED[c.slug]).length;
 const cities = content.cities.filter(c => !REMOVED[c.slug]);
 const removedIds = new Set(content.cities.filter(c => REMOVED[c.slug]).map(c => c.id));
 const posts = content.posts.filter(p => !removedIds.has(p.city_id)), events = content.events.filter(e => !removedIds.has(e.city_id));
-const { eats = [], picks = [], localChecks = [], pickers = [] } = content;
+const { eats = [], picks = [], localChecks = [], pickers = [], postVibes = [], restVibes = [] } = content;
 if (removedCount) console.log(`  (${removedCount} removed ${removedCount === 1 ? "city" : "cities"} left out: ${Object.keys(REMOVED).join(", ")})`);
 // Pages hydrate their city lists from the database; this tells assets/tv.js which slugs to drop.
 REMOVED_META = Object.keys(REMOVED).length ? `<meta name="tv-removed" content="${esc(Object.keys(REMOVED).join(","))}" />\n` : "";
@@ -970,6 +1046,8 @@ const voteTpl = await readFile("vote.html", "utf8");
 const addTpl = await readFile("add.html", "utf8");
 const indexTpl = await readFile("index.html", "utf8");
 const placesTpl = await readFile("places.html", "utf8");
+const vibeTpl = await readFile("vibe.html", "utf8");
+let vibePageCount = 0;
 
 const countsBySlug = {};
 for (const c of cities) {
@@ -1027,8 +1105,10 @@ for (const city of cities) {
   const cityTitle = `${city.name}${city.state ? ", " + city.state : ""} — where to go, what to skip, when to come`;
   // A city-specific description (from the editors' intro) beats one template
   // line repeated across 27 pages.
-  const cityDesc = intro ? clip(intro, 155) : `Local guides for ${city.name}: what not to do, the worst times to visit, and what residents actually do.`;
+  const cityDesc = intro ? clip(intro, 155) : `Where people who know ${city.name} would take a friend, what they'd skip and when they'd come.`;
   const nearby = nearbyCities(city, cities);
+  const vibeEntries = cityVibeEntries(city, cityPosts.filter(p => V2.VIBE_KINDS[p.type]), eats.filter(r => r.city_id === city.id),
+    postVibes.filter(x => x.city_id === city.id), restVibes.filter(x => x.city_id === city.id));
   // Last change: the newest take, else the date the intros were last edited
   // (data/editorial/intros.json "_updated"), never the build time.
   const cityLastmod = cityPosts.length ? newest(cityPosts) : isoDay(INTROS._updated);
@@ -1038,7 +1118,7 @@ for (const city of cities) {
     canonical: `${SITE}/${city.slug}/`,
     image: shareCard(city) ? shareCard(city).image : photo(city.slug),
     og: shareCard(city) || undefined,
-    body: cityBody(city, counts, feedTakes, intro, nearby, { eats, picks, localChecks, pickers }, cityEvents),
+    body: cityBody(city, counts, feedTakes, intro, nearby, { eats, picks, localChecks, pickers, restVibes }, cityEvents, vibeEntries),
     mount: "city",
     preloadImage: heroSources(city, { band: true }),
     jsonLd: cityLd(city, `${SITE}/${city.slug}/`, feedTakes, { title: cityTitle, desc: cityDesc, intro, nearby, lastmod: cityLastmod }),
@@ -1090,6 +1170,25 @@ for (const city of cities) {
       priority: takes.length ? "0.9" : "0.6"
     });
     articleCount++;
+  }
+
+  // Vibe pages: only for vibes with at least one entry; into Google from VIBE_PAGE_INDEX_MIN.
+  for (const e of Object.values(vibeEntries)) {
+    const url = `${SITE}/${city.slug}/${e.vibe.slug}/`;
+    const title = `${e.vibe.label} in ${city.name}: where people who know it would go`;
+    const names = [...e.takes.map(t => t.title), ...e.rests.map(r => r.name)].slice(0, 3);
+    const desc = clip(`${e.n} ${e.n === 1 ? "pick" : "picks"} tagged “${e.vibe.label}” by people who know ${city.name}: ${names.join("; ")}.`, 158);
+    const indexable = e.n >= VIBE_PAGE_INDEX_MIN;
+    await emit(`${city.slug}/${e.vibe.slug}/index.html`, await minifyHtml(render(vibeTpl, {
+      title, desc, canonical: url,
+      image: shareCard(city) ? shareCard(city).image : photo(city.slug),
+      og: shareCard(city) ? ogCard(`${city.slug}.jpg`, `${e.vibe.label} in ${city.name}`, desc) : undefined,
+      body: vibePageBody(city, e, vibeEntries),
+      jsonLd: vibeLd(city, e, url, title, desc),
+      noindex: !indexable
+    }), null));
+    if (indexable) pages.push({ path: `/${city.slug}/${e.vibe.slug}/`, lastmod: newest([...e.takes, ...cityPosts]), priority: "0.7" });
+    vibePageCount++;
   }
 }
 
@@ -1173,7 +1272,7 @@ await emit("sitemap.xml", sitemap);
 const BUILD = (process.env.CF_PAGES_COMMIT_SHA || process.env.GITHUB_SHA || "").slice(0, 12) || `dev-${Date.now().toString(36)}`;
 const SHELL = [
   "/", "/cities/", "/offline/", "/site.webmanifest", "/assets/brand/icon-192.png", "/assets/brand/mark.svg",
-  ...["tv.js", "v2.js", "supabase.js", "analytics.js", "pwa.js"].map(f => `/assets/${f}?v=${ASSET_VERSION[f]}`),
+  ...["tv.js", "v2.js", "city.js", "supabase.js", "analytics.js", "pwa.js"].map(f => `/assets/${f}?v=${ASSET_VERSION[f]}`),
   ...FONTS.map(f => f.url)
 ];
 for (const u of SHELL) {
@@ -1214,5 +1313,5 @@ for (const [name, b, a] of report.sort((x, y) => y[1] - x[1])) {
 }
 console.log("  " + "-".repeat(52));
 console.log(`  ${"assets total".padEnd(24)} ${bytes(before).padStart(8)} ${bytes(after).padStart(9)}  ${String(Math.round((1 - after / before) * 100)).padStart(4)}%`);
-console.log(`\n  pre-rendered: ${cityCount} city pages, ${articleCount} articles`);
+console.log(`\n  pre-rendered: ${cityCount} city pages, ${articleCount} articles, ${vibePageCount} vibe pages`);
 console.log(`  sitemap:      ${pages.length} URLs\n`);

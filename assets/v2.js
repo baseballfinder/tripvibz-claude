@@ -96,15 +96,20 @@
       // migration runs just means no checkmarks.
       // Verified ✓ / revoked for this city (functions/api/locate.js records presence; the
       // database decides "verified"). Only those two columns are public; see /how-we-verify-locals/.
-      authors.length && cityId ? sb.from("local_checks").select("user_id,verified,revoked").eq("city_id", cityId).in("user_id", authors) : { data: [] }
+      authors.length && cityId ? sb.from("local_checks").select("user_id,verified,revoked").eq("city_id", cityId).in("user_id", authors) : { data: [] },
+      // Vibes (migration 20261105200000): counts per take + my own. Missing tables = none.
+      ids.length ? sb.from("post_vibes").select("post_id,vibe,people").in("post_id", ids) : { data: [] },
+      auth.me && ids.length ? sb.from("vibe_tags").select("post_id,vibe").eq("user_id", auth.me.id).in("post_id", ids) : { data: [] }
     ]);
-    var ctx = { profiles: {}, tenure: {}, founders: {}, places: {}, myVotes: {}, local: {} };
+    var ctx = { profiles: {}, tenure: {}, founders: {}, places: {}, myVotes: {}, local: {}, vibes: {}, myVibes: {} };
     (res[0].data || []).forEach(function (x) { ctx.profiles[x.id] = x; });
     (res[1].data || []).forEach(function (x) { ctx.tenure[x.user_id] = x.tenure; });
     (res[2].data || []).forEach(function (x) { ctx.founders[x.author_id] = x.rank; });
     (res[3].data || []).forEach(function (x) { ctx.places[x.id] = x.name; });
     (res[4].data || []).forEach(function (x) { ctx.myVotes[x.post_id] = x.value; });
     ((res[5] && res[5].data) || []).forEach(function (x) { ctx.local[x.user_id] = x; });
+    ((res[6] && res[6].data) || []).forEach(function (x) { (ctx.vibes[x.post_id] = ctx.vibes[x.post_id] || {})[x.vibe] = x.people; });
+    ((res[7] && res[7].data) || []).forEach(function (x) { (ctx.myVibes[x.post_id] = ctx.myVibes[x.post_id] || []).push(x.vibe); });
     ctx.founderCount = Object.keys(ctx.founders).length;
     return ctx;
   }
@@ -200,6 +205,7 @@
       (p.body ? '<div class="more">' + esc(p.body) + "</div>" : "") +
       (p.topic ? '<div class="on">On: ' + esc(p.topic) + "</div>" : "") +
       '<div class="who">' + authorHtml(p, ctx) + "</div>" +
+      vibeRowHtml(p, ctx) +
       (opts.noBar ? "" : (total >= 5 ? '<div class="bar" aria-hidden="true"><i style="width:' + pct + '%"></i></div>' : "") +
       '<div class="tv-actions">' +
         '<button class="tvb yes" data-vote="1" data-id="' + p.id + '" aria-pressed="' + (v === 1) + '">' + ICON.check + "True · " + p.ups + "</button>" +
@@ -653,6 +659,155 @@
     };
   }
 
+  /* ---------- vibes ----------
+     Who a recommendation is for and what kind of time it is (migration
+     20261105200000_vibes.sql; the list below mirrors public.vibes and
+     tests/static.mjs checks they match). Only "Do this" takes and "It depends"
+     answers take a vibe, and restaurants through the Top 3 picker; warnings and
+     timing never do. A vibe shows on an item once VIBE_SHOW_AT different people
+     gave it; your own vibes always show to you. Before the migration runs the
+     tables are missing, the queries come back empty and nothing shows. */
+  var VIBES = [
+    { slug: "first-timer",    label: "First-timer",    kind: "who",  takes: true,  rests: true },
+    { slug: "date-night",     label: "Date night",     kind: "who",  takes: true,  rests: true },
+    { slug: "with-the-kids",  label: "With the kids",  kind: "who",  takes: true,  rests: true },
+    { slug: "the-parents",    label: "The parents",    kind: "who",  takes: true,  rests: true },
+    { slug: "the-group-chat", label: "The group chat", kind: "who",  takes: true,  rests: true },
+    { slug: "solo",           label: "Solo",           kind: "who",  takes: true,  rests: true },
+    { slug: "chill",          label: "Chill",          kind: "mood", takes: true,  rests: true },
+    { slug: "loud-and-late",  label: "Loud and late",  kind: "mood", takes: true,  rests: true },
+    { slug: "dressy",         label: "Dressy",         kind: "mood", takes: false, rests: true },
+    { slug: "cheap-and-good", label: "Cheap and good", kind: "mood", takes: true,  rests: true },
+    { slug: "old-school",     label: "Old-school",     kind: "mood", takes: true,  rests: true },
+    { slug: "worth-the-wait", label: "Worth the wait", kind: "mood", takes: false, rests: true }
+  ];
+  var VIBE_BY = {}; VIBES.forEach(function (v, i) { v.sort = i; VIBE_BY[v.slug] = v; });
+  var VIBE_KINDS = { hidden_gem: 1, take: 1 };
+  var VIBE_SHOW_AT = 2, VIBE_MAX = 2;
+  function vibesFor(target) { return VIBES.filter(function (v) { return target === "restaurant" ? v.rests : v.takes; }); }
+  // counts {slug: people}, mine [slug] -> what shows, most people first.
+  function vibeShown(counts, mine) {
+    counts = counts || {}; mine = mine || [];
+    return VIBES.filter(function (v) { return (counts[v.slug] || 0) >= VIBE_SHOW_AT || mine.indexOf(v.slug) >= 0; })
+      .map(function (v) { return { v: v, n: counts[v.slug] || 0, mine: mine.indexOf(v.slug) >= 0 }; })
+      .sort(function (a, b) { return b.n - a.n || a.v.sort - b.v.sort; });
+  }
+  // Read-only chips ("Date night · 4") for restaurants and pre-rendered lists.
+  function vibeTagsHtml(counts, mine, max) {
+    var s = vibeShown(counts, mine).slice(0, max || 3);
+    return s.length ? '<div class="vibes ro">' + s.map(function (x) {
+      return '<span class="vibe">' + esc(x.v.label) + (x.n ? " · " + x.n : "") + "</span>"; }).join("") + "</div>" : "";
+  }
+  // A chip row to pick up to two vibes (add page, Top 3 picker). data-pick-vibe="<key>:<slug>".
+  function vibePickHtml(key, selected, target) {
+    selected = selected || [];
+    var all = vibesFor(target);
+    var who = all.filter(function (v) { return v.kind === "who"; }), mood = all.filter(function (v) { return v.kind === "mood"; });
+    var chip = function (v) { return '<button type="button" class="vibe pick" data-pick-vibe="' + esc(key) + ":" + v.slug + '" aria-pressed="' + (selected.indexOf(v.slug) >= 0) + '">' + esc(v.label) + "</button>"; };
+    var moodOpen = selected.some(function (sl) { return VIBE_BY[sl] && VIBE_BY[sl].kind === "mood"; });
+    return '<div class="vibes pickrow" data-vibe-key="' + esc(key) + '">' + who.map(chip).join("") +
+      (moodOpen ? mood.map(chip).join("") : '<button type="button" class="vibe more" data-more-vibes="' + esc(key) + '">More…</button>') + "</div>";
+  }
+  // Toggle a slug in a picked list, max two. Returns the new list, or null when full.
+  function togglePick(list, slug) {
+    list = (list || []).slice();
+    var i = list.indexOf(slug);
+    if (i >= 0) { list.splice(i, 1); return list; }
+    if (list.length >= VIBE_MAX) return null;
+    list.push(slug); return list;
+  }
+  // Pre-pick mood row expansion lives on the row itself (no re-render needed).
+  function expandMood(btn, target) {
+    var row = btn.closest(".pickrow"); if (!row) return;
+    var key = row.dataset.vibeKey, picked = [];
+    row.querySelectorAll("[aria-pressed=true]").forEach(function (b) { picked.push(b.dataset.pickVibe.split(":")[1]); });
+    var html = vibePickHtml(key, picked, target);
+    var tmp = document.createElement("div"); tmp.innerHTML = html;
+    var fresh = tmp.firstChild;
+    fresh.querySelector(".more") && fresh.querySelector(".more").remove();
+    vibesFor(target).filter(function (v) { return v.kind === "mood"; }).forEach(function (v) {
+      if (!fresh.querySelector('[data-pick-vibe="' + key + ":" + v.slug + '"]')) {
+        var b = document.createElement("button"); b.type = "button"; b.className = "vibe pick";
+        b.dataset.pickVibe = key + ":" + v.slug; b.setAttribute("aria-pressed", "false"); b.textContent = v.label; fresh.appendChild(b);
+      }
+    });
+    row.replaceWith(fresh);
+  }
+
+  // On a take card: what shows, plus a button to add yours.
+  var VREG = {};
+  function vibeRowHtml(p, ctx) {
+    if (!VIBE_KINDS[p.type] || p.status === "pending") return "";
+    VREG[p.id] = { p: p, ctx: ctx };
+    var counts = (ctx.vibes && ctx.vibes[p.id]) || {}, mine = (ctx.myVibes && ctx.myVibes[p.id]) || [];
+    var open = ctx._vibeOpen === p.id;
+    var list = open ? vibesFor("take").map(function (v) { return { v: v, n: counts[v.slug] || 0, mine: mine.indexOf(v.slug) >= 0 }; }) : vibeShown(counts, mine);
+    return '<div class="vibes" data-vibes-for="' + p.id + '">' + list.map(function (x) {
+      return '<button type="button" class="vibe" data-vibe="' + x.v.slug + '" data-vid="' + p.id + '" aria-pressed="' + x.mine + '">' +
+        esc(x.v.label) + (x.n >= VIBE_SHOW_AT ? ' <span class="vn">' + x.n + "</span>" : "") + "</button>"; }).join("") +
+      '<button type="button" class="vibe add" data-vibe-more="' + p.id + '" aria-expanded="' + open + '">' +
+        (open ? "Done" : list.length ? "+ Vibe" : "What's the vibe?") + "</button></div>";
+  }
+  function redrawVibes(id) {
+    var r = VREG[id]; if (!r) return;
+    document.querySelectorAll('[data-vibes-for="' + id + '"]').forEach(function (el) { el.outerHTML = vibeRowHtml(r.p, r.ctx); });
+  }
+  async function castVibe(p, ctx, slug) {
+    ctx.vibes = ctx.vibes || {}; ctx.myVibes = ctx.myVibes || {};
+    var mine = ctx.myVibes[p.id] || [], had = mine.indexOf(slug) >= 0;
+    if (!had && mine.length >= VIBE_MAX) { TV.toast("Two vibes each. Tap one of yours to swap it."); return; }
+    if (!(await auth.session())) { TV.toast("That vibe didn't save"); return; }
+    var counts = ctx.vibes[p.id] = ctx.vibes[p.id] || {};
+    ctx.myVibes[p.id] = had ? mine.filter(function (x) { return x !== slug; }) : mine.concat(slug);
+    counts[slug] = Math.max(0, (counts[slug] || 0) + (had ? -1 : 1));
+    redrawVibes(p.id);
+    var r = had
+      ? await sb.from("vibe_tags").delete().eq("user_id", auth.me.id).eq("post_id", p.id).eq("vibe", slug)
+      : await sb.from("vibe_tags").insert({ user_id: auth.me.id, vibe: slug, post_id: p.id });
+    if (r.error) {
+      console.error(r.error);
+      ctx.myVibes[p.id] = mine; counts[slug] = Math.max(0, (counts[slug] || 0) + (had ? 1 : -1)); redrawVibes(p.id);
+      TV.toast(/RATE_LIMITED/.test(r.error.message || "") ? "That's a lot of vibes for one day. Try tomorrow." : "That vibe didn't save");
+      return;
+    }
+    track("vibe_tag", { vibe: slug, on: "take", off: had ? 1 : 0 });
+  }
+  document.addEventListener("click", function (e) {
+    var more = e.target.closest("[data-vibe-more]");
+    if (more) { var r = VREG[more.dataset.vibeMore]; if (!r) return; r.ctx._vibeOpen = r.ctx._vibeOpen === r.p.id ? null : r.p.id; redrawVibes(r.p.id); return; }
+    var b = e.target.closest("[data-vibe]");
+    if (b) { var x = VREG[b.dataset.vid]; if (x) castVibe(x.p, x.ctx, b.dataset.vibe); }
+  });
+  // Restaurant tags for a city: counts per restaurant + my own.
+  async function loadRestaurantVibes(cityId) {
+    var r = await Promise.all([
+      sb.from("restaurant_vibes").select("restaurant_id,vibe,people").eq("city_id", cityId),
+      auth.me ? sb.from("vibe_tags").select("restaurant_id,vibe").eq("user_id", auth.me.id).eq("city_id", cityId).not("restaurant_id", "is", null) : { data: [] }
+    ]);
+    var out = { counts: {}, mine: {} };
+    (r[0].data || []).forEach(function (x) { (out.counts[x.restaurant_id] = out.counts[x.restaurant_id] || {})[x.vibe] = x.people; });
+    (r[1].data || []).forEach(function (x) { (out.mine[x.restaurant_id] = out.mine[x.restaurant_id] || []).push(x.vibe); });
+    return out;
+  }
+  // Replace my vibes on a set of items (Top 3 save, a new take). want: {itemId: [slug]}; col: post_id | restaurant_id.
+  async function saveMyVibes(col, want, cityId) {
+    if (!auth.me) return true;
+    var ids = Object.keys(want);
+    var cur = col === "restaurant_id" && cityId
+      ? await sb.from("vibe_tags").select("id,restaurant_id,vibe").eq("user_id", auth.me.id).eq("city_id", cityId).not("restaurant_id", "is", null)
+      : ids.length ? await sb.from("vibe_tags").select("id," + col + ",vibe").eq("user_id", auth.me.id).in(col, ids) : { data: [] };
+    if (cur.error) return false;              // tables not there yet
+    var have = cur.data || [];
+    var drop = have.filter(function (x) { return (want[x[col]] || []).indexOf(x.vibe) < 0; }).map(function (x) { return x.id; });
+    var add = [];
+    ids.forEach(function (id) { (want[id] || []).forEach(function (sl) {
+      if (!have.some(function (x) { return x[col] === id && x.vibe === sl; })) { var row = { user_id: auth.me.id, vibe: sl }; row[col] = id; add.push(row); } }); });
+    if (drop.length) { var d = await sb.from("vibe_tags").delete().in("id", drop); if (d.error) return false; }
+    if (add.length) { var a = await sb.from("vibe_tags").insert(add); if (a.error) { console.error(a.error); return false; } }
+    if (add.length) track("vibe_tag", { on: col === "post_id" ? "take" : "restaurant", n: add.length });
+    return true;
+  }
+
   window.TV2 = {
     emailSignupHtml: emailSignupHtml, mountEmailSignup: mountEmailSignup,
     KIND: KIND, TENURE: TENURE, MON: MON, ICON: ICON, POST_COLS: POST_COLS,
@@ -662,6 +817,8 @@
     loadQuestions: loadQuestions, qTotal: qTotal, answer: answer, qOptionsHtml: qOptionsHtml,
     prepareClaim: prepareClaim, finishClaim: finishClaim, signInForBadge: signInForBadge, saveTenure: saveTenure,
     drawShareCard: drawShareCard, shareCard: shareCard, ago: ago, answerKind: answerKind, loadPosts: loadPosts, POST_COLS_X: POST_COLS_X,
-    share: share, takeShare: takeShare, questionShare: questionShare, shareLinks: shareLinks, track: track
+    share: share, takeShare: takeShare, questionShare: questionShare, shareLinks: shareLinks, track: track,
+    VIBES: VIBES, VIBE_BY: VIBE_BY, VIBE_KINDS: VIBE_KINDS, VIBE_SHOW_AT: VIBE_SHOW_AT, vibesFor: vibesFor, vibeShown: vibeShown, vibeTagsHtml: vibeTagsHtml,
+    vibePickHtml: vibePickHtml, togglePick: togglePick, expandMood: expandMood, loadRestaurantVibes: loadRestaurantVibes, saveMyVibes: saveMyVibes
   };
 })();

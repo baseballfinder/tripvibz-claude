@@ -34,7 +34,7 @@
   const DRAFT_KEY = "tv_v2_draft";
 
   let CITY = null, PLACES = [], MY_TENURE = null, QS = [];
-  const S = { kind: "hidden_gem", text: "", place: "", customPlace: "", months: [], tenure: null, err: "", busy: false };
+  const S = { kind: "hidden_gem", vibes: [], text: "", place: "", customPlace: "", months: [], tenure: null, err: "", busy: false };
   try { const k = qs.get("kind"); if (T2.KIND[k]) S.kind = k; const t = qs.get("text"); if (t) S.text = t.slice(0, 400); } catch (e) {}
 
   const signedIn = () => !!(auth.me && !auth.me.is_anonymous);
@@ -61,6 +61,11 @@
         <textarea class="ta" id="take" autocapitalize="sentences" autocorrect="on" spellcheck="true" maxlength="400" placeholder="Tap a starter, or just say it.">${esc(S.text)}</textarea>
       </div>
 
+      ${T2.VIBE_KINDS && T2.VIBE_KINDS[S.kind] ? `<div class="sect" id="vibe-sect"><h2>What's the vibe? <span style="font:500 13px 'Public Sans';color:#5f5a50">optional, up to 2</span></h2>
+        <div class="sub">Who would you take, and what kind of time is it?</div>
+        ${T2.vibePickHtml("t", S.vibes || [], "take")}
+      </div>` : ""}
+
       <div class="sect"><h2>Where does it apply?</h2>
         <div class="wrapchips">
           ${PLACES.map(p => `<button class="chip" data-place="${esc(p)}" aria-pressed="${S.place===p}">${esc(p)}</button>`).join("")}
@@ -82,7 +87,7 @@
 
       <div class="sect"><div class="preview-k">How it will look</div>
         <div class="take" style="padding-bottom:14px">
-          <div class="tags"><span class="tag2">${esc(K.label)}</span>${placeValue() ? `<span class="tag2">${T2.ICON.pin}${esc(placeValue())}</span>` : ""}${S.months.length ? `<span class="tag2">${esc(T2.monthsLabel(S.months))}</span>` : ""}</div>
+          <div class="tags"><span class="tag2">${esc(K.label)}</span>${placeValue() ? `<span class="tag2">${T2.ICON.pin}${esc(placeValue())}</span>` : ""}${S.months.length ? `<span class="tag2">${esc(T2.monthsLabel(S.months))}</span>` : ""}${T2.VIBE_KINDS && T2.VIBE_KINDS[S.kind] ? (S.vibes || []).map(v => `<span class="tag2">${esc(T2.VIBE_BY[v].label)}</span>`).join("") : ""}</div>
           <div class="tt" id="pv">${esc(S.text) || '<span style="color:#9a937f">Your take shows here.</span>'}</div>
           <div class="who" style="margin-bottom:0"><b>You</b><span class="bdg local pending">${esc(badge)} · unverified</span></div>
         </div>
@@ -116,6 +121,14 @@
       const m = Number(b.dataset.month); S.months = S.months.includes(m) ? S.months.filter(x => x !== m) : S.months.concat(m); compose();
     });
     root.querySelectorAll("[data-tenure]").forEach(b => b.onclick = () => { S.tenure = b.dataset.tenure; compose(); });
+    const vs = $("#vibe-sect");
+    if (vs) vs.addEventListener("click", e => {
+      const more = e.target.closest("[data-more-vibes]"); if (more) { T2.expandMood(more, "take"); return; }
+      const b = e.target.closest("[data-pick-vibe]"); if (!b) return;
+      const next = T2.togglePick(S.vibes, b.dataset.pickVibe.split(":")[1]);
+      if (!next) { toast("Two vibes at most. Tap one to swap it."); return; }
+      S.vibes = next; compose();
+    });
     $("#post-badge").onclick = () => submit(true);
     const an = $("#post-anon"); if (an) an.onclick = () => submit(false);
   }
@@ -152,6 +165,8 @@
         place_label: placeValue() || null, months: S.months.slice().sort((a,b) => a-b)
       });
       try { sessionStorage.removeItem(DRAFT_KEY); } catch (e) {}
+      // Vibes only for recommendations; a failure here never blocks the posted page.
+      if (T2.VIBE_KINDS[S.kind] && (S.vibes || []).length) { try { await T2.saveMyVibes("post_id", { [row.id]: S.vibes.slice(0, 2) }); } catch (e) { console.error(e); } }
       history.replaceState(null, "", `/${CITY.slug}/add/?posted=${row.id}`);
       await posted(row.id);
     } catch (err) {
