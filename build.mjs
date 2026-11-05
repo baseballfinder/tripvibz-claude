@@ -22,6 +22,8 @@
 import { readdir, readFile, writeFile, mkdir, rm, stat } from "node:fs/promises";
 import { join, extname, dirname } from "node:path";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import vm from "node:vm";
 
 // Dynamic so a missing dependency produces an instruction rather than a
 // module-resolution stack trace.
@@ -136,6 +138,39 @@ async function loadContent() {
 
 const MONTHS = ["January","February","March","April","May","June","July",
                 "August","September","October","November","December"];
+
+/* The "Best / Avoid / Peak crowds" summary on the worst-times calendar comes
+   from assets/v2.js (whenSummary) — one rule for the browser and the build, so
+   the pre-rendered summary matches what the page script draws. */
+const WHEN = (() => {
+  const noop = () => {};
+  const ctx = { window: {}, document: { addEventListener: noop, body: { appendChild: noop } } };
+  const escapeHtml = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  ctx.window.TV = { sb: null, auth: null, escapeHtml };
+  vm.runInNewContext(readFileSync("assets/v2.js", "utf8"), ctx);
+  return { summary: ctx.window.TV2.whenSummary };
+})();
+// HTML fragment -> plain text. Tags are stripped until none are left (a single
+// pass can leave a tag behind, e.g. "<<b>script>"), then entities are decoded
+// in one pass so "&amp;#39;" stays "&#39;" instead of being decoded twice.
+// The result is plain text; head() escapes it again for the meta tag.
+const ENTITY = { amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'" };
+function plainText(html) {
+  let s = String(html ?? ""), prev;
+  do { prev = s; s = s.replace(/<[^<>]*>/g, ""); } while (s !== prev);
+  return s.replace(/[<>]/g, "").replace(/&(amp|lt|gt|quot|#39);/g, (_, e) => ENTITY[e]);
+}
+// Plain-text "Best …. Avoid …." for meta descriptions (search snippets).
+function whenText(events) {
+  const html = WHEN.summary(events);
+  const lines = [...html.matchAll(/<em>([^<]+)<\/em>(.*?)<\/div><\/div>/g)]
+    .filter(m => m[1] === "Best" || m[1] === "Avoid")
+    .map(m => `${m[1] === "Best" ? "Best months" : "Avoid"}: ` + m[2].split("<br>").map(x => {
+      const t = plainText(x);
+      return t.includes(" · ") ? t.replace(" · ", " (") + ")" : t;
+    }).join("; "));
+  return lines.length ? lines.join(". ") + "." : "";
+}
 
 let REMOVED_META = "";   // set once data/removed-cities.json is read (below)
 function head({ title, desc, canonical, image, noindex, og = {}, preloadImage }) {
@@ -404,6 +439,29 @@ function articleLd(city, theme, takes, url, cfg, image) {
   return ld(siteGraph(...graph));
 }
 
+/* ---------------- topic page title + description ----------------
+   Search Console (Oct 2026): the worst-times pages earn most of the site's
+   impressions — for weather, hurricane and "when to go" searches — at position
+   3–7 with no clicks. The snippet now answers the question (best months, months
+   to avoid) instead of a generic line, and "by locals" is only claimed when
+   locals have actually posted. */
+function pageTitle(t, theme, city, takes, events) {
+  const yr = new Date().getFullYear();
+  if (theme === "worst_times" && events.length)
+    return `Worst time to visit ${city.name}: month-by-month guide (${yr})`;
+  return `${t.title(city.name)} (${yr})${takes.length ? " — by locals" : ""}`;
+}
+function pageDesc(t, theme, city, takes, events) {
+  if (theme === "worst_times" && events.length) {
+    const sum = whenText(events);
+    if (sum) {
+      const full = `${sum} ${city.name} month by month: weather, festivals and price seasons.`;
+      return full.length <= 158 ? full : clip(`${sum} Weather, festivals and prices by month.`, 158);
+    }
+  }
+  return t.desc(city.name);
+}
+
 /* ---------------- article body ---------------- */
 
 function articleBody(city, theme, takes, events) {
@@ -422,7 +480,7 @@ function articleBody(city, theme, takes, events) {
        <a class="btn coral" href="/${esc(city.slug)}/add/?kind=${theme}">Add your take</a></div>`;
 
   const cal = theme === "worst_times" && events.length
-    ? `<section class="cal"><h2>${esc(city.name)} month by month</h2><p class="sub">Festivals, conventions, weather and price seasons that change what a visit is like. Researched by the TripVibz editors from official event and weather sources.</p>${
+    ? `<section class="cal"><div class="cal-head"><h2>${esc(city.name)} month by month</h2><p class="sub">Festivals, conventions, weather and price seasons that change what a visit is like. <b>Researched by the TripVibz editors</b> from official event and weather sources, and checked monthly. Dates shift year to year, so confirm the exact weekend before you book.</p></div><div class="when-t cal-sum">${WHEN.summary(events)}</div>${
         MONTHS.map((m, i) => {
           const inM = events.filter(e => e.start_month <= e.end_month
             ? (i + 1 >= e.start_month && i + 1 <= e.end_month)
@@ -442,10 +500,10 @@ ${heroImg(city, { short: true })}
   <p class="lede">${esc(t.lede(city.name))}</p>
   <div class="by">${list.length} take${list.length === 1 ? "" : "s"}</div>
 </div>
+${cal}
 <nav class="chips" aria-label="Show"><a class="chip" href="/${esc(city.slug)}/" aria-pressed="false">Everything</a>${Object.keys(THEMES).map(k =>
   `<a class="chip" href="/${esc(city.slug)}/${THEMES[k].slug}/" aria-pressed="${k === theme}">${esc(THEMES[k].chip)}</a>`).join("")}</nav>
-${entries}
-${cal}`;
+${entries}`;
 }
 
 // Without these, every city and article page is orphaned: the home page and
@@ -1071,8 +1129,8 @@ for (const city of cities) {
     // The worst-times calendar is real content on its own.
     const hasContent = takes.length > 0 || (theme === "worst_times" && cityEvents.length > 0);
     await emit(`${city.slug}/${t.slug}/index.html`, await minifyHtml(render(articleTpl, {
-      title: `${t.title(city.name)} (${new Date().getFullYear()}) — by locals`,
-      desc: t.desc(city.name),
+      title: pageTitle(t, theme, city, takes, cityEvents),
+      desc: pageDesc(t, theme, city, takes, cityEvents),
       canonical: `${SITE}/${city.slug}/${t.slug}/`,
       image: `${SITE}/assets/og/${city.slug}-${t.slug}.jpg`,
       og: ogCard(`${city.slug}-${t.slug}.jpg`, `${t.title(city.name)}, according to locals`,

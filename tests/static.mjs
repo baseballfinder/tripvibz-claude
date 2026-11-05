@@ -399,6 +399,25 @@ await test("Installable (PWA): manifest, service worker with a build id and an e
   assert((await readFile("dist/index.html", "utf8")).includes('rel="manifest" href="/site.webmanifest"'), "home page must link the manifest");
 });
 
+await test("Worst-times pages answer the search: titled 'Worst time to visit', best/avoid months in the description, summary above the takes; 'by locals' only with takes", async () => {
+  const titles = new Set();
+  for (const c of cities) {
+    const h = await readFile(`dist/${c.slug}/worst-times-to-visit/index.html`, "utf8");
+    const title = (h.match(/<title>([^<]*)<\/title>/) || [])[1] || "";
+    const desc = (h.match(/<meta name="description" content="([^"]*)"/) || [])[1] || "";
+    assert(!titles.has(title), `${c.slug}: duplicate title ${title}`); titles.add(title);
+    if (h.includes('class="cal"')) {
+      assert(/^Worst time to visit .+: month-by-month guide \(\d{4}\)$/.test(title), `${c.slug}: title ${title}`);
+      assert(/^(Best months|Avoid):/.test(desc) && desc.length <= 170, `${c.slug}: description ${desc}`);
+      assert(h.indexOf("cal-sum") > 0 && h.indexOf("cal-sum") < h.indexOf('class="chips"'), `${c.slug}: summary not above the takes`);
+    }
+  }
+  for (const f of pages.filter(f => /\/(what-not-to-do|what-locals-do)\/index\.html$/.test(f))) {
+    const h = await readFile(f, "utf8");
+    if (/— by locals<\/title>/.test(h)) assert(/class="entry"/.test(h), `${f}: claims "by locals" with no takes`);
+  }
+});
+
 await test("Research data and scripts are not published", async () => {
   assert(!(await exists("dist/data")) && !(await exists("dist/scripts")), "dist/ contains data/ or scripts/");
 });
