@@ -9,11 +9,11 @@
 
   var KIND = {
     what_not_to_do: { label: "Don’t do this", sub: "A mistake visitors make",
-      starters: function (c) { return ["Never ___ in " + c + ", because ___.", "Skip ___. Locals ___ instead.", "Visitors always ___. Don’t."]; } },
+      starters: function (c) { return ["Never ___ in " + c + ", because ___.", "Skip ___. Go to ___ instead.", "Visitors always ___. Don’t."]; } },
     worst_times: { label: "When to go", sub: "Best and worst times to come",
       starters: function (c) { return ["Avoid " + c + " in ___, because ___.", "___ is the worst week. Come ___ instead.", "Don’t go to ___ on ___."]; } },
-    hidden_gem: { label: "Do this", sub: "What locals recommend",
-      starters: function (c) { return ["Locals go to ___ for ___.", "Instead of ___, try ___.", "Nobody visiting knows about ___."]; } },
+    hidden_gem: { label: "Do this", sub: "Where you'd take a friend",
+      starters: function (c) { return ["I'd take a friend to ___ for ___.", "Instead of ___, try ___.", "Nobody visiting knows about ___."]; } },
     // "It depends" answers to questions (Only on weekdays, Depends on the night…). Not offered on the add page.
     take: { label: "It depends", sub: "Worth it, with a catch", answerOnly: true,
       starters: function (c) { return ["Only if ___.", "Worth it, but ___.", "Go on ___, not ___."]; } }
@@ -193,7 +193,7 @@
     ].filter(Boolean).join(" · ");
     return '<article class="take' + (p.status === "pending" ? " is-pending" : "") + '" data-id="' + p.id + '">' +
       '<div class="tk">' + kicker +
-        (isSplit(p) ? ' <span class="tag2 split">Locals are split</span>' : "") +
+        (isSplit(p) ? ' <span class="tag2 split">People are split</span>' : "") +
         (p.status === "pending" ? ' <span class="tag2 pending">Waiting for review · only you can see it</span>' : "") +
       "</div>" +
       (opts.noLink ? '<h1 class="tt" style="font-size:23px">' + esc(p.title) + "</h1>" : '<a class="tt" href="' + href + '">' + esc(p.title) + "</a>") +
@@ -372,7 +372,7 @@
   function questionShare(q, city, pickedLabel) {
     return {
       url: SITE + "/" + city.slug + "/vote/?q=" + q.id,
-      text: city.name + " locals, settle this: " + q.prompt + (pickedLabel ? " I said \u201c" + pickedLabel + ".\u201d You?" : ""),
+      text: "Settle this for " + city.name + ": " + q.prompt + (pickedLabel ? " I said \u201c" + pickedLabel + ".\u201d You?" : ""),
       kind: "question", id: q.id
     };
   }
@@ -605,10 +605,10 @@
     var name = city ? city.name : "your next trip";
     if (SIGNED_UP[key]) {
       return '<section class="box signup" data-signup="' + esc(source) + '"><div class="signup-done"><b>You\'re on the list.</b> We\'ll email you when ' +
-        (city ? "locals add something worth knowing about " + esc(name) : "there's something worth knowing") + ".</div></section>";
+        (city ? "people add something worth knowing about " + esc(name) : "there's something worth knowing") + ".</div></section>";
     }
     return '<section class="box signup" data-signup="' + esc(source) + '">' +
-      '<h2>Get ' + esc(name) + ' tips from locals by email</h2>' +
+      '<h2>Get ' + esc(name) + ' tips by email</h2>' +
       '<div class="signup-sub">The best new takes and questions about ' + esc(name) + '. Occasional emails, unsubscribe anytime.</div>' +
       '<form class="signup-f" novalidate>' +
       '<input class="inp" type="email" name="email" autocomplete="email" inputmode="email" placeholder="you@example.com" aria-label="Email address" maxlength="254" required>' +

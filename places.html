@@ -67,7 +67,7 @@
 <main class="wrap">
   <div class="head">
     <h1>Where to next?</h1>
-    <p>Real takes from people who live there: what visitors get wrong, when to go, and what locals do instead. No top-10 filler. Don’t see your city? <a href="#request">Ask for it</a>.</p>
+    <p>Real takes from people who know each city: where they'd take a friend, what to skip and when to go. No top-10 filler. Don’t see your city? <a href="#request">Ask for it</a>.</p>
   </div>
   <div class="search"><input id="search" type="search" placeholder="Search a city or state…" autocomplete="off"></div>
 
@@ -89,7 +89,7 @@
   </section>
 </main>
 
-<footer><div class="wrap"><span class="tagline">The local take on every city.</span> · TripVibz · <a href="/privacy/">Privacy</a> · <a href="/terms/">Terms</a></div></footer>
+<footer><div class="wrap"><span class="tagline">Ask someone who knows.</span> · TripVibz · <a href="/privacy/">Privacy</a> · <a href="/terms/">Terms</a></div></footer>
 
 <script src="/assets/supabase.js"></script>
 <script src="/assets/tv.js"></script>
@@ -106,8 +106,8 @@
     return `linear-gradient(135deg, hsl(${h} 55% 52%), hsl(${(h+38)%360} 60% 42%))`;
   }
   function countLine(c){
-    if(c.take_count>0) return `${c.take_count} local take${c.take_count===1?'':'s'}`;
-    return `Needs locals — be the first`;
+    if(c.take_count>0) return `${c.take_count} take${c.take_count===1?'':'s'}`;
+    return `No takes yet — be the first`;
   }
 
   function card(c, i){
@@ -164,7 +164,7 @@
     hydrated = true;
     $("#live-label").hidden = !live.length;
     $("#soon-label").hidden = !soon.length;
-    $("#soon-label").textContent = "Open for locals";
+    $("#soon-label").textContent = "Open for takes";
     if(!live.length && !soon.length){
       liveGrid.innerHTML = `<div class="empty">No cities match “${escapeHtml(q)}”.</div>`;
     }

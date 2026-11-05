@@ -206,7 +206,7 @@ await test("Local verification: 40-mile rule, presence recorded server-side only
 await test("Locals' top 3 restaurants: section pre-rendered on every city page; picker and roll-up wired", async () => {
   for (const c of cities) {
     const h = await readFile(join("dist", c.slug, "index.html"), "utf8");
-    assert(h.includes('<section class="eats" id="tv-eats"') && /Locals' top 3 restaurants/.test(h), `${c.slug}: top-3 section missing`);
+    assert(h.includes('<section class="eats" id="tv-eats"') && /Where they'd take a friend to eat/.test(h), `${c.slug}: top-3 section missing`);
     assert(h.includes("/how-we-verify-locals/"), `${c.slug}: top-3 section should link to how badges work`);
   }
   const city = await readFile("city.html", "utf8");

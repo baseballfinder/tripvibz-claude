@@ -127,26 +127,26 @@
   const SECTION_CHIPS = [["all","Everything"],["what_not_to_do","What not to do"],["worst_times","Worst times"],["hidden_gem","What locals do"]];
   const THEMES = {
     what_not_to_do: {
-      vent: c => `What do tourists do in ${c} that drives you crazy?`,
-      starters: c => [`Never ___ in ${c}, because ___.`, `Skip ___. Locals ___ instead.`, `Visitors always ___. Don't.`],
+      vent: c => `A friend is visiting ${c}. What should they skip?`,
+      starters: c => [`Never ___ in ${c}, because ___.`, `Skip ___. Go to ___ instead.`, `Visitors always ___. Don't.`],
       nav:   "What not to do",
       title: c => `What not to do in ${c}`,
-      lede:  c => `The mistakes visitors make in ${c}, according to people who live there. Ranked by how many locals say it's true.`,
-      ask:   c => `What do visitors get wrong in ${c}?`,
+      lede:  c => `What to skip in ${c}, from people who know it well. Ranked by how many people say it's true.`,
+      ask:   c => `What would you tell a friend to skip in ${c}?`,
       prompts: [
         "Standing in the bike lane to take photos. It's a road, not a viewing platform.",
         "Renting a car. You'll pay $45 a night to park it and never once need it.",
         "Beach chair rentals — walk two blocks north and the same sand is free.",
-        "Wearing beachwear inland. Locals cover up the second they leave the sand.",
+        "Wearing beachwear inland. Cover up once you leave the sand.",
         "Assuming it's walkable. The two halves are 40 minutes apart in traffic."
       ]
     },
     worst_times: {
-      vent: c => `When should tourists just stay away from ${c}?`,
+      vent: c => `When would you tell a friend not to come to ${c}?`,
       starters: c => [`Avoid ${c} in ___, because ___.`, `Don't go to ___ on ___. ___.`, `___ is the worst week. Come ___ instead.`],
       nav:   "Worst times to visit",
       title: c => `Worst times to visit ${c}`,
-      lede:  c => `The weeks, days and hours locals would tell you to avoid in ${c} — and what to do instead.`,
+      lede:  c => `The weeks, days and hours people who know ${c} would steer a friend away from — and what to do instead.`,
       ask:   c => `When should visitors avoid ${c}, and why?`,
       prompts: [
         "Mid-March. Every hotel triples its rate and you won't get a table anywhere.",
@@ -156,12 +156,12 @@
       ]
     },
     hidden_gem: {
-      vent: c => `What do tourists never figure out about ${c}?`,
-      starters: c => [`Locals actually go to ___ for ___.`, `Instead of ___, try ___.`, `Nobody visiting knows about ___.`],
+      vent: c => `Where would you take a friend in ${c}?`,
+      starters: c => [`I'd take a friend to ___ for ___.`, `Instead of ___, try ___.`, `Nobody visiting knows about ___.`],
       nav:   "What locals actually do",
       title: c => `What locals actually do in ${c}`,
-      lede:  c => `The parts of ${c} that don't show up on the top-ten lists, from people who never left.`,
-      ask:   c => `What do locals in ${c} do that visitors never find?`,
+      lede:  c => `Where people who know ${c} take their friends — the parts that don't show up on the top-ten lists.`,
+      ask:   c => `Where would you take a friend in ${c} that visitors never find?`,
       prompts: [
         "The stretch of park behind the marina — same water view, none of the crowd.",
         "Tuesday markets. Everyone goes Saturday; Tuesday is the same vendors, no queue.",
@@ -192,7 +192,7 @@
     { n: "State fair",
       w: c => `Parking anywhere near the grounds is gone by mid-morning.` },
     { n: "Shoulder season",
-      w: c => `Same weather, thinner crowds, noticeably cheaper — the locals' answer.` },
+      w: c => `Same weather, thinner crowds, noticeably cheaper — the insider's answer.` },
     { n: "Holiday week",
       w: c => `Everything in ${c} is booked and priced for people who planned in advance.` }
   ];
@@ -242,7 +242,7 @@
           `<a class="chip" href="${k === "all" ? routes.city(CITY.slug) : routes.article(CITY.slug, k)}" ${k === THEME ? 'aria-current="page"' : ""}>${escapeHtml(l)}</a>`).join("")}</nav>
         <div class="feed" id="entries">
           ${list.length ? list.map(p => T2.takeHtml(p, CTX, { city: CITY, placement: PLACEMENT })).join("") :
-            `<div class="empty2"><b>No takes yet</b>Live in ${escapeHtml(CITY.name)}? One sentence is enough, and the first 10 signed-in locals become founding locals.</div>`}
+            `<div class="empty2"><b>No takes yet</b>Know ${escapeHtml(CITY.name)}? One sentence is enough. The first 10 signed-in locals become founding locals.</div>`}
         </div>
         ${addCard()}
       </section>
@@ -262,7 +262,7 @@
   // sign-in). Here: one tap on a starter or the button takes you there.
   function addCard(){
     return `<section class="qcard" style="margin-top:22px">
-      <div class="qk">${ENTRIES.length ? "Add yours" : "Locals only"}</div>
+      <div class="qk">${ENTRIES.length ? "Add yours" : "Know this city?"}</div>
       <div class="qp">${escapeHtml(ENTRIES.length ? CFG.ask(CITY.name) : CFG.vent(CITY.name))}</div>
       <div class="qopts">${CFG.starters(CITY.name).map(s =>
         `<a class="qopt" href="${addHref(s)}"><span>${escapeHtml(s)}</span></a>`).join("")}</div>
@@ -330,7 +330,7 @@
     const eg = EVENT_EG[evEgIx % EVENT_EG.length];
     return `<div class="ev-add">
       <h3>Add something to the calendar</h3>
-      <div class="sub">A festival, a season, a weekend locals dread — anything that changes what a month is like.
+      <div class="sub">A festival, a season, a weekend everyone in town dreads — anything that changes what a month is like.
         <button class="ev-swap" id="ev-swap">Show another example</button></div>
       <div id="ev-slot"></div>
       <label for="ev-name">What is it?</label>

@@ -34,7 +34,7 @@
   const DRAFT_KEY = "tv_v2_draft";
 
   let CITY = null, PLACES = [], MY_TENURE = null, QS = [];
-  const S = { kind: "what_not_to_do", text: "", place: "", customPlace: "", months: [], tenure: null, err: "", busy: false };
+  const S = { kind: "hidden_gem", text: "", place: "", customPlace: "", months: [], tenure: null, err: "", busy: false };
   try { const k = qs.get("kind"); if (T2.KIND[k]) S.kind = k; const t = qs.get("text"); if (t) S.text = t.slice(0, 400); } catch (e) {}
 
   const signedIn = () => !!(auth.me && !auth.me.is_anonymous);
@@ -50,10 +50,10 @@
       <div class="row-between" style="min-height:44px;margin-top:6px">
         <a class="back" href="/${CITY.slug}/">← ${esc(CITY.name)}</a>
       </div>
-      <h1 style="font-size:24px">What do tourists get wrong about ${esc(CITY.name)}?</h1>
+      <h1 style="font-size:24px">A friend is visiting ${esc(CITY.name)}. What do you tell them?</h1>
 
       <div class="sect"><h2>What kind of take?</h2>
-        <div class="kinds">${Object.keys(T2.KIND).filter(k => !T2.KIND[k].answerOnly).map(k => `<button class="kind" data-kind="${k}" aria-pressed="${S.kind===k}"><b>${esc(T2.KIND[k].label)}</b><span>${esc(T2.KIND[k].sub)}</span></button>`).join("")}</div>
+        <div class="kinds">${["hidden_gem", "what_not_to_do", "worst_times"].filter(k => T2.KIND[k] && !T2.KIND[k].answerOnly).map(k => `<button class="kind" data-kind="${k}" aria-pressed="${S.kind===k}"><b>${esc(T2.KIND[k].label)}</b><span>${esc(T2.KIND[k].sub)}</span></button>`).join("")}</div>
       </div>
 
       <div class="sect"><label class="h" for="take">Say it in one sentence</label>
@@ -220,7 +220,7 @@
       <section class="sect">
         ${nextQ ? `<a class="next-q" href="/${CITY.slug}/vote/?q=${nextQ.id}"><span><b>${QS.filter(x => !x.mine).length} quick question${QS.filter(x => !x.mine).length === 1 ? "" : "s"} about ${esc(CITY.name)}</b><span>One tap each.</span></span>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16130e" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>`
-        : `<a class="next-q" href="/${CITY.slug}/"><span><b>See what other locals said</b><span>${esc(CITY.name)} feed</span></span>
+        : `<a class="next-q" href="/${CITY.slug}/"><span><b>See what others said</b><span>${esc(CITY.name)} feed</span></span>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16130e" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>`}
       </section>`;
 
