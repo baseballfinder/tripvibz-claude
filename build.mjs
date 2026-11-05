@@ -1263,6 +1263,13 @@ await emit("_redirects", `# Old query-param URLs -> clean paths
 ${Object.entries(REMOVED).map(([slug, to]) => `# ${slug} was removed from the site\n/${slug}  ${to}  301\n/${slug}/*  ${to}  301`).join("\n")}
 `);
 
+/* ---------------- _routes.json ----------------
+   functions/_middleware.js (the cover page during database updates) has to see
+   every page load, so Functions run on everything except /assets/*: scripts,
+   styles, fonts and images are served straight from the edge and never pay
+   for a Function call. */
+await writeFile(join(OUT, "_routes.json"), JSON.stringify({ version: 1, include: ["/*"], exclude: ["/assets/*"] }, null, 2) + "\n");
+
 let before = 0, after = 0;
 console.log("\n  file                     before     after    saved");
 console.log("  " + "-".repeat(52));
