@@ -150,13 +150,25 @@ const WHEN = (() => {
   vm.runInNewContext(readFileSync("assets/v2.js", "utf8"), ctx);
   return { summary: ctx.window.TV2.whenSummary };
 })();
+// HTML fragment -> plain text. Tags are stripped until none are left (a single
+// pass can leave a tag behind, e.g. "<<b>script>"), then entities are decoded
+// in one pass so "&amp;#39;" stays "&#39;" instead of being decoded twice.
+// The result is plain text; head() escapes it again for the meta tag.
+const ENTITY = { amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'" };
+function plainText(html) {
+  let s = String(html ?? ""), prev;
+  do { prev = s; s = s.replace(/<[^<>]*>/g, ""); } while (s !== prev);
+  return s.replace(/[<>]/g, "").replace(/&(amp|lt|gt|quot|#39);/g, (_, e) => ENTITY[e]);
+}
 // Plain-text "Best …. Avoid …." for meta descriptions (search snippets).
 function whenText(events) {
   const html = WHEN.summary(events);
   const lines = [...html.matchAll(/<em>([^<]+)<\/em>(.*?)<\/div><\/div>/g)]
     .filter(m => m[1] === "Best" || m[1] === "Avoid")
-    .map(m => `${m[1] === "Best" ? "Best months" : "Avoid"}: ` + m[2].split("<br>").map(x =>
-      x.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&#39;/g, "'").replace(" · ", " (") + (x.includes(" · ") ? ")" : "")).join("; "));
+    .map(m => `${m[1] === "Best" ? "Best months" : "Avoid"}: ` + m[2].split("<br>").map(x => {
+      const t = plainText(x);
+      return t.includes(" · ") ? t.replace(" · ", " (") + ")" : t;
+    }).join("; "));
   return lines.length ? lines.join(". ") + "." : "";
 }
 
