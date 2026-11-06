@@ -400,6 +400,68 @@ await test("Installable (PWA): manifest, service worker with a build id and an e
   assert((await readFile("dist/index.html", "utf8")).includes('rel="manifest" href="/site.webmanifest"'), "home page must link the manifest");
 });
 
+await test("Worst-times pages answer the search: titled 'Worst time to visit', best/avoid months in the description, summary above the takes; 'by locals' only with takes", async () => {
+  const titles = new Set();
+  for (const c of cities) {
+    const h = await readFile(`dist/${c.slug}/worst-times-to-visit/index.html`, "utf8");
+    const title = (h.match(/<title>([^<]*)<\/title>/) || [])[1] || "";
+    const desc = (h.match(/<meta name="description" content="([^"]*)"/) || [])[1] || "";
+    assert(!titles.has(title), `${c.slug}: duplicate title ${title}`); titles.add(title);
+    if (h.includes('class="cal"')) {
+      assert(/^Worst time to visit .+: month-by-month guide \(\d{4}\)$/.test(title), `${c.slug}: title ${title}`);
+      assert(/^(Best months|Avoid):/.test(desc) && desc.length <= 170, `${c.slug}: description ${desc}`);
+      assert(h.indexOf("cal-sum") > 0 && h.indexOf("cal-sum") < h.indexOf('class="chips"'), `${c.slug}: summary not above the takes`);
+    }
+  }
+  for (const f of pages.filter(f => /\/(what-not-to-do|what-locals-do)\/index\.html$/.test(f))) {
+    const h = await readFile(f, "utf8");
+    if (/— by locals<\/title>/.test(h)) assert(/class="entry"/.test(h), `${f}: claims "by locals" with no takes`);
+  }
+});
+
+await test("Cover page during database updates: page loads get a 503 cover while the switch is on; APIs, assets, admin and ?preview=live never do; fails open; /assets/* skips Functions", async () => {
+  const mw = await import("../functions/_middleware.js");
+  const NOW = Date.parse("2026-11-05T22:00:00Z");
+  const sw = row => async () => new Response(JSON.stringify(row ? [row] : []), { status: 200 });
+  const req = (path, accept = "text/html,application/xhtml+xml", extra = {}) =>
+    new Request("https://www.tripvibz.com" + path, { headers: { accept, ...(extra.cookie ? { cookie: extra.cookie } : {}) }, method: extra.method || "GET" });
+  const real = () => new Response("real site", { status: 200, headers: { "content-type": "text/html" } });
+  const run = async (request, row, opts = {}) => { mw._resetCache(); return mw.onRequest({ request, next: async () => real() }, { now: NOW, fetchImpl: opts.fetchImpl || sw(row) }); };
+  const on = { maintenance: true, until: new Date(NOW + 10 * 60000).toISOString() };
+
+  let r = await run(req("/miami/"), on);
+  assert(r.status === 503 && r.headers.get("retry-after") === "300" && r.headers.get("cache-control") === "no-store", "a page load should get the 503 cover with Retry-After");
+  const html = await r.text();
+  assert(/Back in a few minutes/.test(html) && /http-equiv="refresh"/.test(html) && !/<script/i.test(html), "cover page: wording, self-refresh, no scripts (CSP)");
+  assert(r.headers.get("content-security-policy"), "cover page must carry the security headers");
+  assert((await run(req("/miami/", "text/html", { method: "HEAD" }), on)).status === 503, "HEAD gets the cover too");
+
+  for (const [path, why, accept] of [["/api/health", "the API", "application/json"], ["/api/health", "the API, even asked for HTML", "text/html"], ["/admin.html", "the admin page", "text/html"],
+      ["/assets/v2.js", "assets", "*/*"], ["/sw.js", "the service worker", "*/*"], ["/miami/", "fetch() calls that don't ask for HTML", "application/json"]])
+    assert((await run(req(path, accept), on)).status === 200, `${why} must never get the cover`);
+  assert((await run(new Request("https://www.tripvibz.com/miami/", { method: "POST", headers: { accept: "text/html" } }), on)).status === 200, "only GET/HEAD are covered");
+  const passed = await run(req("/miami/"), { maintenance: false });
+  assert(passed.headers.get("content-security-policy") && passed.headers.get("strict-transport-security"), "pages passed through keep the security headers (CSP, HSTS)");
+
+  r = await run(req("/miami/?preview=live"), on);
+  assert(r.status === 200 && /tv_live=1/.test(r.headers.get("set-cookie") || ""), "?preview=live shows the real site and sets the one-hour cookie");
+  assert((await run(req("/miami/", "text/html", { cookie: "a=b; tv_live=1" }), on)).status === 200, "the preview cookie shows the real site");
+
+  assert((await run(req("/miami/"), { maintenance: false, until: null })).status === 200, "switch off: real site");
+  assert((await run(req("/miami/"), { maintenance: true, until: new Date(NOW - 1000).toISOString() })).status === 200, "past its end time: real site, even if the switch was left on");
+  assert((await run(req("/miami/"), { maintenance: true, until: null })).status === 503, "on with no end time (manual): covered");
+  assert((await run(req("/miami/"), null)).status === 200, "no row: real site");
+  assert((await run(req("/miami/"), on, { fetchImpl: async () => new Response("relation does not exist", { status: 404 }) })).status === 200, "table missing: real site");
+  assert((await run(req("/miami/"), on, { fetchImpl: async () => { throw new Error("network"); } })).status === 200, "Supabase unreachable: real site (fails open)");
+
+  const routes = JSON.parse(await readFile("dist/_routes.json", "utf8"));
+  assert(routes.version === 1 && routes.include.join() === "/*" && routes.exclude.join() === "/assets/*", "dist/_routes.json: Functions on every page, never on /assets/*");
+  const mig = await readFile("supabase/migrations/20261105190000_site_status.sql", "utf8");
+  assert(/grant select \(id, maintenance, until\) on public\.site_status to anon, authenticated;/.test(mig) && !/grant (insert|update|delete|all)[^;]*to anon/i.test(mig), "site_status: public read only, nobody writes it through the API");
+  const wf = await readFile(".github/workflows/maintenance-cover.yml", "utf8");
+  assert(/paths: \["supabase\/migrations\/\*\*"\]/.test(wf) && /if: always\(\) && env\.ACTION != 'on'/.test(wf), "workflow: runs on migration merges only and always switches the cover off");
+});
+
 await test("Vibes: the list in assets/v2.js matches the migration; recommendations only; tags can't be edited or spoofed; vibe pages indexed from 3 entries", async () => {
   const mig = await readFile("supabase/migrations/20261105200000_vibes.sql", "utf8");
   const seed = [...mig.matchAll(/\('([a-z-]+)',\s*'([^']+)',\s*'(who|mood)',\s*\d+,\s*(true|false),\s*(true|false)\)/g)]
