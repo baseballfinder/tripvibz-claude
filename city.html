@@ -201,7 +201,7 @@
       return `<div class="qcard lite"><div class="qk">You've answered every question</div>
         <div class="qp">${esc(last.prompt)}</div>
         <div class="qopts">${T2.qOptionsHtml(last, true, base)}</div>
-        <div class="qnote">${T2.qTotal(last)} vote${T2.qTotal(last) === 1 ? "" : "s"} so far. New questions every week.</div></div>`;
+        <div class="qnote">${T2.qTotal(last)} votes so far. New questions every week.</div></div>`;
     }
     const total = T2.qTotal(q);
     return `<div class="qcard lite"><div class="qk">Settle this</div>
