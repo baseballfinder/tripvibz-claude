@@ -30,6 +30,9 @@
 .qcard.lite .qopts{flex-direction:row;flex-wrap:wrap;gap:8px}
 .qcard.lite .qopt{min-height:40px;padding:0 14px;border:1.5px solid var(--ink);background:#fff;color:var(--ink);font-size:14px;font-weight:600;border-radius:999px}
 .qcard.lite .qopt .fill{display:none}
+/* Pills are only as wide as their text, so the label and the percentage need their own gap. */
+.qcard.lite .qopt{gap:10px}
+.qcard.lite .qopt .you{background:var(--ink);color:#fff}
 .qcard.lite .qnote{color:var(--muted);margin-top:8px}
 .panel .editors{margin-bottom:12px}
 .panel .chips{padding-top:0}
@@ -198,7 +201,7 @@
       return `<div class="qcard lite"><div class="qk">You've answered every question</div>
         <div class="qp">${esc(last.prompt)}</div>
         <div class="qopts">${T2.qOptionsHtml(last, true, base)}</div>
-        <div class="qnote">${T2.qTotal(last)} votes so far. New questions every week.</div></div>`;
+        <div class="qnote">${T2.qTotal(last)} vote${T2.qTotal(last) === 1 ? "" : "s"} so far. New questions every week.</div></div>`;
     }
     const total = T2.qTotal(q);
     return `<div class="qcard lite"><div class="qk">Settle this</div>
