@@ -48,6 +48,7 @@ The database lint needs the database URL: `psql "$SUPABASE_DB_URL" -f tests/db-s
 | Phone notifications | Search-visit notifier and new-take notifier present and valid; the search beacon never fires on localhost | static |
 | Cover page during database updates | Page loads get the 503 "Back in a few minutes" page while `site_status` is on; the API, assets, admin, non-HTML requests and `?preview=live` never do; an expired or unreadable switch serves the real site; `/assets/*` skips Functions; the workflow runs only on migration merges and always switches off | static |
 | Vibes | Add page: up to two vibes on "Do this" takes, none on warnings, saved with the take; take cards take a vibe in one tap; the vibe list in `assets/v2.js` matches the migration; database refuses vibes on warnings and timing, more than two per person per item, and edits; vibe pages (`/<city>/<vibe>/`) exist from 1 entry and are indexed from 3 | e2e + static |
+| New code comes with tests | The "Tests included" check fails a PR that changes site code without a test; the rule (`scripts/tests-included.mjs`) is checked against real past PRs; only the `no-tests-needed` label skips it; `CLAUDE.md` states it and isn't published | static + workflow |
 | Threads and replies | Split bar, typed "I disagree" reply sent | e2e |
 | JavaScript health | No errors on any page visited | e2e |
 | City pages exist | Page, vote page and add page for every city in the database | static |
