@@ -13,9 +13,10 @@
   let CITY = null, POSTS = [], CTX = null, QS = [], EVENTS = [], SECTION = "all", SORT = "top", VIBE = null;
   // The "Pick a vibe" row appears once this many takes and restaurants carry a shown vibe.
   const VIBE_FILTER_MIN = 5;
-  // One section at a time. The hash deep-links a tab (#eat, #when, #stay; #top3 opens the picker).
-  const TABS = [["takes","Takes"],["eat","Eat"],["when","When to go"],["stay","Stay"]];
-  const tabFromHash = h => { h = String(h || "").replace(/^#/, ""); return h === "top3" ? "eat" : TABS.some(t => t[0] === h) ? h : "takes"; };
+  // One section at a time. The hash deep-links a tab (#eat, #when, #guide; #top3 opens the picker).
+  // The Guide replaced the Stay tab (Nov 2026); old #stay links open the Guide, which ends with the hotels.
+  const TABS = [["takes","Takes"],["eat","Eat"],["when","When to go"],["guide","Guide"]];
+  const tabFromHash = h => { h = String(h || "").replace(/^#/, ""); return h === "top3" ? "eat" : h === "stay" ? "guide" : TABS.some(t => t[0] === h) ? h : "takes"; };
   let TAB = tabFromHash(location.hash);
   // Section chips and sort only once there is enough to filter.
   const CHIPS_MIN_TAKES = 10;
@@ -26,8 +27,8 @@
   // The hero photo is pre-rendered too (build.mjs heroImg: local resized copies,
   // fetchpriority=high) so it is the first thing the browser fetches.
   const HERO_HTML = keep("tv-hero");
-  // Locals' top 3 is pre-rendered too; shown as-is until its data arrives.
-  const EATS_HTML = keep("tv-eats");
+  // Locals' top 3 and the Guide are pre-rendered too; shown as-is until their data arrives.
+  const EATS_HTML = keep("tv-eats"), GUIDE_HTML = keep("tv-guide");
   const NT = { kind: "what_not_to_do", topic: "", text: "", busy: false, sent: false, err: "", open: false };
   const NT_KINDS = [["what_not_to_do","Don’t do this"],["hidden_gem","Do this"],["take","It depends"],["worst_times","When to go"]];
 
@@ -103,11 +104,53 @@
       <div class="when-go">Month-by-month calendar →</div></a>`;
   }
 
-  // Stay: the hotel map, then hotel links for the places and months locals mention.
+  // Where to stay (the end of the Guide): the hotel map, then hotel links for the places and months people mention.
   function stayPanel(){
     const seen = new Set();
     const tips = POSTS.map(p => T2.stay22TakeLink(p, CTX, CITY, "city_stay")).filter(h => h && !seen.has(h) && seen.add(h));
     return `${T2.stay22MapHtml(CITY, "city_map")}${tips.length ? `<div class="stay-tips"><div class="when-k">Where people point friends</div><div class="stay-links">${tips.join("")}</div></div>` : ""}`;
+  }
+
+  // Guide: a map of the spots in the takes and the top restaurants, the top 3 restaurants
+  // with how many people picked each and what they said, the spots, then where to stay
+  // (assets/guide.js; build.mjs pre-renders the same markup). guide.js, the map library and
+  // the tiles all load when the Guide is first opened, so the other tabs carry none of it.
+  const GUIDE_SRC = (document.getElementById("city") || { dataset: {} }).dataset.guideSrc || "/assets/guide.js";
+  let guideLoading = null;
+  function loadGuide(){
+    if (window.TVGuide) return Promise.resolve(true);
+    if (guideLoading) return guideLoading;
+    guideLoading = new Promise(resolve => {
+      const s = document.createElement("script"), t = setTimeout(() => { guideLoading = null; resolve(false); }, 8000);
+      s.src = GUIDE_SRC; s.async = true;
+      s.onload = () => { clearTimeout(t); resolve(!!window.TVGuide); };
+      s.onerror = () => { clearTimeout(t); guideLoading = null; resolve(false); };
+      document.head.appendChild(s);
+    });
+    return guideLoading;
+  }
+  function guidePanel(){
+    if (!window.TVGuide || (!EATS.ready && GUIDE_HTML)) return GUIDE_HTML || `<div class="empty2"><b>Loading the guide…</b></div>`;
+    const spots = TVGuide.spots(POSTS, Object.values((CTX && CTX.placeRows) || {}));
+    const eats = TVGuide.topEats(EATS.rows, EATS.picks, EATS.verified, id => T2.shortName(EATS.profiles[id]), 3);
+    return TVGuide.html(CITY, spots, eats, {
+      pickers: new Set(EATS.picks.map(x => x.user_id)).size,
+      hotelsNear: name => T2.stay22Link(CITY, { place: name, placement: "guide" }),
+      stayHtml: stayPanel(),
+      addHref: `/${CITY.slug}/add/`
+    });
+  }
+  // The map loads (with its library and tiles) only once the Guide is on screen.
+  function mountGuide(){
+    if (TAB !== "guide") return;
+    const had = !!window.TVGuide;
+    loadGuide().then(ok => {
+      const panel = $("#panel-guide"); if (!panel) return;
+      if (!ok) { const w = panel.querySelector(".g-map-wait"); if (w) w.textContent = "The map didn't load. Everything on it is listed below."; return; }
+      // First open: swap the pre-rendered Guide for the live one (only this panel, so a half-typed top 3 survives).
+      if (!had && EATS.ready) { panel.innerHTML = guidePanel(); T2.mountStay22(panel); }
+      TVGuide.mountMap(panel).then(m => { if (m) T2.track("guide_map", { city: CITY.slug }); });
+    });
   }
 
   /* ---------- Locals' top 3 restaurants ----------
@@ -367,13 +410,14 @@
       ${panel("takes", takesPanel())}
       ${panel("eat", EATS.ready ? eatsHtml() : EATS_HTML)}
       ${panel("when", whenPanel())}
-      ${panel("stay", stayPanel())}
+      ${panel("guide", guidePanel())}
       ${T2.emailSignupHtml(CITY, "city_page")}
       ${NEARBY_HTML}
       ${ctaBar()}`;
     wire();
     T2.mountStay22($("#city"));
     T2.mountEmailSignup($("#city"), CITY);
+    mountGuide();
   }
 
   // Switch sections in place (no re-render, so a half-typed top 3 survives).
@@ -385,6 +429,7 @@
     if (opts.hash !== false) { try { history.replaceState(null, "", id === "takes" ? location.pathname + location.search : "#" + id); } catch (e) {} }
     const bar = $("#city .cta-bar"); if (bar) bar.outerHTML = ctaBar();
     T2.mountStay22($("#city"));
+    mountGuide();
     if (opts.track) T2.track("city_tab", { city: CITY.slug, tab: id });
   }
   function onHash(){

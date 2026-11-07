@@ -25,6 +25,7 @@
   "dependencies": {
     "@supabase/auth-js": "^2.118.0",
     "@supabase/postgrest-js": "^2.118.0",
-    "@supabase/supabase-js": "^2.118.0"
+    "@supabase/supabase-js": "^2.118.0",
+    "leaflet": "1.9.4"
   }
 }

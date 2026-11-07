@@ -15,6 +15,9 @@
 --   6. (after migration 20261030120000) local verification: presence detail is
 --      admin-only, "verified" is computed by a trigger and never writable or
 --      recordable through the API, and Founding local requires the ✓.
+--   7. (after migration 20261107170000) Guide spots: a take's spot can only be
+--      a catalogue copy made server-side (no session-less calls), a take can't
+--      point at another city's spot, and the restaurant search stays food-only.
 --
 -- Checks under 5 are skipped with a NOTICE until that migration has been
 -- applied (merging the pull request applies it), so this file never blocks the
@@ -147,6 +150,25 @@ begin
     end if;
   else
     raise notice 'db-security: migration 20261030120000_local_presence not applied yet - skipping the presence checks';
+  end if;
+
+  -- 7. Guide spots (migration 20261107170000).
+  if exists (select 1 from supabase_migrations.schema_migrations where version = '20261107170000') then
+    if has_function_privilege('anon', 'public.ensure_spot_from_place(text)', 'EXECUTE') then
+      v_fail := v_fail || E'\n  ensure_spot_from_place is callable without a session';
+    end if;
+    if not exists (select 1 from pg_proc where proname = 'posts_sync_city' and prosrc ilike '%WRONG_CITY%') then
+      v_fail := v_fail || E'\n  posts_sync_city no longer refuses a spot from another city';
+    end if;
+    if not exists (select 1 from pg_proc where proname = 'search_places' and prosrc ilike '%kind = ''eat''%') then
+      v_fail := v_fail || E'\n  search_places (restaurant picker) no longer limits itself to food and drink';
+    end if;
+    if exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'places' and cmd in ('INSERT', 'UPDATE', 'DELETE', 'ALL')
+                 and (roles = '{public}' or 'anon' = any(roles) or 'authenticated' = any(roles))) then
+      v_fail := v_fail || E'\n  places (take spots) is writable through the API; spots come only from ensure_spot_from_place';
+    end if;
+  else
+    raise notice 'db-security: migration 20261107170000_guide_spots not applied yet - skipping the Guide spot checks';
   end if;
 
   if v_fail <> '' then

@@ -37,9 +37,11 @@ The database lint needs the database URL: `psql "$SUPABASE_DB_URL" -f tests/db-s
 | Cities page | Grid, search (incl. no-match message) | e2e |
 | City search | 16px box (no iPhone zoom), states by name ("Florida"), nicknames (NYC, Philly), Saint/St., typos ("Ashville"), ranked suggestions with Enter and a clear button, ask for a city from the list, quick picks (near you, recently viewed, states); `/api/near` returns only a rounded position and is never cached | e2e + static |
 | Request a city | Search finds Tulsa, tapping "Ask for it" sends the request and flips to "Asked" | e2e |
-| City feed | Hero photo loads, lead question = first active question, options, four tabs (Takes · Eat · When to go · Stay) with one panel shown and the hash deep-linking a tab, section chips only at 10+ takes, Add-your-take bar (Nashville, Knoxville, Miami) | e2e |
+| City feed | Hero photo loads, lead question = first active question, options, four tabs (Takes · Eat · When to go · Guide) with one panel shown and the hash deep-linking a tab, section chips only at 10+ takes, Add-your-take bar (Nashville, Knoxville, Miami) | e2e |
 | One-tap voting on questions | Vote link records the vote, results and "Why?" box show | e2e |
-| Posting a take (anonymous) | Kind, starter, place, month, tenure, preview, posted page, 1080×1920 share card | e2e |
+| Posting a take (anonymous) | Kind, starter, place (typed, no pin), month, tenure, preview, posted page, 1080×1920 share card | e2e |
+| Where is this? (add page) | 16px search over spots, neighborhoods and restaurants (`search_take_places`); a catalogue pick is copied in server-side (`ensure_spot_from_place`, intercepted) and pins the take; a TripVibz spot goes straight on the take; "Change" clears it; a name with no match posts as typed without a pin | e2e |
+| Guide tab | Replaces Stay (old `#stay` links open it). Its script, the map library and the tiles load only when it opens; map pins for the top restaurants and the take spots; top 3 with "Picked by N people", verified count and reviews (verified first, blanks skipped); spots with their takes; hotels last; tapping a pin opens its card; no sideways scroll; if the map fails the lists stand. Rules and markup (`assets/guide.js`, shared with the build): grouping, ranking, escaping, empty states; Leaflet pinned and never named in a page; spot loader keeps one copy per name (the medoid, not the inland outlier) and drops apartment blocks; `db-security.sql` rule 7 (no session-less copies, spot must be in the take's city, restaurant search stays food-only) | e2e + static + csp + perf + db-security |
 | Sign in with Google (Local badge) | Badge button opens the sign-in box | e2e |
 | Topic pages | Headline, 3 tabs, starters open the add page, old Cosign UI gone, 12-month calendar on Worst times | e2e |
 | True / Nope on takes | Toggle on, vote sent | e2e |
@@ -118,6 +120,22 @@ networks (`functions/api/_networks.js`) are stored as band `hosting` and never c
 only `verified`/`revoked`; the day counts are admin-only (`admin_local_checks`). Founding local needs
 the ✓. The public explanation is `/how-we-verify-locals/`; the static test checks it describes the
 method but not the exact numbers, and `tests/db-security.sql` checks the grants and the trigger.
+
+## Guide tab and take spots
+
+Migration `20261107170000_guide_spots.sql`. `places_catalog.kind` splits the Overture catalogue into
+`eat` (the restaurant picker; `search_places()` now filters to it) and `spot`: parks, beaches,
+landmarks, museums, stadiums, plazas and the neighborhoods notable enough to have a Wikidata entry,
+loaded by the same monthly `scripts/places_catalog.py` run (one copy per name, the one nearest the rest
+of its group). A take points at `public.places` through `posts.place_id`; a catalogue spot is copied
+there only when a take uses it (`ensure_spot_from_place()`, security definer, any session but not
+session-less visitors), and `posts_sync_city` refuses a spot from another city. `search_take_places()`
+feeds "Where is this?" on the add page: TripVibz's own spots first (with their take counts), then
+catalogue spots, then restaurants and bars. The migration pins the seven live takes that name one spot
+(checked against Overture on Nov 7 2026). The Guide panel is drawn by `assets/guide.js` (the build
+runs the same file to pre-render it) and loaded with Leaflet and OpenStreetMap tiles only when the tab
+opens; the e2e test answers the pins as a migrated database would, so it passes before and after the
+migration lands.
 
 ## Locals' top 3 restaurants
 
