@@ -238,7 +238,8 @@ await test("Cities page search: 16px box, states and nicknames, typos, suggestio
 for (const slug of ["nashville", "knoxville", "miami"]) {
   await test(`City feed (${slug}): hero photo, lead question, sections, no old add button`, async () => {
     await go(`/${slug}/`);
-    assert(/Where would you take a friend in/.test(await page.textContent("h1")), "headline missing");
+    assert(/^Know .+\?$/.test((await page.textContent("h1")).trim()), "headline should read \"Know <City>?\"");
+    assert(/where to go, what to skip, when to come$/.test(await page.title()), `the tab should keep the built title after load: ${await page.title()}`);
     const w = await page.evaluate(() => { const i = document.querySelector(".city-hero"); return i ? i.naturalWidth : 0; });
     assert(w > 0, "hero photo did not load");
     assert((await page.textContent(".qcard .qp")).trim() === lead(slug).prompt, "lead question is not the first active question");
@@ -686,12 +687,12 @@ await test("Installable (PWA): the service worker registers and saves the shell,
     // Offline: the city page just visited still opens; one never visited gets the offline page; back online, live again.
     await ctx3.setOffline(true);
     await p3.goto(BASE + "/miami/", { waitUntil: "domcontentloaded" }); await p3.waitForTimeout(500);
-    assert(/Where would you take a friend in Miami/.test(await p3.textContent("h1")), "visited city page should open from the cache when offline");
+    assert(/Know Miami\?/.test(await p3.textContent("h1")), "visited city page should open from the cache when offline");
     await p3.goto(BASE + "/asheville/", { waitUntil: "domcontentloaded" }); await p3.waitForTimeout(500);
     assert(/You're offline/.test(await p3.textContent("h1")), "an unvisited page should show the offline page");
     await ctx3.setOffline(false);
     await p3.goto(BASE + "/asheville/", { waitUntil: "domcontentloaded" }); await p3.waitForTimeout(500);
-    assert(/Where would you take a friend in Asheville/.test(await p3.textContent("h1")), "back online, the live page should load");
+    assert(/Know Asheville\?/.test(await p3.textContent("h1")), "back online, the live page should load");
     // Standalone (opened from the home screen): no offer, ever.
     const p4 = await ctx3.newPage();
     await p4.addInitScript(() => { Object.defineProperty(navigator, "standalone", { get: () => true }); });
