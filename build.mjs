@@ -523,7 +523,8 @@ ${entries}`;
 
 // Home: every city, emptiest first — the gap is the invitation (index.html renderNeeds).
 function cityGrid(cities, countsBySlug) {
-  const ordered = cities.slice().sort((a, b) => (countsBySlug[a.slug] || 0) - (countsBySlug[b.slug] || 0) || a.name.localeCompare(b.name));
+  // Cities with takes first (most first), so a new visitor sees real advice before the empty cities.
+  const ordered = cities.slice().sort((a, b) => (countsBySlug[b.slug] || 0) - (countsBySlug[a.slug] || 0) || a.name.localeCompare(b.name));
   return ordered.map((c, i) => {
     const n = countsBySlug[c.slug] || 0;
     return `<a class="need" href="/${esc(c.slug)}/what-not-to-do/" data-slug="${esc(c.slug)}">
@@ -538,9 +539,9 @@ function cityGrid(cities, countsBySlug) {
 // Home: the three counters above the grid (index.html renderStats).
 function homeStats(cities, posts) {
   const locals = new Set(posts.map(p => p.author_id).filter(Boolean)).size;
-  return `<div class="stat"><b>${posts.length}</b><span>takes</span></div>
-      <div class="stat"><b>${locals}</b><span>contributors</span></div>
-      <div class="stat"><b>${cities.length}</b><span>cities open</span></div>`;
+  return `<div class="stat"><b>${posts.length}</b><span>${posts.length === 1 ? "take" : "takes"}</span></div>
+      <div class="stat"><b>${locals}</b><span>${locals === 1 ? "contributor" : "contributors"}</span></div>
+      <div class="stat"><b>${cities.length}</b><span>${cities.length === 1 ? "city open" : "cities open"}</span></div>`;
 }
 
 // /cities/: the same card places.html draws (its card()), split into the

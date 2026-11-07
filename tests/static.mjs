@@ -496,6 +496,18 @@ await test("Vibes: the list in assets/v2.js matches the migration; recommendatio
   console.log(`      (${pagesSeen} vibe pages checked)`);
 });
 
+await test("Home page: cities with takes come first in the grid; counters say '1 contributor', not '1 contributors'", async () => {
+  const h = await readFile("dist/index.html", "utf8");
+  const grid = h.slice(h.indexOf('id="needs"'));
+  const counts = [...grid.matchAll(/<a class="need"[^>]*data-slug="([^"]+)"[\s\S]*?<span class="n[^"]*">([^<]*)<\/span>/g)].map(m => [m[1], /^(\d+) take/.test(m[2]) ? Number(m[2].match(/^\d+/)[0]) : 0]);
+  assert(counts.length === cities.length, `grid shows ${counts.length} of ${cities.length} cities`);
+  for (let i = 1; i < counts.length; i++) assert(counts[i - 1][1] >= counts[i][1], `grid order: ${counts[i - 1][0]} (${counts[i - 1][1]}) before ${counts[i][0]} (${counts[i][1]})`);
+  for (const [, n, label] of h.matchAll(/<div class="stat"><b>(\d+)<\/b><span>([^<]+)<\/span>/g))
+    assert((n === "1") === !/s( open)?$/.test(label) || label === "cities open" && n !== "1", `counter "${n} ${label}"`);
+  const page = await readFile("index.html", "utf8");
+  assert(/sort\(\(a,b\)=>\(COUNTS\[b\.id\]\|\|0\)-\(COUNTS\[a\.id\]\|\|0\)/.test(page) && /STAT_LABELS/.test(page), "page script: same order as the build, labels follow the numbers");
+});
+
 await test("Research data and scripts are not published", async () => {
   assert(!(await exists("dist/data")) && !(await exists("dist/scripts")), "dist/ contains data/ or scripts/");
 });
