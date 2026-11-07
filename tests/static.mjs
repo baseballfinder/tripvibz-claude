@@ -533,6 +533,70 @@ await test("New code comes with tests: the tests-included rule (scripts/tests-in
   assert(claude.includes("docs/ARCHITECTURE.md") && (await exists("docs/ARCHITECTURE.md")), "CLAUDE.md points to the architecture rules");
 });
 
+/* ---------------- info pages follow the features ----------------
+   About, Privacy and Terms have to describe the site as it is. These checks
+   tie them to the code, so a change that adds an outside service, starts
+   storing something new, or retires wording fails here until the pages
+   catch up (CLAUDE.md, "Keep the info pages current"). */
+await test("Info pages follow the features: Privacy names every outside service and every kind of thing people store; no retired wording anywhere; About lists the main features", async () => {
+  const privacy = (await readFile("privacy/index.html", "utf8")).replace(/<[^>]+>/g, " ");
+  const about = (await readFile("about/index.html", "utf8")).replace(/<[^>]+>/g, " ");
+  // 1. Every outside host the browser may load (CSP) or the server calls (functions/) -> who it is.
+  //    A new host fails until it is named on the Privacy page and listed here.
+  const SERVICES = [
+    [/(^|\.)supabase\.co$/, "Supabase"], [/(^|\.)(googletagmanager\.com|google-analytics\.com|analytics\.google\.com)$/, "Google Analytics"],
+    [/(^|\.)clarity\.ms$|^c\.bing\.com$/, "Microsoft Clarity"], [/^accounts\.google\.com$/, "Google handles sign-in"],
+    [/(^|\.)stay22\.com$/, "Stay22"], [/^ntfy\.sh$/, "ntfy"], [/(^|\.)(tiktok\.com|tiktokapis\.com)$/, "TikTok"],
+    [/^(www\.)?tripvibz\.com$|^schema\.org$/, null]   // the site itself; a vocabulary URL, not a service
+  ];
+  const sec = await readFile("functions/_security.js", "utf8");
+  const fnFiles = (await readdir("functions", { recursive: true })).filter(f => f.endsWith(".js") && !f.includes("_inline-hashes")).map(f => join("functions", f));
+  const hosts = new Set([...sec.matchAll(/(?:https|wss):\/\/(?:\*\.)?([a-z0-9.-]+\.[a-z]{2,})/g)].map(m => m[1]));
+  for (const f of fnFiles) for (const m of (await readFile(f, "utf8")).matchAll(/https:\/\/([a-z0-9.-]+\.[a-z]{2,})/g)) hosts.add(m[1]);
+  for (const h of hosts) {
+    const hit = SERVICES.find(([re]) => re.test(h));
+    assert(hit, `outside service ${h}: name it on the Privacy page ("Who else handles it") and add it to SERVICES in tests/static.mjs`);
+    if (hit[1]) assert(privacy.includes(hit[1]), `Privacy page doesn't mention ${hit[1]} (${h})`);
+  }
+  // 2. Every table that stores something a person entered -> where Privacy says so.
+  const COVERED = {
+    posts: "your takes", comments: "replies", votes: "votes", question_votes: "answers to city questions",
+    top3_picks: "top 3 restaurant picks", restaurants: "top 3 restaurant picks", vibe_tags: "vibes you tag",
+    city_tenure: "how long you've lived", local_checks: "Whether you're near a city", contributor_locality: "Rough location when you post",
+    email_signups: "If you sign up for email", city_requests: "cities you ask us to add", city_events: "events you suggest",
+    claims: "anonymous ID", profiles: "name, profile photo", reviews: "your takes"   // reviews: retired June feature, no new rows
+  };
+  const sqlFiles = ["supabase/schema.sql", ...(await readdir("supabase/migrations")).map(f => join("supabase/migrations", f))];
+  const userTables = new Map();
+  for (const f of sqlFiles) {
+    const sql = await readFile(f, "utf8");
+    for (const m of sql.matchAll(/create table (?:if not exists )?(?:"?public"?\.)?"?([a-z0-9_]+)"?\s*\(([\s\S]*?)(?=\n(?:create|alter|comment|grant|revoke|insert|drop|--|$))/gi))
+      if (/\b(user_id|author_id|created_by|anon_user_id|email)\b/.test(m[2]) && !userTables.has(m[1])) userTables.set(m[1], f);
+  }
+  for (const t of ["posts", "votes", "top3_picks", "vibe_tags", "email_signups"]) assert(userTables.has(t), `parser missed ${t}`);
+  for (const [t, f] of userTables) {
+    assert(COVERED[t], `table ${t} (${f}) stores what people enter: say so on the Privacy page ("What we collect") and add it to COVERED in tests/static.mjs`);
+    assert(privacy.includes(COVERED[t]), `Privacy page should mention "${COVERED[t]}" (table ${t})`);
+  }
+  // Privacy must be dated on or after the newest migration that adds such a table.
+  const upd = Date.parse((privacy.match(/Last updated ([A-Z][a-z]+ \d{1,2}, \d{4})/) || [])[1]);
+  const newest = Math.max(...[...userTables.values()].map(f => (f.match(/(\d{8})\d{6}_/) || [])[1]).filter(Boolean).map(d => Date.parse(`${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`)));
+  assert(upd && upd >= newest, `Privacy "Last updated" is older than the newest table that stores user data (${new Date(newest).toISOString().slice(0, 10)})`);
+  // 3. Wording retired with the "Where would you take a friend?" hook (Nov 2026), and the founding-local rule.
+  const RETIRED = [/what (do )?(tourists|visitors) (get|keep getting) wrong/i, /tell visitors what they get wrong/i, /local take on every city/i,
+    /locals, settle this/i, /what locals say about/i, /drives you crazy/i, /what locals know that travel sites/i,
+    /first 10 (signed-in )?locals (to post )?(there )?become/i, /\bLIVE IN \{/];
+  const files = [...pages.filter(f => !f.includes("/assets/")), ...["about/index.html", "privacy/index.html", "terms/index.html", "how-we-verify-locals/index.html",
+    "index.html", "city.html", "add.html", "vote.html", "article.html", "places.html", "thread.html", "vibe.html", "assets/v2.js", "assets/city.js", "build.mjs", "scripts/og_cards.py"]];
+  for (const f of [...new Set(files)]) {
+    const txt = await readFile(f, "utf8");
+    for (const re of RETIRED) assert(!re.test(txt), `${f}: retired wording ${re}`);
+  }
+  // 4. About lists the main features (add one here when a feature ships).
+  for (const k of ["Takes.", "Quick questions.", "top 3 restaurants", "Vibes.", "Local badges.", "month-by-month calendar"])
+    assert(about.includes(k), `About page doesn't describe: ${k}`);
+});
+
 await test("Research data and scripts are not published", async () => {
   assert(!(await exists("dist/data")) && !(await exists("dist/scripts")), "dist/ contains data/ or scripts/");
   for (const f of ["README.md", "CLAUDE.md", "package.json", "docs"]) assert(!(await exists(`dist/${f}`)), `dist/ contains ${f}`);

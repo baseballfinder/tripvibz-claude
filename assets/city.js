@@ -346,7 +346,7 @@
       <div class="feed" id="feed">${list.length ? list.map(p => T2.takeHtml(p, CTX, { city: CITY, placement: "city_feed" })).join("") :
         VIBE ? `<div class="empty2"><b>No ${esc(T2.VIBE_BY[VIBE].label.toLowerCase())} takes yet</b>Know a place for it? Add a “Do this” take and tag the vibe.</div>` :
         POSTS.length ? `<div class="empty2"><b>Nothing in this section yet</b>Try “Everything”, or add one below.</div>` :
-        `<div class="empty2"><b>No takes yet</b>Know ${esc(CITY.name)}? Tap an answer in the question above, or start your own topic below. The first 10 signed-in locals become founding locals.</div>`}</div>
+        `<div class="empty2"><b>No takes yet</b>Know ${esc(CITY.name)}? Tap an answer in the question above, or start your own topic below. The first 10 verified locals to post become founding locals.</div>`}</div>
       ${topicBox()}
       ${POSTS.length ? `<div class="more-topics">By topic: ${topics.filter(t => POSTS.some(p => p.type === t[0])).map(t => `<a href="/${esc(CITY.slug)}/${t[1]}/">${t[2]}</a>`).join(" · ")}</div>` : ""}`;
   }

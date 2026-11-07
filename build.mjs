@@ -382,7 +382,7 @@ function cityLd(city, url, takes = [], { title, desc, intro = "", nearby = [], l
   const list = ranked.length ? {
     "@type": "ItemList",
     "@id": `${url}#takes`,
-    name: `What locals say about ${city.name}`,
+    name: `Takes on ${city.name} from people who know it`,
     numberOfItems: ranked.length,
     itemListOrder: "https://schema.org/ItemListOrderDescending",
     itemListElement: ranked.map((t, i) => ({
@@ -1181,7 +1181,7 @@ for (const city of cities) {
   // App pages: one-tap voting (email links land here) and posting. Not for Google.
   await emit(`${city.slug}/vote/index.html`, await minifyHtml(render(voteTpl, {
     title: `Settle this: ${city.name} · TripVibz`,
-    desc: `Quick questions for people who live in ${city.name}. One tap each.`,
+    desc: `Quick questions for people who know ${city.name}. One tap each.`,
     canonical: `${SITE}/${city.slug}/`, image: shareCard(city) ? shareCard(city).image : photo(city.slug),
     og: shareCard(city) || undefined, noindex: true
   }), null));
@@ -1190,7 +1190,7 @@ for (const city of cities) {
     desc: `Where would you take a friend in ${city.name}? One sentence is enough.`,
     canonical: `${SITE}/${city.slug}/`, image: `${SITE}/assets/og/${city.slug}-add.jpg`, noindex: true,
     og: ogCard(`${city.slug}-add.jpg`, `A friend is visiting ${city.name}. Where do you take them?`,
-      "Say it in one sentence. Others vote it True or Nope. The first 10 signed-in locals become founding locals.")
+      "Say it in one sentence. Others vote it True or Nope. The first 10 verified locals to post become founding locals.")
   }), null));
 
   for (const theme of Object.keys(THEMES)) {

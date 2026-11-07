@@ -2,10 +2,10 @@
 // Do not edit: run `node build.mjs` after changing a page template.
 export const INLINE_SCRIPT_HASHES = [
   "'sha256-1J4u6pFVSyzB3GBy9kcizREuCIdfsBZoNHbi/82tZ08='",
-  "'sha256-FheN4ikzBFqJi7qGGD0Km2Qq74mYye4eMGNUvpa74RU='",
+  "'sha256-6VMQUd9lqliD1scN58J3oOpu3Sr+o2JMii30zE87b2c='",
+  "'sha256-9dq+KLjsSv0B8e7zv+IBqO8gMTIozxRGE3pKqbOtyFw='",
   "'sha256-Ij4Z5LUZP0exLtimq/5OeKtdjqFCjHKdlnTujJaYTGo='",
   "'sha256-PQrkQtbkXooM09YRosSZlmbaCNqtl+f+fFpBdBIwle4='",
-  "'sha256-R1YKtidkTufhyjcSO/6ys4iDS5K9tn9brU6qfr5ufbc='",
   "'sha256-Yze3VoiEEsOjTUQTpyHI/098zYwNhteZ5GN0asuT3AE='",
   "'sha256-bqCo/SvS0xKMdGwFQcQnYkFSVS0vDiK5VboJfkdg0pc='",
   "'sha256-fHPjDwyjlCgP5o11JGoLQYaqC6kfKMnGPwBd0TH8XdU='",
