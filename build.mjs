@@ -771,7 +771,7 @@ function cityBody(city, counts, takes, intro = "", nearby = [], eatsData = null,
   const n = takes.length;
   const panel = (id, html) => `<section class="panel" id="panel-${id}" role="tabpanel" aria-labelledby="tab-${id}"${id === "takes" ? "" : " hidden"}>${html}</section>`;
   return `<div class="hero-band">${heroImg(city, { band: true })}<div class="hero-txt"><div class="kicker">${esc(city.name)}${city.state ? ", " + esc(city.state) : ""}</div>
-<h1>Where would you take a friend in ${esc(city.name)}?</h1>
+<h1>Know ${esc(city.name)}?</h1>
 <div class="hero-n">${n ? `${n} take${n === 1 ? "" : "s"} from people who know it` : "Be the first to weigh in"}</div></div></div>
 <div class="tabs" role="tablist" aria-label="Sections">${CITY_TABS.map(([id, l]) =>
     `<button role="tab" id="tab-${id}" data-tab="${id}" aria-selected="${id === "takes"}" aria-controls="panel-${id}" tabindex="${id === "takes" ? 0 : -1}">${l}</button>`).join("")}</div>

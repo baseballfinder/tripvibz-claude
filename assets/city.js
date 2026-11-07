@@ -365,7 +365,7 @@
     const img = HERO_HTML || `<img class="city-hero band" ${TV.cityPhotoAttrs(CITY, "(max-width: 640px) calc(100vw - 32px), 608px")} alt="${esc(CITY.name)}" width="800" height="400" fetchpriority="high" decoding="async">`;
     return `<div class="hero-band">${img}<div class="hero-txt">
         <div class="kicker">${esc(CITY.name)}${CITY.state ? ", " + esc(CITY.state) : ""}</div>
-        <h1>Where would you take a friend in ${esc(CITY.name)}?</h1>
+        <h1>Know ${esc(CITY.name)}?</h1>
         <div class="hero-n">${n ? `${n} take${n === 1 ? "" : "s"} from people who know it` : "Be the first to weigh in"}</div></div></div>
       ${PHOTO_CREDIT[CITY.slug] ? `<a class="photo-credit" href="${PHOTO_CREDIT[CITY.slug][1]}" target="_blank" rel="noopener">Photo: ${esc(PHOTO_CREDIT[CITY.slug][0])}</a>` : ""}`;
   }
@@ -505,7 +505,8 @@
     if (!SLUG) { $("#city").innerHTML = `<div class="state"><b>No city</b><a href="/cities/">Pick a city</a></div>`; return; }
     CITY = await T2.loadCity(SLUG);
     if (!CITY) { $("#city").innerHTML = `<div class="state"><b>City not found</b><a href="/cities/">← All cities</a></div>`; return; }
-    document.title = `Where would you take a friend in ${CITY.name}? · TripVibz`;
+    // Same title the build gives the page (build.mjs cityTitle), so the tab doesn't change on load.
+    document.title = `${CITY.name}${CITY.state ? ", " + CITY.state : ""} — where to go, what to skip, when to come`;
     // Recently viewed, for the quick picks on the Cities page (this browser only; nothing is sent).
     try { const k = "tv_recent_cities", r = JSON.parse(localStorage.getItem(k) || "[]").filter(s => s !== CITY.slug); r.unshift(CITY.slug); localStorage.setItem(k, JSON.stringify(r.slice(0, 5))); } catch (e) {}
     await auth.ensure();
