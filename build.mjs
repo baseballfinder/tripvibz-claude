@@ -562,7 +562,8 @@ function cityCard(c, i, n) {
       </div></a>`;
 }
 function cityLists(cities, countsBySlug) {
-  const live = cities.filter(c => (countsBySlug[c.slug] || 0) > 0);
+  // Most takes first, like the home grid and the page script (places.html render).
+  const live = cities.filter(c => (countsBySlug[c.slug] || 0) > 0).sort((a, b) => (countsBySlug[b.slug] || 0) - (countsBySlug[a.slug] || 0));
   const soon = cities.filter(c => !((countsBySlug[c.slug] || 0) > 0));
   // Tile index runs across both grids: the first rows on the page are eager whichever grid they sit in.
   let i = 0;

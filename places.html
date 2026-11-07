@@ -13,9 +13,40 @@
   .head{padding:26px 0 4px}
   .head h1{font-size:clamp(28px,4.5vw,42px);font-weight:900}
   .head p{color:var(--muted);font-size:15.5px;margin:8px 0 0;max-width:60ch}
-  .search{margin:18px 0 6px}
-  .search input{width:100%;max-width:420px;border:1px solid var(--line);border-radius:999px;padding:11px 16px;font:inherit;font-size:14.5px;background:#fff}
+  /* City search (assets/search.js). 16px text so iPhones don't zoom on focus;
+     48px rows and chips so a thumb hits the right one. */
+  .search{margin:18px 0 6px;max-width:520px;position:relative}
+  .sbox{position:relative}
+  .sbox svg{position:absolute;left:15px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--muted)}
+  .search input{width:100%;height:50px;border:1.5px solid var(--line);border-radius:999px;padding:0 48px 0 44px;font:inherit;font-size:16px;background:#fff;color:var(--ink);-webkit-appearance:none;appearance:none}
+  .search input::-webkit-search-cancel-button{display:none}
   .search input:focus{outline:2px solid var(--coral);outline-offset:1px}
+  .sclear{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:40px;height:40px;border:none;border-radius:50%;background:transparent;color:var(--muted);font-size:22px;line-height:1;cursor:pointer}
+  .sclear:hover{background:var(--sand,#f3eee4)}
+  .sugg{list-style:none;margin:8px 0 0;padding:6px;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 32px rgba(22,20,15,.12)}
+  .sugg li{display:flex;align-items:center;gap:10px;min-height:48px;padding:6px 10px;border-radius:10px;cursor:pointer;color:var(--ink)}
+  .sugg li+li{border-top:1px solid #f1ece2}
+  .sugg li[aria-selected=true],.sugg li:hover{background:#f6f1e7}
+  .sugg .nm{flex:1;min-width:0;font-size:16px;font-weight:500}
+  .sugg .nm b{font-weight:800}
+  .sugg .st{color:var(--muted);font-weight:500}
+  .sugg .meta{flex:none;font:700 12.5px "Archivo",sans-serif;color:var(--ocean)}
+  .sugg .meta.thin{color:var(--muted);font-weight:600}
+  .sugg li.scope .nm{font-style:italic;font-weight:600}
+  .sugg li.sreq .meta{color:var(--coral-ink)}
+  .sugg .askb{flex:none;min-height:36px;padding:0 14px;border-radius:999px;border:none;background:var(--coral-btn);color:#fff;font:800 13px "Archivo",sans-serif;cursor:pointer}
+  .sugg .askb[disabled]{background:#e7e1d6;color:#5f5a50}
+  .sugg li.none{cursor:default;color:var(--muted);font-size:15px;display:block;line-height:1.45}
+  .sugg li.none a{color:var(--ink);font-weight:700}
+  .quick{display:flex;gap:8px;overflow-x:auto;padding:12px 0 2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .quick::-webkit-scrollbar{display:none}
+  .qchip{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border-radius:999px;border:1.5px solid var(--line);background:#fff;color:var(--ink);font:700 14px "Public Sans",sans-serif;text-decoration:none;cursor:pointer;white-space:nowrap}
+  .qchip .n{font-weight:600;color:var(--muted);font-size:12.5px}
+  .qchip.near{border-color:var(--coral);color:var(--coral-ink)}
+  .qchip[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff}
+  .qchip[aria-pressed=true] .n{color:#e9e3d6}
+  .scount{font-size:13px;color:var(--muted);margin:8px 2px 0;min-height:1em}
+  .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
   .section-label{font-family:"Archivo";font-weight:800;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:26px 2px 12px}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:18px;margin-bottom:10px}
@@ -69,7 +100,18 @@
     <h1>Where to next?</h1>
     <p>Real takes from people who know each city: where they'd take a friend, what to skip and when to go. No top-10 filler. Don’t see your city? <a href="#request">Ask for it</a>.</p>
   </div>
-  <div class="search"><input id="search" type="search" placeholder="Search a city or state…" autocomplete="off"></div>
+  <div class="search" role="search">
+    <label for="search" class="vh">Find a city</label>
+    <div class="sbox">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="search" type="search" inputmode="search" enterkeyhint="go" placeholder="City, state or nickname" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
+        role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sugg">
+      <button type="button" class="sclear" id="sclear" aria-label="Clear search" hidden>×</button>
+    </div>
+    <ul class="sugg" id="sugg" role="listbox" aria-label="Matching cities" hidden></ul>
+    <div class="quick" id="quick" role="group" aria-label="Quick picks"></div>
+    <div class="scount" id="scount" aria-live="polite"></div>
+  </div>
 
   <div id="live-wrap">
     <h2 class="section-label" id="live-label" hidden>Live now</h2>
@@ -93,6 +135,7 @@
 
 <script src="/assets/supabase.js"></script>
 <script src="/assets/tv.js"></script>
+<script src="/assets/search.js"></script>
 <script>
 (function(){
   "use strict";
@@ -134,10 +177,13 @@
   // already-loaded photos — in place and refreshes the counts; rebuilding the
   // grids made the page paint its photos twice. Searches re-render freely.
   let hydrated = false;
+  // Live cities: most takes first (same order as build.mjs cityLists).
+  const byTakes = (a, b) => (b.take_count || 0) - (a.take_count || 0);
   function render(q){
-    q=(q||"").trim().toLowerCase();
-    const match = c => !q || c.name.toLowerCase().includes(q) || (c.state||"").toLowerCase().includes(q);
-    const live = CITIES.filter(c=>c.take_count>0 && match(c));
+    q=(q||"").trim();
+    const hit = q ? new Set(TVSearch.search(q, CITIES, []).results.map(r => r.item.slug)) : null;
+    const match = c => !hit || hit.has(c.slug);
+    const live = CITIES.filter(c=>c.take_count>0 && match(c)).sort(byTakes);
     const soon = CITIES.filter(c=>!(c.take_count>0) && match(c));
     const liveGrid = $("#live-grid"), soonGrid = $("#soon-grid");
     const have = new Map([...document.querySelectorAll("#live-grid a.city-card[data-slug], #soon-grid a.city-card[data-slug]")].map(a=>[a.dataset.slug, a]));
@@ -166,18 +212,127 @@
     $("#soon-label").hidden = !soon.length;
     $("#soon-label").textContent = "Open for takes";
     if(!live.length && !soon.length){
-      liveGrid.innerHTML = `<div class="empty">No cities match “${escapeHtml(q)}”.</div>`;
+      liveGrid.innerHTML = `<div class="empty">No TripVibz city matches “${escapeHtml(q)}” yet. <a href="#request">Ask for it</a>.</div>`;
     }
+    const n = live.length + soon.length;
+    $("#scount").textContent = q ? (n ? `${n} ${n === 1 ? "city" : "cities"}` : "") : "";
   }
 
-  $("#search").addEventListener("input", e=>render(e.target.value));
+  /* ---------------- search box ----------------
+     Suggestions as you type (assets/search.js ranks them): up to 6 rows on a
+     phone, the typed part plain and the rest bold, a "cities in <state>" row
+     when the query names a state, and cities that aren't open yet with an
+     "Ask for it" button. Enter opens the highlighted (or first) row; arrows
+     move; Escape closes. Before typing: quick picks (near you, recently
+     viewed, states). */
+  const SUGG_MAX = 6, RECENT_KEY = "tv_recent_cities";
+  const input = $("#search"), sugg = $("#sugg"), clearBtn = $("#sclear");
+  let ROWS = [], ACTIVE = -1, NEAR = null;
+  function hlName(name, hl){
+    if(!hl) return `<b>${escapeHtml(name)}</b>`;
+    const tail = name.slice(hl[1]);
+    return `${escapeHtml(name.slice(0, hl[1]))}${tail ? `<b>${escapeHtml(tail)}</b>` : ""}`;
+  }
+  function closeSugg(){ sugg.hidden = true; input.setAttribute("aria-expanded", "false"); input.removeAttribute("aria-activedescendant"); ACTIVE = -1; }
+  function renderSugg(q){
+    q = (q || "").trim();
+    clearBtn.hidden = !q;
+    if(!q){ ROWS = []; closeSugg(); return; }
+    const res = TVSearch.search(q, CITIES, CANDS.filter(c => !CITIES.some(x => x.slug === c.slug)));
+    ROWS = [];
+    if(res.state && res.state.count > 1) ROWS.push({ kind: "state", state: res.state });
+    res.results.slice(0, SUGG_MAX - ROWS.length).forEach(r => ROWS.push(r));
+    const html = ROWS.map((r, i) => {
+      const id = `sugg-${i}`;
+      if(r.kind === "state") return `<li id="${id}" role="option" class="scope" data-i="${i}"><span class="nm">All ${r.state.count} cities in ${escapeHtml(r.state.name)}</span></li>`;
+      const c = r.item, st = c.state ? `<span class="st">, ${escapeHtml(c.state)}</span>` : "";
+      if(r.kind === "request"){
+        const asked = MINE.has(c.slug);
+        return `<li id="${id}" role="option" class="sreq" data-i="${i}"><span class="nm">${hlName(c.name, r.hl)}${st}</span>
+          <span class="meta">Not open yet</span><button type="button" class="askb" data-ask="${escapeHtml(c.slug)}" tabindex="-1" ${asked ? "disabled" : ""}>${asked ? "Asked" : "Ask for it"}</button></li>`;
+      }
+      const n = c.take_count || 0;
+      return `<li id="${id}" role="option" data-i="${i}"><span class="nm">${hlName(c.name, r.hl)}${st}</span>
+        <span class="meta${n ? "" : " thin"}">${n ? `${n} take${n === 1 ? "" : "s"}` : "Be the first"}</span></li>`;
+    }).join("");
+    sugg.innerHTML = html || `<li class="none">No city called “${escapeHtml(q)}” yet. TripVibz covers ${CITIES.length} cities, and you can <a href="#request" data-req="1">ask for one of the 100 largest US cities</a>.</li>`;
+    sugg.hidden = false; input.setAttribute("aria-expanded", "true");
+    setActive(ROWS.length ? 0 : -1);
+  }
+  function setActive(i){
+    ACTIVE = i;
+    sugg.querySelectorAll("li[role=option]").forEach((li, j) => li.setAttribute("aria-selected", String(j === i)));
+    if(i >= 0) input.setAttribute("aria-activedescendant", `sugg-${i}`); else input.removeAttribute("aria-activedescendant");
+  }
+  function choose(i){
+    const r = ROWS[i]; if(!r) return;
+    if(r.kind === "state"){ input.value = r.state.name; closeSugg(); render(r.state.name); syncChips(); $("#live-wrap").scrollIntoView({ block: "start", behavior: "smooth" }); return; }
+    if(r.kind === "request"){ if(!MINE.has(r.item.slug)) ask(r.item.slug); return; }
+    location.href = routes.city(r.item.slug);
+  }
+  function onType(){ const v = input.value; render(v); renderSugg(v); syncChips(); }
+  input.addEventListener("input", onType);
+  input.addEventListener("focus", () => { if(input.value.trim()) renderSugg(input.value); });
+  input.addEventListener("keydown", e => {
+    if(e.key === "ArrowDown" && ROWS.length){ e.preventDefault(); if(sugg.hidden) renderSugg(input.value); setActive((ACTIVE + 1) % ROWS.length); }
+    else if(e.key === "ArrowUp" && ROWS.length){ e.preventDefault(); setActive((ACTIVE - 1 + ROWS.length) % ROWS.length); }
+    else if(e.key === "Enter"){ e.preventDefault(); if(ROWS.length) choose(ACTIVE >= 0 ? ACTIVE : 0); }
+    else if(e.key === "Escape"){ closeSugg(); }
+  });
+  sugg.addEventListener("mousedown", e => e.preventDefault());   // keep focus in the box while tapping a row
+  sugg.addEventListener("click", e => {
+    const b = e.target.closest("[data-ask]"); if(b){ if(!b.disabled) ask(b.dataset.ask); return; }
+    if(e.target.closest("[data-req]")){ $("#req-q").value = input.value.trim(); renderReq(input.value); closeSugg(); return; }
+    const li = e.target.closest("li[data-i]"); if(li) choose(Number(li.dataset.i));
+  });
+  document.addEventListener("click", e => { if(!e.target.closest(".search")) closeSugg(); });
+  clearBtn.addEventListener("click", () => { input.value = ""; onType(); input.focus(); });
+
+  // Quick picks: near you, recently viewed (this browser only), then states with more than one city.
+  function recent(){
+    try { return (JSON.parse(localStorage.getItem(RECENT_KEY) || "[]") || []).filter(s => typeof s === "string"); } catch(e){ return []; }
+  }
+  function renderChips(){
+    const bySlug = Object.fromEntries(CITIES.map(c => [c.slug, c]));
+    const chips = [], nearSlugs = new Set();
+    (NEAR || []).slice(0, 1).forEach(x => { nearSlugs.add(x.item.slug);
+      chips.push(`<a class="qchip near" href="${routes.city(x.item.slug)}" data-near="1">📍 Near you: ${escapeHtml(x.item.name)}</a>`); });
+    recent().filter(s => bySlug[s] && !nearSlugs.has(s)).slice(0, 2).forEach(s =>
+      chips.push(`<a class="qchip" href="${routes.city(s)}" data-recent="1"><span aria-hidden="true">↺</span> ${escapeHtml(bySlug[s].name)}</a>`));
+    TVSearch.stateCounts(CITIES).filter(s => s.count > 1).forEach(s =>
+      chips.push(`<button type="button" class="qchip" data-state="${escapeHtml(s.name)}" aria-pressed="false">${escapeHtml(s.name)} <span class="n">${s.count}</span></button>`));
+    $("#quick").innerHTML = chips.join("");
+    syncChips();
+  }
+  function syncChips(){
+    const v = TVSearch.norm(input.value);
+    $("#quick").querySelectorAll("[data-state]").forEach(b => b.setAttribute("aria-pressed", String(!!v && TVSearch.norm(b.dataset.state) === v)));
+  }
+  $("#quick").addEventListener("click", e => {
+    const b = e.target.closest("[data-state]"); if(!b) return;
+    const on = b.getAttribute("aria-pressed") === "true";
+    input.value = on ? "" : b.dataset.state; render(input.value); closeSugg(); clearBtn.hidden = !input.value; syncChips();
+  });
+  // "Near you": the rough position Cloudflare already knows (functions/api/near.js). A nice-to-have, so it gives up quickly.
+  async function loadNear(){
+    try {
+      const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 2500);
+      const r = await fetch("/api/near", { signal: ctl.signal, headers: { accept: "application/json" } }); clearTimeout(t);
+      if(r.status !== 200) return;
+      const pos = await r.json();
+      NEAR = TVSearch.nearest(pos.lat, pos.lng, CITIES, 150, 1);
+      if(NEAR.length) renderChips();
+    } catch(e){ /* no location: no chip */ }
+  }
 
   (async function load(){
     try{
       const { data, error } = await sb.from("cities_with_counts").select("*").order("sort");
       if(error) throw error;
       CITIES = TV.liveCities(data);
-      render("");
+      render(input.value);
+      renderChips();
+      loadNear();
     }catch(e){
       console.error(e);
       $("#live-grid").innerHTML = `<div class="empty">Couldn't load cities from the database.</div>`;
@@ -185,7 +340,7 @@
   })();
   // ---------------- city requests ----------------
   const OPEN_AT = 5;
-  let CANDS = [], MINE = new Set();
+  var CANDS = [], MINE = new Set();
   $("#open-at").textContent = OPEN_AT;
 
   function reqRow(c){
@@ -217,6 +372,7 @@
     if (!error) c.requests++;
     MINE.add(slug);
     renderReq($("#req-q").value);
+    if (!sugg.hidden) renderSugg(input.value);
     const url = `https://www.tripvibz.com/cities/?ask=${encodeURIComponent(slug)}#request`;
     const left = Math.max(OPEN_AT - c.requests, 0);
     const text = left ? `Help get ${c.name} on TripVibz. ${left} more ask${left === 1 ? "" : "s"} and it opens.` : `${c.name} has enough asks to open on TripVibz.`;
@@ -225,11 +381,6 @@
   }
   $("#req-q").addEventListener("input", e => renderReq(e.target.value));
   $("#req-list").addEventListener("click", e => { const b = e.target.closest("[data-ask]"); if (b && !b.disabled) ask(b.dataset.ask); });
-  // Searching the live grid also searches what can be requested.
-  $("#search").addEventListener("input", e => {
-    const v = e.target.value;
-    if (v && !CITIES.some(c => c.name.toLowerCase().includes(v.trim().toLowerCase()))) { $("#req-q").value = v; renderReq(v); }
-  });
 
   (async function loadReq(){
     const { data } = await sb.from("city_request_counts").select("slug,name,state,pop_rank,requests");

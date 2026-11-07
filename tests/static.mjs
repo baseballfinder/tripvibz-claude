@@ -533,6 +533,53 @@ await test("New code comes with tests: the tests-included rule (scripts/tests-in
   assert(claude.includes("docs/ARCHITECTURE.md") && (await exists("docs/ARCHITECTURE.md")), "CLAUDE.md points to the architecture rules");
 });
 
+await test("City search (assets/search.js): states by name, nicknames, Saint/Fort, typos, ranking; /api/near returns only a rounded position and is never cached", async () => {
+  const vm = await import("node:vm");
+  const ctx = { window: {} }; vm.runInNewContext(await readFile("assets/search.js", "utf8"), ctx);
+  const S = ctx.window.TVSearch;
+  const C = [
+    { slug: "fort-lauderdale", name: "Fort Lauderdale", state: "FL", take_count: 6, lat: 26.12, lng: -80.14 },
+    { slug: "miami", name: "Miami", state: "FL", take_count: 4, lat: 25.76, lng: -80.19 },
+    { slug: "miami-beach", name: "Miami Beach", state: "FL", take_count: 0 },
+    { slug: "st-augustine", name: "St. Augustine", state: "FL", take_count: 0 },
+    { slug: "asheville", name: "Asheville", state: "NC", take_count: 0, lat: 35.6, lng: -82.55 },
+    { slug: "nashville", name: "Nashville", state: "TN", take_count: 0, lat: 36.16, lng: -86.78 },
+    { slug: "knoxville", name: "Knoxville", state: "TN", take_count: 5, lat: 35.96, lng: -83.92 },
+    { slug: "new-york", name: "New York", state: "NY", take_count: 0 },
+    { slug: "savannah", name: "Savannah", state: "GA", take_count: 0 }
+  ];
+  const R = [{ slug: "philadelphia", name: "Philadelphia", state: "PA" }, { slug: "tulsa", name: "Tulsa", state: "OK" }];
+  const first = q => { const r = S.search(q, C, R).results[0]; return r && r.item.slug; };
+  for (const [q, want] of [["florida", "fort-lauderdale"], ["FL", "fort-lauderdale"], ["saint augustine", "st-augustine"], ["st augustine", "st-augustine"],
+      ["St. Augustine", "st-augustine"], ["ft lauderdale", "fort-lauderdale"], ["nyc", "new-york"], ["ashville", "asheville"], ["savanah", "savannah"],
+      ["nashvile", "nashville"], ["philly", "philadelphia"], ["tuls", "tulsa"], ["miami", "miami"]])
+    assert(first(q) === want, `"${q}" -> ${first(q)}, want ${want}`);
+  const fl = S.search("Florida", C, R);
+  assert(fl.state && fl.state.count === 4 && fl.results.length === 4, "a state name lists its cities");
+  assert(fl.results[0].item.slug === "fort-lauderdale" && fl.results[1].item.slug === "miami", "within a state, most takes first");
+  assert(S.search("miami", C, R).results.map(r => r.item.slug).join() === "miami,miami-beach", "exact name before longer names");
+  const tn = S.search("Tennessee", C, R).results.map(r => r.item.slug).join();
+  assert(tn === "knoxville,nashville", `state results by takes: ${tn}`);
+  assert(!S.search("xyzzy", C, R).results.length && !S.search("", C, R).results.length, "no match and empty query return nothing");
+  assert(S.search("ny", C, R).results.length <= 2, "two letters: no typo guessing");
+  assert(S.search("phil", C, R).results.every(r => r.kind === "request"), "cities not open yet come back as requests");
+  const near = S.nearest(36.0, -83.9, C, 150, 2).map(x => x.item.slug);
+  assert(near[0] === "knoxville" && near[1] === "asheville", `nearest: ${near}`);
+  assert(S.stateCounts(C)[0].code === "FL" && S.stateCounts(C)[0].count === 4, "state quick picks: most cities first");
+  // /api/near: rounded, per visitor, nothing else.
+  const near_ = await import("../functions/api/near.js");
+  assert(JSON.stringify(near_.roughPosition({ latitude: "35.96342", longitude: "-83.92071" })) === '{"lat":36,"lng":-83.9}', "position is rounded to 0.1 degree");
+  assert(near_.roughPosition({}) === null && near_.roughPosition({ latitude: 0, longitude: 0 }) === null, "no location -> null");
+  let r = await near_.onRequestGet({ request: { cf: { latitude: "35.96", longitude: "-83.92" } } });
+  assert(r.status === 200 && /no-store/.test(r.headers.get("cache-control")) && Object.keys(await r.json()).join() === "lat,lng", "returns only lat/lng, never cached");
+  r = await near_.onRequestGet({ request: {} });
+  assert(r.status === 204, "no location -> 204");
+  const src = await readFile("functions/api/near.js", "utf8");
+  assert(!/fetch\(|SUPABASE|localStorage|notify/.test(src.replace(/\/\*[\s\S]*?\*\//g, "")), "near.js stores and sends nothing");
+  const pg = await readFile("places.html", "utf8");
+  assert(/\.search input\{[^}]*font-size:16px/.test(pg) && pg.includes('src="/assets/search.js"'), "Cities page: 16px search box and the shared search script");
+});
+
 /* ---------------- info pages follow the features ----------------
    About, Privacy and Terms have to describe the site as it is. These checks
    tie them to the code, so a change that adds an outside service, starts

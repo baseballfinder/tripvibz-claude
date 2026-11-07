@@ -168,7 +168,8 @@ await test("Cities page: grid, search, request-a-city", async () => {
   assert((await page.getAttribute("#live-grid", "data-hydrated")) === "inplace", `cities grids were rebuilt by the script (data-hydrated=${await page.getAttribute("#live-grid", "data-hydrated")})`);
   assert(await page.locator("#soon-label:not([hidden])").count() + await page.locator("#live-label:not([hidden])").count() >= 1, "section labels hidden");
   await page.fill("#search", "zzzz");
-  assert(/No cities match/.test(await page.textContent("#live-grid")), "empty search state missing");
+  assert(/No TripVibz city matches/.test(await page.textContent("#live-grid")), "empty search state missing");
+  assert(/ask for one of the 100 largest/i.test(await page.textContent("#sugg")), "no-match suggestion should point to asking for a city");
   await page.fill("#search", "");
   await page.fill("#req-q", "tuls");
   await page.waitForTimeout(200);
@@ -178,6 +179,46 @@ await test("Cities page: grid, search, request-a-city", async () => {
   await page.waitForTimeout(500);
   assert(writes.some(w => w.table === "city_requests" && w.body.city_slug === "tulsa"), "ask did not send a request");
   assert(await page.locator('[data-ask="tulsa"][disabled]').count() === 1, "button did not switch to Asked");
+});
+
+await test("Cities page search: 16px box, states and nicknames, typos, suggestions with Enter, ask from the list, quick picks (near you, recent, states)", async () => {
+  // "Near you" reads functions/api/near.js; the local server has no Functions, so answer it here (Knoxville).
+  await page.route("**/api/near", r => r.fulfill({ json: { lat: 36.0, lng: -83.9 } }));
+  await page.addInitScript(() => { try { if (!sessionStorage.getItem("seeded")) { sessionStorage.setItem("seeded", "1"); localStorage.setItem("tv_recent_cities", JSON.stringify(["miami"])); } } catch (e) {} });
+  await go("/cities/");
+  await page.waitForTimeout(600);
+  assert(await page.$eval("#search", e => parseFloat(getComputedStyle(e).fontSize)) >= 16, "search text under 16px makes iPhones zoom in");
+  assert(await page.getAttribute("#search", "role") === "combobox" && await page.getAttribute("#search", "enterkeyhint") === "go", "search box should be a combobox with a Go key");
+  const chips = (await page.textContent("#quick")).replace(/\s+/g, " ");
+  assert(/Near you: Knoxville/.test(chips) && /Miami/.test(chips) && /Florida \d+/.test(chips), `quick picks: ${chips}`);
+  // A state by name filters to its cities, with a scope row first.
+  await page.fill("#search", "florida"); await page.waitForTimeout(300);
+  const fl = (await api("cities?select=slug,state")).filter(c => c.state === "FL" && cities.some(x => x.slug === c.slug)).length;
+  assert(new RegExp(`All ${fl} cities in Florida`).test(await page.textContent("#sugg li:first-child")), "state scope row missing");
+  assert(await page.locator("#live-grid .city-card, #soon-grid .city-card").count() === fl, "grid should show only Florida cities");
+  assert(await page.getAttribute('#quick [data-state="Florida"]', "aria-pressed") === "true", "Florida chip should show as on");
+  // Nicknames, Saint/St. and typos.
+  for (const [q, name] of [["nyc", "New York"], ["saint augustine", "St. Augustine"], ["ashville", "Asheville"], ["savanah", "Savannah"]]) {
+    await page.fill("#search", q); await page.waitForTimeout(250);
+    assert((await page.textContent("#sugg li:first-child")).includes(name), `"${q}" should suggest ${name} first, got: ${await page.textContent("#sugg li:first-child")}`);
+  }
+  // A city that isn't open yet can be asked for straight from the list.
+  await page.evaluate(() => { navigator.share = undefined; navigator.clipboard.writeText = async () => {}; });
+  await page.fill("#search", "philly"); await page.waitForTimeout(250);
+  assert(/Philadelphia/.test(await page.textContent("#sugg")) && await page.locator('#sugg [data-ask="philadelphia"]').count() === 1, "Philadelphia should be offered to ask for");
+  await page.click('#sugg [data-ask="philadelphia"]'); await page.waitForTimeout(500);
+  assert(writes.some(w => w.table === "city_requests" && w.body.city_slug === "philadelphia"), "asking from the list did not send a request");
+  assert(await page.locator('#sugg [data-ask="philadelphia"][disabled]').count() === 1, "the list should switch to Asked");
+  // Enter opens the top suggestion; the clear button empties the box.
+  await page.fill("#search", "ashville"); await page.waitForTimeout(250);
+  await page.click("#sclear"); assert((await page.inputValue("#search")) === "" && await page.locator("#sugg[hidden]").count() === 1, "clear button");
+  await page.fill("#search", "ashville"); await page.waitForTimeout(250);
+  await Promise.all([page.waitForURL(/\/asheville\/$/, { timeout: 8000 }), page.keyboard.press("Enter")]);
+  // Opening a city page remembers it for the quick picks.
+  await page.waitForFunction(() => (localStorage.getItem("tv_recent_cities") || "").includes("asheville"), null, { timeout: 8000 }).catch(() => {});
+  const rec = await page.evaluate(() => JSON.parse(localStorage.getItem("tv_recent_cities") || "[]"));
+  assert(rec[0] === "asheville", `recently viewed not recorded: ${JSON.stringify(rec)}`);
+  await page.unroute("**/api/near");
 });
 
 for (const slug of ["nashville", "knoxville", "miami"]) {
