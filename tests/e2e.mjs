@@ -46,6 +46,7 @@ const USER = { id: USER_ID, aud: "authenticated", role: "authenticated", is_anon
 const SESSION = { access_token: JWT, token_type: "bearer", expires_in: 3600, expires_at: exp, refresh_token: "test", user: USER };
 
 const writes = [];
+const FAKE_SPOT_ID = "5b0751e0-0000-4000-8000-00000000c0de";
 const fakeRows = new Map();   // rows "created" by intercepted writes, served back on read
 async function intercept(ctx) {
   await ctx.route(`${SB}/auth/v1/**`, r => {
@@ -66,6 +67,11 @@ async function intercept(ctx) {
     // Vibes (migration 20261105200000) may not be in the live database yet: answer their reads as an
     // empty, migrated table, so the pages behave the same before and after the migration runs.
     if ((m === "GET" || m === "HEAD") && /\/rest\/v1\/(vibe_tags|post_vibes|restaurant_vibes)\?/.test(url)) return r.fulfill({ json: [] });
+    if (url.includes("/rpc/ensure_spot_from_place")) {   // copies a catalogue spot into places: a write, so it never leaves the test
+      let body = {}; try { body = JSON.parse(req.postData() || "{}"); } catch {}
+      writes.push({ table: "ensure_spot_from_place(rpc)", method: m, body });
+      return r.fulfill({ json: FAKE_SPOT_ID });
+    }
     if (url.includes("/rpc/email_signup")) {   // never let a test address reach the signup list
       let body = {}; try { body = JSON.parse(req.postData() || "{}"); } catch {}
       writes.push({ table: "email_signup(rpc)", method: m, body });
@@ -254,7 +260,7 @@ for (const slug of ["nashville", "knoxville", "miami"]) {
     assert(await page.locator(".fab").count() === 0, "old \"What do tourists get wrong\" button is back");
     // One section at a time: four tabs, Takes open, the rest hidden until tapped; the hash deep-links a tab.
     assert(await page.locator('.tabs [role="tab"]').count() === 4, "city page should have four tabs");
-    assert(await page.isVisible("#panel-takes") && !(await page.isVisible("#panel-eat")) && !(await page.isVisible("#panel-when")) && !(await page.isVisible("#panel-stay")), "only the Takes panel should show at first");
+    assert(await page.isVisible("#panel-takes") && !(await page.isVisible("#panel-eat")) && !(await page.isVisible("#panel-when")) && !(await page.isVisible("#panel-guide")), "only the Takes panel should show at first");
     assert(await page.locator(".hero-band h1").count() === 1 && await page.isVisible(".cta-bar a.cta-btn"), "title should sit on the hero and the Add-your-take bar should show");
     assert((await page.getAttribute(".cta-bar a.cta-btn", "href")) === `/${slug}/add/`, "Add your take should open the add page");
     await page.click('[data-tab="eat"]');
@@ -293,13 +299,20 @@ await test("Post a take anonymously: kinds, starter, place, months, preview, pos
   await page.click('[data-kind="worst_times"]');
   await page.click("[data-starter] >> nth=0");
   await page.fill("#take", "TEST avoid Broadway on CMA Fest weekend, sidewalks do not move");
-  if (await page.locator('[data-place="__custom"]').count()) { await page.click('[data-place="__custom"]'); await page.fill("#custom", "Lower Broadway"); }
+  // "Where is this?": a name the search doesn't know still posts, as typed and without a map pin.
+  await page.route("**/rest/v1/rpc/search_take_places", r => r.fulfill({ json: [] }));
+  await page.fill("#place-q", "Lower Broadway"); await page.waitForTimeout(500);
+  await page.click("#pl-sugg .pl-opt.typed");
+  assert(/Not on the map/.test(await page.textContent("#where")), "a typed place should say it isn't on the map");
+  await page.unroute("**/rest/v1/rpc/search_take_places");
   await page.click('[data-month="6"]');
   if (await page.locator('[data-tenure="10+"]').count()) await page.click('[data-tenure="10+"]');
   assert(/Lower Broadway/.test(await page.textContent(".sect .take")), "preview missing place");
   await page.click("#post-anon");
   await page.waitForTimeout(1500);
-  assert(writes.some(w => w.table.startsWith("posts")), "take was not sent");
+  const sent = writes.filter(w => w.table.startsWith("posts")).pop();
+  assert(sent, "take was not sent");
+  assert(sent.body.place_label === "Lower Broadway" && !sent.body.place_id, `typed place should post as a label only: ${JSON.stringify(sent.body)}`);
   assert(/Your take is live/.test(await page.textContent("#root")), "posted page missing");
   assert(await page.evaluate(() => { const c = document.querySelector("#card"); return c && c.width === 1080; }), "share card not drawn");
 });
@@ -369,6 +382,93 @@ await test("City page: When-to-go strip links to the month-by-month calendar", a
   assert((await page.getAttribute("a.when", "href")) === "/nashville/worst-times-to-visit/", "strip should link to the calendar");
   const best = await page.textContent(".when-t .wl:first-child");
   assert(/Best/i.test(best) && /·\s*\S/.test(best), "Best line should name the reason (e.g. 'Mar–May · Spring')");
+});
+
+await test("Where is this? (add page): search spots and restaurants, pick one, and the take is pinned to it (catalogue spots copied in server-side)", async () => {
+  await page.route("**/rest/v1/rpc/search_take_places", r => r.fulfill({ json: [
+    { ref: "p:a0000000-0000-0000-0000-000000000001", name: "Market Square", kind: "spot", category: "plaza", detail: "Downtown Knoxville", lat: 35.9656, lng: -83.9198, takes: 1 },
+    { ref: "c:ov-msfm", name: "Market Square Farmers Market", kind: "spot", category: "farmers_market", detail: "60 Market Sq", lat: 35.965, lng: -83.9195, takes: 0 },
+    { ref: "c:ov-mkt", name: "Market House Restaurant", kind: "eat", category: "restaurant", detail: "33 Market Sq", lat: 35.9658, lng: -83.9195, takes: 0 }
+  ] }));
+  await go("/knoxville/add/");
+  assert(await page.$eval("#place-q", e => parseFloat(getComputedStyle(e).fontSize)) >= 16, "place search under 16px makes iPhones zoom in");
+  await page.fill("#take", "TEST the farmers market on Saturday mornings is the best hour in town");
+  await page.fill("#place-q", "market"); await page.waitForTimeout(500);
+  const opts = await page.locator("#pl-sugg .pl-opt").allTextContents();
+  assert(opts.length === 4 && /Market Square.*1 take here/.test(opts[0]) && /Restaurant or bar/.test(opts[2]) && /Use “market”/.test(opts[3]), `suggestions: ${opts.join(" / ")}`);
+  await page.click('#pl-sugg [data-sugg="1"]');
+  assert(/Market Square Farmers Market/.test(await page.textContent("#where")) && /On the Guide map/.test(await page.textContent("#where")), "picked spot should show as on the map");
+  assert(/Market Square Farmers Market/.test(await page.textContent(".sect .take")), "preview should carry the spot");
+  if (await page.locator('[data-tenure="10+"]').count()) await page.click('[data-tenure="10+"]');
+  const before = writes.length;
+  await page.click("#post-anon"); await page.waitForTimeout(1500);
+  const mine = writes.slice(before);
+  const copy = mine.find(w => w.table === "ensure_spot_from_place(rpc)"), take = mine.find(w => w.table.startsWith("posts"));
+  assert(copy && copy.body.p_place === "ov-msfm", `the catalogue spot should be copied in server-side: ${JSON.stringify(mine)}`);
+  assert(take && take.body.place_id === FAKE_SPOT_ID && take.body.place_label === "Market Square Farmers Market", `take not pinned: ${JSON.stringify(take && take.body)}`);
+  // A spot TripVibz already has needs no copy: its id goes straight on the take; "Change" clears it.
+  await go("/knoxville/add/");
+  await page.fill("#take", "TEST Market Square at lunch on a weekday is calm and easy");
+  await page.fill("#place-q", "market"); await page.waitForTimeout(500);
+  await page.click('#pl-sugg [data-sugg="0"]');
+  await page.click("#pl-change");
+  assert(await page.locator("#place-q").count() === 1, "Change should bring the search back");
+  await page.fill("#place-q", "market"); await page.waitForTimeout(500); await page.click('#pl-sugg [data-sugg="0"]');
+  if (await page.locator('[data-tenure="10+"]').count()) await page.click('[data-tenure="10+"]');
+  const b2 = writes.length;
+  await page.click("#post-anon"); await page.waitForTimeout(1500);
+  const w2 = writes.slice(b2);
+  assert(!w2.some(w => w.table === "ensure_spot_from_place(rpc)") && w2.find(w => w.table.startsWith("posts")).body.place_id === "a0000000-0000-0000-0000-000000000001", "a TripVibz spot goes straight on the take");
+  await page.unroute("**/rest/v1/rpc/search_take_places");
+});
+
+await test("Guide tab (replaces Stay): map of take spots and top restaurants loads only when opened, top 3 with how many people picked each and their reviews, spots with their takes, hotels last; old #stay links land on it; the lists stand if the map fails", async () => {
+  // The pins (posts.place_id) arrive with migration 20261107170000; answer as a migrated database would, and keep map tiles local.
+  const SPOTS = { "Market Square": ["a0000000-0000-0000-0000-000000000001", 35.96561, -83.91984], "Neyland Stadium": ["a0000000-0000-0000-0000-000000000002", 35.95499, -83.92513], "Old City": ["a0000000-0000-0000-0000-000000000003", 35.97049, -83.91847] };
+  const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=", "base64");
+  let tiles = 0, mapJs = 0;
+  await page.route("**/rest/v1/posts?*", async r => {
+    const headers = { ...r.request().headers() }; delete headers.authorization;   // as intercept() does: reads go out with the public key
+    const res = await r.fetch({ headers }); const rows = await res.json();
+    (Array.isArray(rows) ? rows : []).forEach(p => { const s = SPOTS[p.place_label]; if (s) p.place_id = s[0]; }); return r.fulfill({ response: res, json: rows }); });
+  await page.route("**/rest/v1/places?*", r => r.fulfill({ json: Object.entries(SPOTS).map(([name, [id, lat, lng]]) => ({ id, name, lat, lng, category: "spot" })) }));
+  await page.route("https://tile.openstreetmap.org/**", r => { tiles++; return r.fulfill({ body: PNG, contentType: "image/png" }); });
+  let guideJs = 0;
+  const countMap = q => { if (q.url().includes("/assets/leaflet-")) mapJs++; if (q.url().includes("/assets/guide.js")) guideJs++; };
+  page.on("request", countMap);
+  try {
+  await go("/knoxville/");
+  assert(await page.locator('.tabs [data-tab="guide"]').count() === 1 && await page.locator('[data-tab="stay"]').count() === 0, "Guide tab should replace Stay");
+  assert(mapJs === 0 && tiles === 0 && guideJs === 0, "the Guide script, map library and tiles must not load until the Guide is opened");
+  await page.click('[data-tab="guide"]'); await page.waitForTimeout(1500);
+  assert((await page.evaluate(() => location.hash)) === "#guide" && await page.isVisible("#tv-guide"), "Guide tab should open its panel and set #guide");
+  assert(mapJs > 0 && tiles > 0 && await page.locator("#tv-guide .leaflet-container").count() === 1, `map didn't load (script ${mapJs}, tiles ${tiles})`);
+  const pins = { eat: await page.locator("#tv-guide .g-pin.eat").count(), spot: await page.locator("#tv-guide .g-pin.spot").count() };
+  const eats = await page.locator("#tv-guide .g-eat").count();
+  assert(pins.spot === 3 && pins.eat === eats && eats <= 3, `pins: ${JSON.stringify(pins)}, restaurants listed: ${eats}`);
+  if (eats) {
+    assert(/Picked by \d+ (person|people)/.test(await page.textContent("#tv-guide .g-eat .g-count")), "each restaurant should say how many people picked it");
+    const reviews = await page.locator("#tv-guide .g-eat .g-reviews li").count();
+    const why = await api(`top3_picks?select=why&city_id=eq.${cities.find(c => c.slug === "knoxville").id}&why=not.is.null`);
+    assert(reviews >= Math.min(1, why.length), "people's reviews should show under each restaurant");
+  }
+  const spotNames = await page.locator("#tv-guide .g-spot .g-name").allTextContents();
+  assert(spotNames.length === 3 && spotNames.includes("Neyland Stadium") && await page.locator('#tv-guide .g-spot .g-takes a[href^="/t/"]').count() >= 3, `spots: ${spotNames}`);
+  assert(await page.locator("#tv-guide .s22").count() === 1, "hotels (Stay22) should close the Guide");
+  await page.locator("#tv-guide .g-pin.spot").first().click({ force: true }); await page.waitForTimeout(400);
+  assert(await page.locator(".leaflet-popup-content b").count() === 1, "tapping a pin should open its card");
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "the Guide scrolls sideways on a phone");
+  // Old #stay links land on the Guide; if the map can't load, the lists still say it all.
+  await page.route("**/assets/leaflet-*.js", r => r.abort());
+  await page.goto("about:blank");   // a fresh page, so the map library isn't already in memory
+  await page.goto(BASE + "/knoxville/#stay", { waitUntil: "networkidle" }); await page.waitForTimeout(1500);
+  assert((await page.getAttribute('[data-tab="guide"]', "aria-selected")) === "true" && await page.isVisible("#tv-guide"), "#stay should open the Guide");
+  const gm = await page.textContent("#tv-guide .g-map");
+  assert(/didn't load/.test(gm) && await page.locator("#tv-guide .g-spot").count() === 3, `a failed map should leave a note and the lists (map says: ${gm.slice(0, 80)}; spots ${await page.locator("#tv-guide .g-spot").count()})`);
+  } finally {
+    page.off("request", countMap);
+    for (const u of ["**/assets/leaflet-*.js", "https://tile.openstreetmap.org/**", "**/rest/v1/places?*", "**/rest/v1/posts?*"]) await page.unroute(u);
+  }
 });
 
 await test("Reply links: /<city>/add/?kind=&text= opens with their words filled in", async () => {

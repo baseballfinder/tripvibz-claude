@@ -90,7 +90,7 @@
       authors.length ? sb.from("profiles").select("id,display_name,username").in("id", authors) : { data: [] },
       authors.length && cityId ? sb.from("city_tenure").select("user_id,tenure").eq("city_id", cityId).in("user_id", authors) : { data: [] },
       cityId ? sb.from("city_founders").select("author_id,rank").eq("city_id", cityId) : { data: [] },
-      placeIds.length ? sb.from("places").select("id,name").in("id", placeIds) : { data: [] },
+      placeIds.length ? sb.from("places").select("id,name,category,lat,lng").in("id", placeIds) : { data: [] },
       auth.me && ids.length ? sb.from("votes").select("post_id,value").eq("user_id", auth.me.id).in("post_id", ids) : { data: [] },
       // "Signed in nearby" (functions/api/locate.js). Missing table before the
       // migration runs just means no checkmarks.
@@ -101,11 +101,11 @@
       ids.length ? sb.from("post_vibes").select("post_id,vibe,people").in("post_id", ids) : { data: [] },
       auth.me && ids.length ? sb.from("vibe_tags").select("post_id,vibe").eq("user_id", auth.me.id).in("post_id", ids) : { data: [] }
     ]);
-    var ctx = { profiles: {}, tenure: {}, founders: {}, places: {}, myVotes: {}, local: {}, vibes: {}, myVibes: {} };
+    var ctx = { profiles: {}, tenure: {}, founders: {}, places: {}, placeRows: {}, myVotes: {}, local: {}, vibes: {}, myVibes: {} };
     (res[0].data || []).forEach(function (x) { ctx.profiles[x.id] = x; });
     (res[1].data || []).forEach(function (x) { ctx.tenure[x.user_id] = x.tenure; });
     (res[2].data || []).forEach(function (x) { ctx.founders[x.author_id] = x.rank; });
-    (res[3].data || []).forEach(function (x) { ctx.places[x.id] = x.name; });
+    (res[3].data || []).forEach(function (x) { ctx.places[x.id] = x.name; ctx.placeRows[x.id] = x; });
     (res[4].data || []).forEach(function (x) { ctx.myVotes[x.post_id] = x.value; });
     ((res[5] && res[5].data) || []).forEach(function (x) { ctx.local[x.user_id] = x; });
     ((res[6] && res[6].data) || []).forEach(function (x) { (ctx.vibes[x.post_id] = ctx.vibes[x.post_id] || {})[x.vibe] = x.people; });
@@ -182,7 +182,7 @@
   // One take, slim: a kicker line (kind · place · months · age), the title, the
   // author line and two buttons. Replies and share are quiet text. The agreement
   // bar shows once there are enough votes to mean something; the hotel link
-  // that used to sit in every card lives in the city page's Stay tab instead.
+  // that used to sit in every card lives in the city page's Guide tab instead.
   var KIND_CLASS = { what_not_to_do: "k-dont", hidden_gem: "k-do", take: "k-dep", worst_times: "k-when" };
   function takeHtml(p, ctx, opts) {
     opts = opts || {};

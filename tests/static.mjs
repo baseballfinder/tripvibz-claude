@@ -580,6 +580,74 @@ await test("City search (assets/search.js): states by name, nicknames, Saint/For
   assert(/\.search input\{[^}]*font-size:16px/.test(pg) && pg.includes('src="/assets/search.js"'), "Cities page: 16px search box and the shared search script");
 });
 
+await test("Guide tab (assets/guide.js): take spots grouped and ranked, top 3 restaurants with how many people picked each and their reviews, escaped markup; map library pinned and loaded on demand; spot loader keeps one copy per name", async () => {
+  const vm = await import("node:vm");
+  const ctx = {}; vm.runInNewContext(await readFile("assets/guide.js", "utf8"), ctx);
+  const G = ctx.TVGuide;
+  const places = [
+    { id: "p1", name: "Market Square", lat: 35.9656, lng: -83.9198 }, { id: "p2", name: "Neyland Stadium", lat: 35.955, lng: -83.9251 },
+    { id: "p3", name: "No position" }, { id: "p4", name: "Whole city", lat: 35.96, lng: -83.92 }
+  ];
+  const posts = [
+    { id: "t1", title: "Market Square on a Saturday", place_id: "p1", ups: 1, downs: 0 },
+    { id: "t2", title: "Market Square <b>at night</b>", place_id: "p1", ups: 5, downs: 0 },
+    { id: "t3", title: "Neyland on game day", place_id: "p2" }, { id: "t4", title: "nowhere", place_id: "p3" },
+    { id: "t5", title: "the whole city", place_id: "p4" }, { id: "t6", title: "waiting", place_id: "p2", status: "pending" }, { id: "t7", title: "no place" }
+  ];
+  const sp = G.spots(posts, places);
+  assert(sp.map(g => g.place.name).join() === "Market Square,Neyland Stadium", `spots: ${sp.map(g => g.place.name)}`);
+  assert(sp[0].takes.map(t => t.id).join() === "t2,t1" && sp[1].takes.length === 1, "most takes first, best-voted take first, pending takes left out");
+  const rows = [
+    { restaurant_id: "r1", name: "A Dopo", picks: 3, verified_points: 3, points: 7, lat: 35.97, lng: -83.92, address: "516 Williams St" },
+    { restaurant_id: "r2", name: "Stock & Barrel", picks: 2, verified_points: 0, points: 5, lat: 35.966, lng: -83.919 },
+    { restaurant_id: "r3", name: "Soccer Taco", picks: 1, verified_points: 0, points: 1 },
+    { restaurant_id: "r4", name: "Fourth place", picks: 1, verified_points: 0, points: 0 }
+  ];
+  const picks = [
+    { user_id: "u1", restaurant_id: "r1", rank: 1, why: "Best crust in town" }, { user_id: "u2", restaurant_id: "r1", rank: 2, why: "  " },
+    { user_id: "u3", restaurant_id: "r1", rank: 1, why: "Order the <script>alert(1)</script> pie" },
+    { user_id: "u2", restaurant_id: "r2", rank: 1, why: "Burgers" }, { user_id: "u3", restaurant_id: "r2", rank: 3, why: null }, { user_id: "u1", restaurant_id: "r3", rank: 3 }
+  ];
+  const verified = new Set(["u3"]);
+  const top = G.topEats(rows, picks, verified, id => ({ u1: "Ana R.", u2: "Ben T.", u3: "Cy L." })[id], 3);
+  assert(top.length === 3 && top.map(e => e.row.restaurant_id).join() === "r1,r2,r3", "the top 3, in the Eat tab's order");
+  assert(top[0].people === 3 && top[0].verifiedPeople === 1 && top[1].people === 2 && top[2].people === 1, "people counted once each, verified counted");
+  assert(top[0].reviews.length === 2 && top[0].reviews[0].by === "Cy L." && top[0].reviews[0].verified, "blank reasons skipped, verified locals' reviews first");
+  const html = G.html({ name: "Knoxville", slug: "knoxville" }, sp, top, { pickers: 3, hotelsNear: n => "https://www.stay22.com/allez/roam?x=" + encodeURIComponent(n), stayHtml: '<section class="s22">hotels</section>' });
+  for (const want of ["Guide to Knoxville", "Picked by 3 people · 1 verified ✓", "Picked by 2 people", "Picked by 1 person", "“Best crust in town”", "Spots in the takes", "2 takes", "data-guide-map", "OpenStreetMap", '<section class="s22">hotels</section>', 'href="/t/t2"', "Hotels near", "No reviews yet"])
+    assert(html.includes(want), `Guide markup is missing ${want}`);
+  assert(!html.toLowerCase().includes("<script") && !html.includes("<b>at night") && html.includes("&lt;script&gt;"), "names, reviews and titles are escaped");
+  assert(html.indexOf("Top restaurants") < html.indexOf("Spots in the takes") && html.indexOf("Spots in the takes") < html.indexOf('class="s22"'), "order: map, restaurants, spots, hotels");
+  const pts = G.points(sp, top);
+  assert(pts.filter(p => p.k === "eat").length === 2 && pts.filter(p => p.k === "spot").length === 2, "map pins: restaurants with a position and every spot");
+  const empty = G.html({ name: "Tulsa", slug: "tulsa" }, [], [], {});
+  assert(!empty.includes("data-guide-map") && /No restaurant picks yet/.test(empty) && /No spots pinned yet/.test(empty), "an empty city gets no map and two clear empty states");
+  // The map library: pinned in package.json, matches what guide.js loads, emitted by the build, never named in a page.
+  const pkg = JSON.parse(await readFile("package.json", "utf8"));
+  assert(/^\d+\.\d+\.\d+$/.test(pkg.dependencies.leaflet) && G.MAP_JS === `/assets/leaflet-${pkg.dependencies.leaflet}.js`, "Leaflet is pinned to an exact version and guide.js loads that one");
+  await stat(join("dist", G.MAP_JS)); await stat(join("dist", G.MAP_CSS));
+  assert(!/sourceMappingURL/.test(await readFile(join("dist", G.MAP_JS), "utf8")), "the emitted map script points at no source map");
+  const city = await readFile("dist/knoxville/index.html", "utf8");
+  assert(!city.includes(G.MAP_JS) && !city.includes(G.MAP_CSS) && city.includes('id="tab-guide"') && !city.includes('id="tab-stay"') && city.includes('id="tv-guide"'), "city pages: Guide tab pre-rendered, no Stay tab, map library not loaded with the page");
+  assert(/data-guide-src="\/assets\/guide\.js\?v=[0-9a-f]{10}"/.test(city) && !/<script[^>]*src="\/assets\/guide\.js/.test(city), "guide.js loads on demand, from a versioned address (a changed file must reach returning visitors)");
+  const cityJs = await readFile("assets/city.js", "utf8");
+  assert(/h === "stay" \? "guide"/.test(cityJs), "old #stay links open the Guide");
+  // Spot loader (scripts/places_catalog.py): one copy per name, the one in the middle of the group.
+  const out = execFileSync("python3", ["-c", `
+import sys, types, json, importlib.util
+for m in ("duckdb", "psycopg"): sys.modules[m] = types.ModuleType(m)
+spec = importlib.util.spec_from_file_location("pc", "scripts/places_catalog.py"); pc = importlib.util.module_from_spec(spec); spec.loader.exec_module(pc)
+row = lambda i, name, lat, lng: (i, "c", name, "beach", None, None, None, lat, lng, None, None, None, 0.9, None, "spot")
+rows = [row("a", "Fort Lauderdale Beach", 26.1449, -80.2291), row("b", "Fort Lauderdale Beach", 26.1406, -80.1020), row("c", "Fort. Lauderdale Beach", 26.1343, -80.1030),
+        row("d", "Fort Lauderdale Beach", 26.1577, -80.1012), row("e", "Las Olas Beach", 26.1203, -80.1102)]
+kept = pc.keep_one_per_name(rows)
+print(json.dumps({"kept": sorted(r[0] for r in kept), "noise": [bool(pc.SPOT_NOISE_RE.search(n)) for n in ["Las Olas Regency Apartments", "Wynwood Lofts", "Market Square", "Old City"]],
+                  "key": pc.name_key("The Old City!")}))`]).toString();
+  const r = JSON.parse(out);
+  assert(r.kept.join() === "b,e", `one Fort Lauderdale Beach kept, on the beach (not the inland copy): ${r.kept}`);
+  assert(r.noise.join() === "true,true,false,false" && r.key === "old city", "apartment blocks are never spots; names fold like the database's name_key");
+});
+
 /* ---------------- info pages follow the features ----------------
    About, Privacy and Terms have to describe the site as it is. These checks
    tie them to the code, so a change that adds an outside service, starts
@@ -641,8 +709,11 @@ await test("Info pages follow the features: Privacy names every outside service 
     for (const re of RETIRED) assert(!re.test(txt), `${f}: retired wording ${re}`);
   }
   // 4. About lists the main features (add one here when a feature ships).
-  for (const k of ["Takes.", "Quick questions.", "top 3 restaurants", "Vibes.", "Local badges.", "month-by-month calendar"])
+  for (const k of ["Takes.", "Quick questions.", "top 3 restaurants", "The Guide.", "Vibes.", "Local badges.", "month-by-month calendar"])
     assert(about.includes(k), `About page doesn't describe: ${k}`);
+  // 5. Outside services the page scripts load on their own (not in the CSP host list): the Guide's map tiles.
+  const guideSrc = await readFile("assets/guide.js", "utf8");
+  if (guideSrc.includes('"https://tile.openstreetmap.org/')) assert(/OpenStreetMap/.test(privacy) && /Guide/.test(privacy), "the Guide loads OpenStreetMap tiles: the Privacy page must say so");
 });
 
 await test("Research data and scripts are not published", async () => {
@@ -652,7 +723,7 @@ await test("Research data and scripts are not published", async () => {
 
 await test("Python tools compile; workflows parse", async () => {
   execFileSync("python3", ["-m", "py_compile", "scripts/questions/research.py", "scripts/questions/spec.py", "scripts/questions/intent.py",
-    "scripts/city_requests_bot.py", "scripts/take_review_bot.py", "scripts/og_cards.py", "scripts/keywords/bing_keywords.py"]);
+    "scripts/city_requests_bot.py", "scripts/take_review_bot.py", "scripts/og_cards.py", "scripts/keywords/bing_keywords.py", "scripts/places_catalog.py"]);
   execFileSync("python3", ["-c", "import yaml,glob;[yaml.safe_load(open(f)) for f in glob.glob('.github/workflows/*.yml')]"]);
 });
 

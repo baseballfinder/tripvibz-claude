@@ -36,7 +36,9 @@ const BUDGET = {
   pageHtmlGz: 20 * KB,        // 8-15 KB with the stylesheets inlined
   siteJs: 60 * KB,            // tv.js 15 KB, v2.js 23 KB, analytics.js 2 KB
   vendorJs: 140 * KB,         // PostgREST + Auth client (lib/supabase-client.mjs): 120 KB (30 KB gz)
-  jsTotalGz: 60 * KB,         // the most any one page loads (city pages): ~50 KB gz
+  jsTotalGz: 60 * KB,         // the most any one page loads (city pages): ~52 KB gz
+  mapJs: 150 * KB,            // Leaflet 1.9.4 for the Guide map: 144 KB (42 KB gz), loaded only when the Guide opens
+  mapJsGz: 45 * KB,
   css: 25 * KB,               // v2.css 18 KB, site.css 9 KB
   ogImage: 200 * KB,          // share cards: 110-157 KB each
   brandImage: 120 * KB,       // app icons / logos
@@ -59,19 +61,25 @@ await test(`Site scripts ≤ ${kb(BUDGET.siteJs)} each, vendored client ≤ ${kb
   const gzOf = {};
   for (const f of await files("dist/assets", p => p.endsWith(".js"))) {
     const s = await size(f);
-    const limit = f.endsWith("/supabase.js") ? BUDGET.vendorJs : BUDGET.siteJs;
+    const map = /\/leaflet-[\d.]+\.js$/.test(f);
+    const limit = f.endsWith("/supabase.js") ? BUDGET.vendorJs : map ? BUDGET.mapJs : BUDGET.siteJs;
     assert(s <= limit, `${f} is ${kb(s)} (limit ${kb(limit)})`);
     gzOf[f.split("/").pop()] = await gz(f);
+    if (map) assert(gzOf[f.split("/").pop()] <= BUDGET.mapJsGz, `${f} is ${kb(gzOf[f.split("/").pop()])} gzipped`);
   }
   // What one page can load: the shared scripts (sign-in client, analytics, offline) plus whatever it names.
   const always = ["supabase.js", "analytics.js", "pwa.js"];
   let worst = 0, worstPage = "";
   for (const f of await files("dist", p => p.endsWith(".html"))) {
-    const named = new Set([...always, ...[...(await readFile(f, "utf8")).matchAll(/assets\/([a-z0-9_-]+\.js)/g)].map(m => m[1])]);
+    // Scripts the page loads up front (<script src>); ones fetched later on demand (the Guide) aren't page weight.
+    const named = new Set([...always, ...[...(await readFile(f, "utf8")).matchAll(/<script[^>]*\bsrc="\/assets\/([a-z0-9_-]+\.js)/g)].map(m => m[1])]);
     const t = [...named].reduce((n, js) => n + (gzOf[js] || 0), 0);
     if (t > worst) { worst = t; worstPage = f; }
   }
   assert(worst <= BUDGET.jsTotalGz, `${worstPage} loads ${kb(worst)} of scripts gzipped`);
+  // The Guide map is the one script loaded on demand: no page may name it (it would load on every visit).
+  for (const f of await files("dist", p => p.endsWith(".html")))
+    assert(!/assets\/leaflet-/.test(await readFile(f, "utf8")), `${f} loads the map library up front; assets/guide.js loads it when the Guide opens`);
 });
 
 await test(`Stylesheets ≤ ${kb(BUDGET.css)} each`, async () => {

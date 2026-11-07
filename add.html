@@ -10,6 +10,23 @@
 <link rel="stylesheet" href="/assets/site.css">
 <link rel="stylesheet" href="/assets/v2.css">
 <script src="/assets/analytics.js" defer></script>
+<style>
+/* "Where is this?" (the spot a take is about; it puts the take on the city's Guide map) */
+.pl-search{margin-top:10px}
+#place-q{width:100%;min-height:46px;font-size:16px}
+.pl-sugg{margin-top:6px;border:1px solid var(--line);border-radius:14px;background:#fff;overflow:hidden}
+.pl-opt{display:block;width:100%;min-height:48px;padding:9px 14px;text-align:left;border:0;border-top:1px solid var(--line);background:#fff;cursor:pointer;font:inherit;color:var(--ink)}
+.pl-opt:first-child{border-top:0}
+.pl-opt:hover,.pl-opt:focus-visible{background:#f7f5f0}
+.pl-opt b{display:block;font-size:15px}
+.pl-opt small{display:block;font-size:12.5px;color:var(--muted);margin-top:1px}
+.pl-opt.typed b{font-weight:600}
+.pl-picked{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.pl-name{display:inline-flex;align-items:center;gap:6px;font-weight:800;color:var(--ink)}
+.pl-detail{font-size:12.5px;color:var(--muted)}
+.pl-note{flex-basis:100%;font-size:12.5px;color:var(--muted);order:3}
+#pl-change{margin-left:auto}
+</style>
 </head>
 <body>
 <header class="nav">
@@ -34,11 +51,14 @@
   const DRAFT_KEY = "tv_v2_draft";
 
   let CITY = null, PLACES = [], MY_TENURE = null, QS = [];
-  const S = { kind: "hidden_gem", vibes: [], text: "", place: "", customPlace: "", months: [], tenure: null, err: "", busy: false };
+  // place: the label shown on the take; placeRef: where it is ("p:<places id>" for a spot TripVibz has,
+  // "c:<catalogue id>" for one from the places catalogue, copied in on post), so it lands on the Guide map.
+  const S = { kind: "hidden_gem", vibes: [], text: "", place: "", placeRef: null, placeDetail: "", placeQ: "", months: [], tenure: null, err: "", busy: false };
   try { const k = qs.get("kind"); if (T2.KIND[k]) S.kind = k; const t = qs.get("text"); if (t) S.text = t.slice(0, 400); } catch (e) {}
 
   const signedIn = () => !!(auth.me && !auth.me.is_anonymous);
-  const placeValue = () => (S.place === "__custom" ? S.customPlace.trim() : S.place) || "";
+  const placeValue = () => (S.place || "").trim();
+  let PSUGG = [], PSEQ = 0, PTIMER = null;
 
   /* ---------------- compose ---------------- */
   function compose(){
@@ -66,13 +86,9 @@
         ${T2.vibePickHtml("t", S.vibes || [], "take")}
       </div>` : ""}
 
-      <div class="sect"><h2>Where does it apply?</h2>
-        <div class="wrapchips">
-          ${PLACES.map(p => `<button class="chip" data-place="${esc(p)}" aria-pressed="${S.place===p}">${esc(p)}</button>`).join("")}
-          <button class="chip" data-place="Whole city" aria-pressed="${S.place==="Whole city"}">Whole city</button>
-          <button class="chip dashed" data-place="__custom" aria-pressed="${S.place==="__custom"}">+ Another spot</button>
-        </div>
-        ${S.place === "__custom" ? `<input class="inp" id="custom" maxlength="60" placeholder="e.g. Las Olas, the beach, the airport" value="${esc(S.customPlace)}" style="margin-top:8px;width:100%" aria-label="Place name">` : ""}
+      <div class="sect" id="where"><h2>Where is this? <span style="font:500 13px 'Public Sans';color:#5f5a50">optional</span></h2>
+        <div class="sub">Pick the spot and it goes on the ${esc(CITY.name)} Guide map.</div>
+        ${placeBox()}
       </div>
 
       <div class="sect"><h2>When? <span style="font:500 13px 'Public Sans';color:#5f5a50">optional</span></h2>
@@ -104,6 +120,62 @@
     wireCompose();
   }
 
+  // "Where is this?": common spots as chips, then a search over spots, neighborhoods and restaurants
+  // (search_take_places, migration 20261107170000). Typing a name with no match still works (no pin).
+  function placeBox(){
+    if (S.place) {
+      const pinned = S.placeRef && S.place !== "Whole city";
+      return `<div class="pl-picked"><span class="pl-name">${T2.ICON.pin}${esc(S.place)}</span>${S.placeDetail ? `<span class="pl-detail">${esc(S.placeDetail)}</span>` : ""}
+        <span class="pl-note">${pinned ? "On the Guide map" : S.place === "Whole city" ? "The whole city, no pin" : "Not on the map (we couldn't find it)"}</span>
+        <button type="button" class="chip" id="pl-change">Change</button></div>`;
+    }
+    return `<div class="wrapchips">
+        ${PLACES.map(p => `<button class="chip" data-place-ref="p:${esc(p.id)}" data-place-name="${esc(p.name)}">${esc(p.name)}</button>`).join("")}
+        <button class="chip" data-place-ref="" data-place-name="Whole city">Whole city</button>
+      </div>
+      <div class="pl-search"><input class="inp" id="place-q" type="search" maxlength="60" autocomplete="off" enterkeyhint="search"
+        role="combobox" aria-autocomplete="list" aria-controls="pl-sugg" aria-expanded="${PSUGG.length ? "true" : "false"}"
+        placeholder="Search a spot, park, neighborhood or restaurant" aria-label="Search for the place" value="${esc(S.placeQ)}">
+        <div class="pl-sugg" id="pl-sugg" role="listbox"${S.placeQ.trim().length >= 2 ? "" : " hidden"}>${placeSuggHtml()}</div></div>`;
+  }
+  function placeSuggHtml(){
+    const q = S.placeQ.trim();
+    const cat = c => { c = String(c || "").replace(/_/g, " "); return c ? c[0].toUpperCase() + c.slice(1) : ""; };
+    const kind = r => r.kind === "eat" ? "Restaurant or bar" : r.takes ? `${r.takes} take${r.takes === 1 ? "" : "s"} here` : cat(r.category);
+    return PSUGG.map((r, i) => `<button type="button" role="option" class="pl-opt" data-sugg="${i}"><b>${esc(r.name)}</b><small>${esc([kind(r), r.detail].filter(Boolean).join(" · "))}</small></button>`).join("") +
+      (q.length >= 2 ? `<button type="button" role="option" class="pl-opt typed" data-typed="1"><b>Use “${esc(q.slice(0, 60))}”</b><small>As typed, without a map pin</small></button>` : "");
+  }
+  function searchPlaces(q){
+    clearTimeout(PTIMER);
+    const box = $("#pl-sugg"); if (!box) return;
+    if (q.trim().length < 2) { PSUGG = []; box.hidden = true; return; }
+    PTIMER = setTimeout(async () => {
+      const seq = ++PSEQ;
+      try {
+        const r = await sb.rpc("search_take_places", { p_city: CITY.id, p_q: q.trim() });
+        if (seq !== PSEQ) return;   // they kept typing
+        PSUGG = (r && r.data) || [];
+      } catch (e) { PSUGG = []; }
+      const b = $("#pl-sugg"); if (!b) return;
+      b.innerHTML = placeSuggHtml(); b.hidden = false;
+      const inp = $("#place-q"); if (inp) inp.setAttribute("aria-expanded", "true");
+    }, 180);
+  }
+  function choosePlace(name, ref, detail){
+    Object.assign(S, { place: name || "", placeRef: ref || null, placeDetail: detail || "", placeQ: "" });
+    PSUGG = []; compose();
+  }
+  // "c:<id>" (a catalogue place) becomes a places row server-side; a failure just posts without the pin.
+  async function placeIdFor(ref){
+    if (!ref) return null;
+    if (ref.startsWith("p:")) return ref.slice(2);
+    try {
+      await auth.session();
+      const r = await sb.rpc("ensure_spot_from_place", { p_place: ref.slice(2) });
+      return r && !r.error && r.data ? r.data : null;
+    } catch (e) { console.error(e); return null; }
+  }
+
   const T2_GOOGLE = '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="9" fill="#fff"/><path d="M13.2 9.1c0-.3 0-.6-.1-.9H9v1.7h2.3a2 2 0 0 1-.9 1.3v1.1h1.4c.9-.8 1.4-1.9 1.4-3.2z" fill="#4285F4"/><path d="M9 13.4c1.2 0 2.1-.4 2.8-1l-1.4-1.1c-.4.3-.9.4-1.4.4-1.1 0-2.1-.8-2.4-1.8H5.1v1.1A4.3 4.3 0 0 0 9 13.4z" fill="#34A853"/><path d="M6.6 9.9a2.6 2.6 0 0 1 0-1.7V7.1H5.1a4.3 4.3 0 0 0 0 3.9l1.5-1.1z" fill="#FBBC05"/><path d="M9 6.3c.6 0 1.2.2 1.6.6l1.2-1.2A4.3 4.3 0 0 0 5.1 7.1l1.5 1.1C6.9 7.1 7.9 6.3 9 6.3z" fill="#EA4335"/></svg>';
 
   function wireCompose(){
@@ -115,8 +187,22 @@
     });
     const ta = $("#take");
     ta.addEventListener("input", () => { S.text = ta.value; $("#pv").textContent = ta.value || "Your take shows here."; });
-    root.querySelectorAll("[data-place]").forEach(b => b.onclick = () => { S.place = S.place === b.dataset.place ? "" : b.dataset.place; compose(); if (S.place === "__custom") $("#custom").focus(); });
-    const cu = $("#custom"); if (cu) cu.addEventListener("input", () => { S.customPlace = cu.value; });
+    root.querySelectorAll("[data-place-ref]").forEach(b => b.onclick = () => choosePlace(b.dataset.placeName, b.dataset.placeRef, ""));
+    const pc = $("#pl-change"); if (pc) pc.onclick = () => { Object.assign(S, { place: "", placeRef: null, placeDetail: "" }); compose(); const f = $("#place-q"); if (f) f.focus(); };
+    const pq = $("#place-q");
+    if (pq) {
+      pq.addEventListener("input", () => { S.placeQ = pq.value; searchPlaces(pq.value); });
+      pq.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); const f = $("#pl-sugg .pl-opt"); if (f && !$("#pl-sugg").hidden) f.click(); } });
+    }
+    const ps = $("#pl-sugg");
+    if (ps) {
+      ps.addEventListener("mousedown", e => e.preventDefault());
+      ps.addEventListener("click", e => {
+        const b = e.target.closest(".pl-opt"); if (!b) return;
+        if (b.dataset.typed) { choosePlace(S.placeQ.trim().slice(0, 60), null, ""); return; }
+        const r = PSUGG[Number(b.dataset.sugg)]; if (r) choosePlace(r.name, r.ref, r.detail || "");
+      });
+    }
     root.querySelectorAll("[data-month]").forEach(b => b.onclick = () => {
       const m = Number(b.dataset.month); S.months = S.months.includes(m) ? S.months.filter(x => x !== m) : S.months.concat(m); compose();
     });
@@ -159,9 +245,10 @@
     const title = text.length <= 160 ? text : text.slice(0, 157).replace(/\s+\S*$/, "") + "…";
     try {
       if (S.tenure) await T2.saveTenure(CITY.id, S.tenure);
+      const place_id = await placeIdFor(S.placeRef);
       const { row } = await submitTake({
         title, body: text.length > 160 ? text : null, type: S.kind,
-        city_id: CITY.id, city_name: CITY.name,
+        city_id: CITY.id, city_name: CITY.name, place_id,
         place_label: placeValue() || null, months: S.months.slice().sort((a,b) => a-b)
       });
       try { sessionStorage.removeItem(DRAFT_KEY); } catch (e) {}
@@ -257,11 +344,11 @@
     await auth.ensure();
     await T2.finishClaim();
     const [pl, tn, qq] = await Promise.all([
-      sb.from("places").select("name").eq("city_id", CITY.id).order("name"),
+      sb.from("places").select("id,name").eq("city_id", CITY.id).order("name"),
       auth.me ? sb.from("city_tenure").select("tenure").eq("city_id", CITY.id).eq("user_id", auth.me.id).maybeSingle() : { data: null },
       T2.loadQuestions(CITY.id)
     ]);
-    PLACES = (pl.data || []).map(x => x.name).slice(0, 8);
+    PLACES = (pl.data || []).slice(0, 8);
     MY_TENURE = tn.data ? tn.data.tenure : null;
     QS = qq;
 

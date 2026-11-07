@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 """
-Load eat-and-drink places near every TripVibz city into public.places_catalog
-from Overture Maps' open "places" data, so the top-3 picker can offer real
-names (no misspellings) with address, phone, website and coordinates.
+Load places near every TripVibz city into public.places_catalog from Overture
+Maps' open data:
+
+  kind 'eat'   food and drink, for the top-3 restaurant picker (real names, no
+               misspellings, with address, phone, website and coordinates);
+  kind 'spot'  parks, beaches, landmarks, museums, stadiums, plazas and the
+               well-known neighborhoods (Overture divisions that have a
+               Wikidata entry), for "Where is this?" on the add page, so a
+               take can be pinned on the city's Guide map.
 
   Source   Overture Maps Foundation, theme=places (CDLA-Permissive 2.0 — storing
            and redistributing the data is allowed; keep the attribution).
@@ -48,8 +54,8 @@ def latest_release():
     return rels[-1]
 
 
-def place_files(release):
-    prefix = f"release/{release}/theme=places/type=place/"
+def place_files(release, theme="places", kind="place"):
+    prefix = f"release/{release}/theme={theme}/type={kind}/"
     xml = urllib.request.urlopen(f"{BUCKET}/?list-type=2&prefix={urllib.parse.quote(prefix)}&max-keys=1000", timeout=60).read().decode()
     keys = re.findall(r"<Key>([^<]+)</Key>", xml)
     files = [f"{BUCKET}/{k}" for k in keys if k.endswith(".parquet") or "/part-" in k]
@@ -99,8 +105,87 @@ def fetch_city(con, files, city, all_cities):
             m = re.search(r"instagram\.com/([A-Za-z0-9_.]+)", instagram)
             instagram = m.group(1) if m else None
         out.append((pid, city["id"], name, category or basic, address, locality, postcode, lat, lng,
-                    phone, (website or "")[:300] or None, instagram, confidence, status))
+                    phone, (website or "")[:300] or None, instagram, confidence, status, "eat"))
     return out
+
+
+# Things to see or meet at: Overture basic categories for spots.
+SPOT_BASIC = ("park", "beach", "museum", "marina", "stadium_arena", "performing_arts_venue", "theatre_venue", "music_venue",
+              "amusement_park", "amusement_attraction", "garden", "public_plaza", "monument", "national_park", "nature_reserve",
+              "zoo", "aquarium", "pier", "farmers_market", "market", "landmark_and_historical_building", "historic_site",
+              "recreational_trail_or_path", "lake", "bridge", "street_art", "science_attraction",
+              "tourist_attraction", "attraction", "scenic_point", "lookout", "botanical_garden", "waterfront", "boardwalk")
+SPOT_MIN_CONFIDENCE = 0.8
+# "historic_site" in Overture also covers apartment blocks and offices; these names are never a spot.
+SPOT_NOISE_RE = re.compile(r"\b(apartments?|apts|condos?|condominiums?|residences?|lofts?|towers?|suites|homes|villas|estates|"
+                           r"signs?|realty|llc|inc|office|offices|storage|parking|garage|self storage|clinic|dental)\b", re.I)
+NEIGHBORHOOD_SUBTYPES = ("neighborhood", "macrohood", "microhood")
+
+
+def name_key(n):
+    """Mirrors places_catalog.name_key / public.place_name_key."""
+    return re.sub(r"[^a-z0-9]+", " ", re.sub(r"^\s*the\s+", "", str(n).lower())).strip()
+
+
+def keep_one_per_name(rows):
+    """Overture often lists one spot many times ("Fort Lauderdale Beach" x15, one of
+    them miles inland). Keep the copy nearest the middle of its group, which beats
+    keeping the highest confidence (the inland one scored highest) or the median."""
+    groups = {}
+    for r in rows:
+        groups.setdefault(name_key(r[2]), []).append(r)
+    out = []
+    for g in groups.values():
+        if len(g) == 1:
+            out.append(g[0]); continue
+        # The copy with the least total distance to the others (a medoid): outliers can't win.
+        out.append(min(g, key=lambda r: sum(haversine(r[7], r[8], o[7], o[8]) for o in g)))
+    return out
+
+
+def in_city(city, all_cities, lat, lng):
+    d = haversine(city["lat"], city["lng"], lat, lng)
+    return d <= RADIUS_KM and not any(haversine(o["lat"], o["lng"], lat, lng) < d for o in all_cities if o["id"] != city["id"])
+
+
+def fetch_spots(con, files, div_files, city, all_cities):
+    """Spots for the Guide: sights from the places theme plus neighborhoods from divisions."""
+    xmin, xmax, ymin, ymax = bbox(city["lat"], city["lng"], RADIUS_KM)
+    rows = con.execute(f"""
+      select id, names.primary as name, taxonomy.primary as category, basic_category,
+             addresses[1].freeform as address, addresses[1].locality as locality, addresses[1].postcode as postcode,
+             st_y(geometry) as lat, st_x(geometry) as lng, websites[1] as website, confidence, operating_status
+        from read_parquet({json.dumps(files)})
+       where bbox.xmin between {xmin} and {xmax} and bbox.ymin between {ymin} and {ymax}
+         and names.primary is not null and basic_category in {SPOT_BASIC}
+         and coalesce(confidence, 0) >= {SPOT_MIN_CONFIDENCE}
+         and coalesce(operating_status, '') <> 'closed'
+    """).fetchall()
+    out = []
+    for (pid, name, category, basic, address, locality, postcode, lat, lng, website, confidence, status) in rows:
+        name = re.sub(r"\s+", " ", str(name)).strip()
+        if len(name) < 3 or len(name) > 80 or SPOT_NOISE_RE.search(name) or not in_city(city, all_cities, lat, lng):
+            continue
+        if basic == "historic_site" and (confidence or 0) < 0.95:
+            continue
+        out.append((pid, city["id"], name, basic or category, address, locality, postcode, lat, lng,
+                    None, (website or "")[:300] or None, None, confidence, status, "spot"))
+    # Neighborhoods: only the ones notable enough to have a Wikidata entry (the rest are subdivisions).
+    # DuckDB 1.4 trips over a wikidata filter pushed into the parquet scan, so it's applied here.
+    divs = con.execute(f"""
+      select id, names.primary, subtype, wikidata, st_y(st_centroid(geometry)), st_x(st_centroid(geometry))
+        from read_parquet({json.dumps(div_files)})
+       where bbox.xmin between {xmin} and {xmax} and bbox.ymin between {ymin} and {ymax}
+         and subtype in {NEIGHBORHOOD_SUBTYPES} and names.primary is not null
+    """).fetchall()
+    seen_wd = set()
+    for (did, name, subtype, wikidata, lat, lng) in divs:
+        if not wikidata or wikidata in seen_wd or lat is None or not in_city(city, all_cities, lat, lng):
+            continue
+        seen_wd.add(wikidata)
+        out.append((did, city["id"], str(name).strip()[:80], "neighborhood", None, None, None, lat, lng,
+                    None, None, None, 1.0, None, "spot"))
+    return keep_one_per_name(out)
 
 
 def haversine(lat1, lng1, lat2, lng2):
@@ -118,7 +203,8 @@ def main():
     only = sys.argv[1] if len(sys.argv) > 1 else None
     release = latest_release()
     files = place_files(release)
-    print(f"Overture release {release}: {len(files)} place files")
+    div_files = place_files(release, "divisions", "division")
+    print(f"Overture release {release}: {len(files)} place files, {len(div_files)} division files")
 
     con = duckdb.connect()
     con.execute("INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial;")
@@ -132,23 +218,25 @@ def main():
         total = 0
         for city in cities:
             t = time.time()
-            rows = fetch_city(con, files, city, cities_all)
+            eat = fetch_city(con, files, city, cities_all)
+            spots = fetch_spots(con, files, div_files, city, cities_all)
+            rows = eat + spots
             with pg.transaction(), pg.cursor() as cur:
                 cur.executemany(
                     """insert into public.places_catalog
-                         (id, city_id, name, category, address, locality, postcode, lat, lng, phone, website, instagram, confidence, status, release, updated_at)
-                       values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
+                         (id, city_id, name, category, address, locality, postcode, lat, lng, phone, website, instagram, confidence, status, kind, release, updated_at)
+                       values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
                        on conflict (id) do update set
                          city_id = excluded.city_id, name = excluded.name, category = excluded.category, address = excluded.address,
                          locality = excluded.locality, postcode = excluded.postcode, lat = excluded.lat, lng = excluded.lng,
                          phone = excluded.phone, website = excluded.website, instagram = excluded.instagram,
-                         confidence = excluded.confidence, status = excluded.status, release = excluded.release, updated_at = now()""",
+                         confidence = excluded.confidence, status = excluded.status, kind = excluded.kind, release = excluded.release, updated_at = now()""",
                     [r + (release,) for r in rows])
                 # Places that left the release for this city (closed, merged, removed) leave the picker.
                 cur.execute("delete from public.places_catalog where city_id = %s and release <> %s", (city["id"], release))
                 gone = cur.rowcount
             total += len(rows)
-            print(f"  {city['name']:<18} {len(rows):>6} places  (-{gone} gone)  {time.time() - t:.1f}s")
+            print(f"  {city['name']:<18} {len(eat):>6} places to eat  {len(spots):>5} spots  (-{gone} gone)  {time.time() - t:.1f}s")
         print(f"done: {total} places across {len(cities)} cities · Overture {release}")
 
 
