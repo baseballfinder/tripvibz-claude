@@ -461,6 +461,8 @@
     CITY = await T2.loadCity(SLUG);
     if (!CITY) { $("#city").innerHTML = `<div class="state"><b>City not found</b><a href="/cities/">← All cities</a></div>`; return; }
     document.title = `Where would you take a friend in ${CITY.name}? · TripVibz`;
+    // Recently viewed, for the quick picks on the Cities page (this browser only; nothing is sent).
+    try { const k = "tv_recent_cities", r = JSON.parse(localStorage.getItem(k) || "[]").filter(s => s !== CITY.slug); r.unshift(CITY.slug); localStorage.setItem(k, JSON.stringify(r.slice(0, 5))); } catch (e) {}
     await auth.ensure();
     await T2.finishClaim();
     POSTS = await T2.loadPosts(CITY.id, ["what_not_to_do","worst_times","hidden_gem","take"]);

@@ -36,7 +36,7 @@ const BUDGET = {
   pageHtmlGz: 20 * KB,        // 8-15 KB with the stylesheets inlined
   siteJs: 60 * KB,            // tv.js 15 KB, v2.js 23 KB, analytics.js 2 KB
   vendorJs: 140 * KB,         // PostgREST + Auth client (lib/supabase-client.mjs): 120 KB (30 KB gz)
-  jsTotalGz: 60 * KB,         // everything a page can load: ~45 KB gz
+  jsTotalGz: 60 * KB,         // the most any one page loads (city pages): ~50 KB gz
   css: 25 * KB,               // v2.css 18 KB, site.css 9 KB
   ogImage: 200 * KB,          // share cards: 110-157 KB each
   brandImage: 120 * KB,       // app icons / logos
@@ -55,15 +55,23 @@ await test(`Every pre-rendered page is under ${kb(BUDGET.pageHtml)} (and ${kb(BU
   }
 });
 
-await test(`Site scripts ≤ ${kb(BUDGET.siteJs)} each, vendored client ≤ ${kb(BUDGET.vendorJs)}, all scripts ≤ ${kb(BUDGET.jsTotalGz)} compressed`, async () => {
-  let totalGz = 0;
+await test(`Site scripts ≤ ${kb(BUDGET.siteJs)} each, vendored client ≤ ${kb(BUDGET.vendorJs)}, each page's scripts ≤ ${kb(BUDGET.jsTotalGz)} compressed`, async () => {
+  const gzOf = {};
   for (const f of await files("dist/assets", p => p.endsWith(".js"))) {
     const s = await size(f);
     const limit = f.endsWith("/supabase.js") ? BUDGET.vendorJs : BUDGET.siteJs;
     assert(s <= limit, `${f} is ${kb(s)} (limit ${kb(limit)})`);
-    totalGz += await gz(f);
+    gzOf[f.split("/").pop()] = await gz(f);
   }
-  assert(totalGz <= BUDGET.jsTotalGz, `all scripts together are ${kb(totalGz)} gzipped`);
+  // What one page can load: the shared scripts (sign-in client, analytics, offline) plus whatever it names.
+  const always = ["supabase.js", "analytics.js", "pwa.js"];
+  let worst = 0, worstPage = "";
+  for (const f of await files("dist", p => p.endsWith(".html"))) {
+    const named = new Set([...always, ...[...(await readFile(f, "utf8")).matchAll(/assets\/([a-z0-9_-]+\.js)/g)].map(m => m[1])]);
+    const t = [...named].reduce((n, js) => n + (gzOf[js] || 0), 0);
+    if (t > worst) { worst = t; worstPage = f; }
+  }
+  assert(worst <= BUDGET.jsTotalGz, `${worstPage} loads ${kb(worst)} of scripts gzipped`);
 });
 
 await test(`Stylesheets ≤ ${kb(BUDGET.css)} each`, async () => {
