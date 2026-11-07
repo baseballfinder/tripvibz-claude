@@ -616,7 +616,7 @@ await test("Guide tab (assets/guide.js): take spots grouped and ranked, top 3 re
   const html = G.html({ name: "Knoxville", slug: "knoxville" }, sp, top, { pickers: 3, hotelsNear: n => "https://www.stay22.com/allez/roam?x=" + encodeURIComponent(n), stayHtml: '<section class="s22">hotels</section>' });
   for (const want of ["Guide to Knoxville", "Picked by 3 people · 1 verified ✓", "Picked by 2 people", "Picked by 1 person", "“Best crust in town”", "Spots in the takes", "2 takes", "data-guide-map", "OpenStreetMap", '<section class="s22">hotels</section>', 'href="/t/t2"', "Hotels near", "No reviews yet"])
     assert(html.includes(want), `Guide markup is missing ${want}`);
-  assert(!/<script>|<b>at night/.test(html) && html.includes("&lt;script&gt;"), "names, reviews and titles are escaped");
+  assert(!html.toLowerCase().includes("<script") && !html.includes("<b>at night") && html.includes("&lt;script&gt;"), "names, reviews and titles are escaped");
   assert(html.indexOf("Top restaurants") < html.indexOf("Spots in the takes") && html.indexOf("Spots in the takes") < html.indexOf('class="s22"'), "order: map, restaurants, spots, hotels");
   const pts = G.points(sp, top);
   assert(pts.filter(p => p.k === "eat").length === 2 && pts.filter(p => p.k === "spot").length === 2, "map pins: restaurants with a position and every spot");
@@ -713,7 +713,7 @@ await test("Info pages follow the features: Privacy names every outside service 
     assert(about.includes(k), `About page doesn't describe: ${k}`);
   // 5. Outside services the page scripts load on their own (not in the CSP host list): the Guide's map tiles.
   const guideSrc = await readFile("assets/guide.js", "utf8");
-  if (/tile\.openstreetmap\.org/.test(guideSrc)) assert(/OpenStreetMap/.test(privacy) && /Guide/.test(privacy), "the Guide loads OpenStreetMap tiles: the Privacy page must say so");
+  if (guideSrc.includes('"https://tile.openstreetmap.org/')) assert(/OpenStreetMap/.test(privacy) && /Guide/.test(privacy), "the Guide loads OpenStreetMap tiles: the Privacy page must say so");
 });
 
 await test("Research data and scripts are not published", async () => {
