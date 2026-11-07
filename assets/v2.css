@@ -27,7 +27,7 @@
 .qcard .qk{font-family:"Archivo";font-weight:700;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#ff9b80}
 .qcard .qp{font-family:"Archivo";font-weight:800;font-size:21px;line-height:1.2;margin:8px 0 14px}
 .qopts{display:flex;flex-direction:column;gap:8px}
-.qopt{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;min-height:54px;padding:0 16px;border-radius:12px;border:2px solid #4a443a;background:#221f19;color:#fff;font:700 16px "Public Sans",sans-serif;text-align:left;cursor:pointer;text-decoration:none}
+.qopt{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:54px;padding:0 16px;border-radius:12px;border:2px solid #4a443a;background:#221f19;color:#fff;font:700 16px "Public Sans",sans-serif;text-align:left;cursor:pointer;text-decoration:none}
 .qopt .fill{position:absolute;left:0;top:0;bottom:0;background:#3a352c;transition:width .4s ease}
 .qopt.mine{border-color:#fff}
 .qopt.mine .fill{background:#a8361a}
