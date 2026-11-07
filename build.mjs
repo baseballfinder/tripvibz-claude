@@ -56,7 +56,7 @@ const SKIP = new Set([
   "dist", "node_modules", ".git", "supabase", ".github", "functions",
   "build.mjs", "package.json", "package-lock.json", "lighthouserc.json", "lighthouserc.mobile.json",
   // Maintenance scripts, bundle sources and docs are not site content; never publish them.
-  "scripts", "lib", "data", "tests", "README.md", "CLAUDE.md", "vote.html", "add.html", "vibe.html"
+  "scripts", "lib", "data", "tests", "README.md", "CLAUDE.md", "docs", "vote.html", "add.html", "vibe.html"
 ]);
 
 const THEMES = {

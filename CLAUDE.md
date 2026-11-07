@@ -38,6 +38,24 @@ node build.mjs && node tests/static.mjs && node tests/security.mjs && node tests
 git diff --name-only origin/main...HEAD | node scripts/tests-included.mjs
 ```
 
+## How to build it
+
+Read `docs/ARCHITECTURE.md` before adding a feature that touches the server,
+the database or a background job. In short:
+
+- **One codebase, clear modules.** Don't split into separate services until a
+  piece needs to scale or deploy on its own.
+- **Loose coupling.** Shared things live in one module (config, headers,
+  database calls); import them rather than copying.
+- **Stateless Functions.** Nothing that matters lives in a Function's memory.
+- **Cache first.** Prefer pre-rendering and the edge cache over new
+  infrastructure. Add Redis, queues, replicas or containers only at the
+  triggers the doc gives.
+- **Design for failure.** Every outside call has a time limit and a chosen
+  failure mode (fail open for nice-to-haves, closed for writes and security).
+- **Slow work runs in the background** (scheduled jobs), never in a visitor's
+  request.
+
 ## Other rules
 
 - **Tests never write to the live database.** `tests/e2e.mjs` intercepts every

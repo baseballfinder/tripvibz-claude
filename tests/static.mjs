@@ -530,11 +530,12 @@ await test("New code comes with tests: the tests-included rule (scripts/tests-in
   assert(/types: \[opened, synchronize, reopened, labeled, unlabeled\]/.test(wf) && /node scripts\/tests-included\.mjs/.test(wf), "workflow re-runs on label changes and uses the same rule");
   const claude = await readFile("CLAUDE.md", "utf8");
   assert(/tests\/README\.md/.test(claude) && claude.includes(LABEL), "CLAUDE.md states the rule");
+  assert(claude.includes("docs/ARCHITECTURE.md") && (await exists("docs/ARCHITECTURE.md")), "CLAUDE.md points to the architecture rules");
 });
 
 await test("Research data and scripts are not published", async () => {
   assert(!(await exists("dist/data")) && !(await exists("dist/scripts")), "dist/ contains data/ or scripts/");
-  for (const f of ["README.md", "CLAUDE.md", "package.json"]) assert(!(await exists(`dist/${f}`)), `dist/ contains ${f}`);
+  for (const f of ["README.md", "CLAUDE.md", "package.json", "docs"]) assert(!(await exists(`dist/${f}`)), `dist/ contains ${f}`);
 });
 
 await test("Python tools compile; workflows parse", async () => {
