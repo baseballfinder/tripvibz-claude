@@ -63,6 +63,9 @@ async function intercept(ctx) {
         return r.fulfill({ json: (headers.accept || "").includes("vnd.pgrst.object") ? row : [row] });
       }
     }
+    // Vibes (migration 20261105200000) may not be in the live database yet: answer their reads as an
+    // empty, migrated table, so the pages behave the same before and after the migration runs.
+    if ((m === "GET" || m === "HEAD") && /\/rest\/v1\/(vibe_tags|post_vibes|restaurant_vibes)\?/.test(url)) return r.fulfill({ json: [] });
     if (url.includes("/rpc/email_signup")) {   // never let a test address reach the signup list
       let body = {}; try { body = JSON.parse(req.postData() || "{}"); } catch {}
       writes.push({ table: "email_signup(rpc)", method: m, body });
@@ -250,6 +253,40 @@ await test("Post a take anonymously: kinds, starter, place, months, preview, pos
   assert(writes.some(w => w.table.startsWith("posts")), "take was not sent");
   assert(/Your take is live/.test(await page.textContent("#root")), "posted page missing");
   assert(await page.evaluate(() => { const c = document.querySelector("#card"); return c && c.width === 1080; }), "share card not drawn");
+});
+
+await test("Vibes: 'Do this' takes offer up to two vibes (none on warnings), saved with the take; a take card takes a vibe in one tap", async () => {
+  await go("/knoxville/add/");
+  assert(await page.locator('[data-kind="hidden_gem"][aria-pressed="true"]').count() === 1, "'Do this' should be the default kind");
+  assert(await page.locator("#vibe-sect").count() === 1, "vibe picker missing on a 'Do this' take");
+  await page.click('[data-pick-vibe="t:date-night"]');
+  await page.click('[data-pick-vibe="t:the-parents"]');
+  await page.click('[data-pick-vibe="t:solo"]');
+  assert(await page.locator('#vibe-sect [aria-pressed="true"]').count() === 2, "more than two vibes could be picked");
+  await page.click('#vibe-sect [data-more-vibes]');
+  assert(await page.locator('[data-pick-vibe="t:loud-and-late"]').count() === 1 && await page.locator('[data-pick-vibe="t:dressy"]').count() === 0, "mood vibes: 'Dressy' is for restaurants only");
+  await page.click('[data-kind="what_not_to_do"]');
+  assert(await page.locator("#vibe-sect").count() === 0, "warnings must not take a vibe");
+  await page.click('[data-kind="hidden_gem"]');
+  assert(await page.locator('#vibe-sect [aria-pressed="true"]').count() === 2, "picked vibes should survive switching kinds");
+  await page.fill("#take", "TEST take your parents to the Sunsphere at golden hour, then dinner in Market Square");
+  const before = writes.length;
+  await page.click("#post-anon");
+  await page.waitForTimeout(1500);
+  const vt = writes.slice(before).find(w => w.table === "vibe_tags" && w.method === "POST");
+  assert(vt, "vibes were not saved with the take");
+  const rows = Array.isArray(vt.body) ? vt.body : [vt.body];
+  assert(rows.length === 2 && rows.every(r => r.post_id && !r.restaurant_id && !r.city_id) && rows.map(r => r.vibe).sort().join() === "date-night,the-parents", "wrong vibe rows: " + JSON.stringify(rows));
+
+  await go("/knoxville/");
+  const card = page.locator('.take:has([data-vibe-more])').first();
+  assert(await card.count() === 1, "no vibe button on a 'Do this' take card");
+  assert(await page.locator('.take:has(.tk-kind.k-dont) [data-vibe-more]').count() === 0, "a 'Don't do this' card offered a vibe");
+  await card.locator("[data-vibe-more]").click();
+  await card.locator('[data-vibe="first-timer"]').click();
+  await page.waitForTimeout(600);
+  assert(writes.some(w => w.table === "vibe_tags" && w.method === "POST" && w.body.vibe === "first-timer" && w.body.post_id), "tapping a vibe on a take did not save it");
+  assert(await card.locator('[data-vibe="first-timer"][aria-pressed="true"]').count() === 1, "your vibe should show as yours");
 });
 
 await test("Sign in with Google: badge button opens the sign-in box", async () => {
