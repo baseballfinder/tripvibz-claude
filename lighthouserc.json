@@ -9,7 +9,7 @@
         "http://localhost/austin/",
         "http://localhost/miami/worst-times-to-visit/"
       ],
-      "numberOfRuns": 2,
+      "numberOfRuns": 3,
       "settings": {
         "preset": "desktop",
         "onlyCategories": [
