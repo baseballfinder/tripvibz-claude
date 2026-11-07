@@ -139,7 +139,7 @@ def photo_base(pb):
 
 def card_question(city, q, pb):
     base = photo_base(pb); d = ImageDraw.Draw(base)
-    kicker(d, f"{city['name'].upper()} LOCALS, SETTLE THIS"); brand(base, d)
+    kicker(d, f"SETTLE THIS FOR {city['name'].upper()}"); brand(base, d)
     headline(d, q["prompt"], PAD + 90)
     chips(d, [o["label"] for o in q["options"][:3]])
     return base

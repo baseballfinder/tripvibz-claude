@@ -242,7 +242,7 @@
           `<a class="chip" href="${k === "all" ? routes.city(CITY.slug) : routes.article(CITY.slug, k)}" ${k === THEME ? 'aria-current="page"' : ""}>${escapeHtml(l)}</a>`).join("")}</nav>
         <div class="feed" id="entries">
           ${list.length ? list.map(p => T2.takeHtml(p, CTX, { city: CITY, placement: PLACEMENT })).join("") :
-            `<div class="empty2"><b>No takes yet</b>Know ${escapeHtml(CITY.name)}? One sentence is enough. The first 10 signed-in locals become founding locals.</div>`}
+            `<div class="empty2"><b>No takes yet</b>Know ${escapeHtml(CITY.name)}? One sentence is enough. The first 10 verified locals to post become founding locals.</div>`}
         </div>
         ${addCard()}
       </section>

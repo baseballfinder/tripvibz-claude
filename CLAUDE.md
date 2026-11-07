@@ -38,6 +38,24 @@ node build.mjs && node tests/static.mjs && node tests/security.mjs && node tests
 git diff --name-only origin/main...HEAD | node scripts/tests-included.mjs
 ```
 
+## Keep the info pages current
+
+When a feature is added, changed or removed, update what the site says about
+it in the same pull request:
+
+- **About** (`about/index.html`): how it works, one line per main feature.
+- **Privacy** (`privacy/index.html`): anything new that's stored, shown publicly,
+  or sent to an outside service; update its "Last updated" date.
+- **Terms**, **How we verify locals**, and the copy inside the pages (empty
+  states, sign-in prompts, share images from `scripts/og_cards.py`).
+- **Retired wording** goes everywhere at once, including share images and the
+  structured data in `build.mjs`.
+
+`tests/static.mjs` ("Info pages follow the features") enforces the parts it
+can: Privacy must name every outside service the site loads or calls and
+every table that stores what people enter; retired wording fails the build;
+About must list the main features (add yours to its list).
+
 ## How to build it
 
 Read `docs/ARCHITECTURE.md` before adding a feature that touches the server,
