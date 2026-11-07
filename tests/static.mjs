@@ -632,7 +632,8 @@ await test("Info pages follow the features: Privacy names every outside service 
   // 3. Wording retired with the "Where would you take a friend?" hook (Nov 2026), and the founding-local rule.
   const RETIRED = [/what (do )?(tourists|visitors) (get|keep getting) wrong/i, /tell visitors what they get wrong/i, /local take on every city/i,
     /locals, settle this/i, /what locals say about/i, /drives you crazy/i, /what locals know that travel sites/i,
-    /first 10 (signed-in )?locals (to post )?(there )?become/i, /\bLIVE IN \{/];
+    /first 10 (signed-in )?locals (to post )?(there )?become/i, /\bLIVE IN \{/,
+    /\b100 (largest|biggest)\b|\btop[- ]100 (us )?cities\b/i];   // which cities can be requested stays private
   const files = [...pages.filter(f => !f.includes("/assets/")), ...["about/index.html", "privacy/index.html", "terms/index.html", "how-we-verify-locals/index.html",
     "index.html", "city.html", "add.html", "vote.html", "article.html", "places.html", "thread.html", "vibe.html", "assets/v2.js", "assets/city.js", "build.mjs", "scripts/og_cards.py"]];
   for (const f of [...new Set(files)]) {

@@ -169,7 +169,7 @@ await test("Cities page: grid, search, request-a-city", async () => {
   assert(await page.locator("#soon-label:not([hidden])").count() + await page.locator("#live-label:not([hidden])").count() >= 1, "section labels hidden");
   await page.fill("#search", "zzzz");
   assert(/No TripVibz city matches/.test(await page.textContent("#live-grid")), "empty search state missing");
-  assert(/ask for one of the 100 largest/i.test(await page.textContent("#sugg")), "no-match suggestion should point to asking for a city");
+  assert(/ask for a new one/i.test(await page.textContent("#sugg")), "no-match suggestion should point to asking for a city");
   await page.fill("#search", "");
   await page.fill("#req-q", "tuls");
   await page.waitForTimeout(200);
@@ -191,6 +191,14 @@ await test("Cities page search: 16px box, states and nicknames, typos, suggestio
   assert(await page.getAttribute("#search", "role") === "combobox" && await page.getAttribute("#search", "enterkeyhint") === "go", "search box should be a combobox with a Go key");
   const chips = (await page.textContent("#quick")).replace(/\s+/g, " ");
   assert(/Near you: Knoxville/.test(chips) && /Miami/.test(chips) && /Florida \d+/.test(chips), `quick picks: ${chips}`);
+  // Every quick pick fits inside the row (they wrap instead of running off the edge), on a phone and on a laptop.
+  for (const width of [390, 1100]) {
+    await page.setViewportSize({ width, height: 900 }); await page.waitForTimeout(150);
+    const cut = await page.$$eval("#quick .qchip", (els) => { const box = els[0].parentElement.getBoundingClientRect();
+      return els.filter(e => { const r = e.getBoundingClientRect(); return r.right > box.right + 1 || r.left < box.left - 1; }).map(e => e.textContent.trim()); });
+    assert(!cut.length, `quick picks cut off at ${width}px: ${cut.join(", ")}`);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
   // A state by name filters to its cities, with a scope row first.
   await page.fill("#search", "florida"); await page.waitForTimeout(300);
   const fl = (await api("cities?select=slug,state")).filter(c => c.state === "FL" && cities.some(x => x.slug === c.slug)).length;

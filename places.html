@@ -38,7 +38,7 @@
   .sugg .askb[disabled]{background:#e7e1d6;color:#5f5a50}
   .sugg li.none{cursor:default;color:var(--muted);font-size:15px;display:block;line-height:1.45}
   .sugg li.none a{color:var(--ink);font-weight:700}
-  .quick{display:flex;gap:8px;overflow-x:auto;padding:12px 0 2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .quick{display:flex;flex-wrap:wrap;gap:8px;padding:12px 0 2px}
   .quick::-webkit-scrollbar{display:none}
   .qchip{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border-radius:999px;border:1.5px solid var(--line);background:#fff;color:var(--ink);font:700 14px "Public Sans",sans-serif;text-decoration:none;cursor:pointer;white-space:nowrap}
   .qchip .n{font-weight:600;color:var(--muted);font-size:12.5px}
@@ -124,7 +124,7 @@
   <section class="req" id="request" aria-labelledby="req-h">
     <div class="k">Don't see your city?</div>
     <h2 id="req-h">Ask for it</h2>
-    <p class="sub">Any of the 100 largest US cities. At <b id="open-at">5</b> asks it goes to the front of the line to open. The first 10 verified locals to post there become its founding locals.</p>
+    <p class="sub">Pick a US city we don't cover yet. At <b id="open-at">5</b> asks it goes to the front of the line to open. The first 10 verified locals to post there become its founding locals.</p>
     <label for="req-q" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Find a city to request</label>
     <input id="req-q" type="search" placeholder="Type a city…" autocomplete="off">
     <ul id="req-list"></ul>
@@ -255,7 +255,7 @@
       return `<li id="${id}" role="option" data-i="${i}"><span class="nm">${hlName(c.name, r.hl)}${st}</span>
         <span class="meta${n ? "" : " thin"}">${n ? `${n} take${n === 1 ? "" : "s"}` : "Be the first"}</span></li>`;
     }).join("");
-    sugg.innerHTML = html || `<li class="none">No city called “${escapeHtml(q)}” yet. TripVibz covers ${CITIES.length} cities, and you can <a href="#request" data-req="1">ask for one of the 100 largest US cities</a>.</li>`;
+    sugg.innerHTML = html || `<li class="none">No city called “${escapeHtml(q)}” yet. TripVibz covers ${CITIES.length} cities, and you can <a href="#request" data-req="1">ask for a new one</a>.</li>`;
     sugg.hidden = false; input.setAttribute("aria-expanded", "true");
     setActive(ROWS.length ? 0 : -1);
   }
@@ -359,7 +359,7 @@
       ? CANDS.filter(c => c.name.toLowerCase().includes(q) || c.state.toLowerCase() === q)
       : CANDS.slice().sort((a,b) => b.requests - a.requests || a.pop_rank - b.pop_rank);
     $("#req-list").innerHTML = list.length ? list.slice(0, 6).map(reqRow).join("")
-      : `<li class="none" style="background:none;border:none">Not in the 100 largest US cities, or it's already open above.</li>`;
+      : `<li class="none" style="background:none;border:none">We can't take requests for that one yet, or it's already open above.</li>`;
   }
   async function ask(slug){
     const c = CANDS.find(x => x.slug === slug); if (!c) return;
