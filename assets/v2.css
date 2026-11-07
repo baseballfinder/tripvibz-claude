@@ -254,3 +254,17 @@ a.chip{display:inline-flex;align-items:center;text-decoration:none}
 .nearby-list{display:flex;flex-wrap:wrap;gap:8px}
 .nearby-list a{display:inline-flex;gap:6px;align-items:baseline;padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink);text-decoration:none;font-weight:700;font-size:14px}
 .nearby-list a span{font-weight:600;font-size:12px;color:var(--muted)}
+
+/* ---- vibes (assets/v2.js) ---- */
+.vibes{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px}
+.vibe{display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:5px 11px;border-radius:999px;border:1.5px solid #e6dfd2;background:#fff;color:#3f3a31;font:inherit;font-size:13px;font-weight:700;cursor:pointer;line-height:1.2}
+.vibe .vn{font-weight:800;color:var(--muted,#67625a)}
+.vibe[aria-pressed=true]{background:#16130e;border-color:#16130e;color:#fff}
+.vibe[aria-pressed=true] .vn{color:#e9e3d6}
+.vibe.add,.vibe.more{border-style:dashed;color:var(--muted,#67625a);background:transparent}
+.vibes.ro .vibe{cursor:default;min-height:0;padding:3px 9px;font-size:12px;border-width:1px;background:#f6f1e7;border-color:#f6f1e7}
+.vibes.ro{margin:6px 0 0}
+.vibe-filter{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;margin:0 0 4px;scrollbar-width:none}
+.vibe-filter::-webkit-scrollbar{display:none}
+.vibe-filter .vibe{flex:0 0 auto}
+.vibe-k{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted,#67625a);margin:4px 0 6px}
