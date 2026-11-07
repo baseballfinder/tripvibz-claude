@@ -508,8 +508,34 @@ await test("Home page: cities with takes come first in the grid; counters say '1
   assert(/sort\(\(a,b\)=>\(COUNTS\[b\.id\]\|\|0\)-\(COUNTS\[a\.id\]\|\|0\)/.test(page) && /STAT_LABELS/.test(page), "page script: same order as the build, labels follow the numbers");
 });
 
+await test("New code comes with tests: the tests-included rule (scripts/tests-included.mjs) on real pull requests", async () => {
+  const { check, LABEL } = await import("../scripts/tests-included.mjs");
+  const ok = (files, labels) => check(files, labels).ok;
+  // Pass: code with a test (#70, #75), no code at all (#76, dependency bumps, robot PRs, wording pages, styles).
+  assert(ok(["build.mjs", "tests/static.mjs"]), "#70: build change with a static test");
+  assert(ok(["build.mjs", "index.html", "functions/_inline-hashes.js", "tests/static.mjs"]), "#75: home page with a test");
+  assert(ok(["lighthouserc.json", "lighthouserc.mobile.json"]), "#76: test settings only");
+  assert(ok(["package.json", "package-lock.json", ".github/workflows/tests.yml"]), "dependency bump");
+  assert(ok(["supabase/schema.sql"]), "schema snapshot robot PR");
+  assert(ok(["assets/og/tulsa.jpg", "data/editorial/intros.json"]), "city-request robot PR");
+  assert(ok(["about/index.html", "privacy/index.html", "assets/v2.css"]), "wording pages and styles");
+  // Fail: code with no test, or only the coverage table.
+  assert(!ok(["functions/api/new.js"]), "a new function with no test");
+  assert(!ok(["supabase/migrations/20261201000000_x.sql"]), "a migration with no test");
+  assert(!ok(["assets/v2.js", "tests/README.md"]), "the coverage table alone is not a test");
+  assert(!ok(["city.html", "assets/v2.css"]), "#74 (an app page) needed a test or the label");
+  // The label is the way out, and only that label.
+  assert(ok(["city.html", "assets/v2.css"], [LABEL]) && !ok(["city.html"], ["automated"]), `only the "${LABEL}" label skips the rule`);
+  const wf = await readFile(".github/workflows/tests-required.yml", "utf8");
+  assert(/types: \[opened, synchronize, reopened, labeled, unlabeled\]/.test(wf) && /node scripts\/tests-included\.mjs/.test(wf), "workflow re-runs on label changes and uses the same rule");
+  const claude = await readFile("CLAUDE.md", "utf8");
+  assert(/tests\/README\.md/.test(claude) && claude.includes(LABEL), "CLAUDE.md states the rule");
+  assert(claude.includes("docs/ARCHITECTURE.md") && (await exists("docs/ARCHITECTURE.md")), "CLAUDE.md points to the architecture rules");
+});
+
 await test("Research data and scripts are not published", async () => {
   assert(!(await exists("dist/data")) && !(await exists("dist/scripts")), "dist/ contains data/ or scripts/");
+  for (const f of ["README.md", "CLAUDE.md", "package.json", "docs"]) assert(!(await exists(`dist/${f}`)), `dist/ contains ${f}`);
 });
 
 await test("Python tools compile; workflows parse", async () => {
