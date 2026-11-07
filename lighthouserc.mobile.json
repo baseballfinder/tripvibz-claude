@@ -7,7 +7,7 @@
         "http://localhost/",
         "http://localhost/miami/worst-times-to-visit/"
       ],
-      "numberOfRuns": 2,
+      "numberOfRuns": 3,
       "settings": {
         "onlyCategories": ["performance"],
         "skipAudits": ["uses-http2", "is-on-https", "redirects-http", "bf-cache"],
