@@ -69,13 +69,17 @@ def bbox(lat, lng, km):
 # --- Which city a place belongs to ---------------------------------------
 # data/city-localities.json: islands and strictly defined cities ("only") keep
 # just the address localities listed for them; "also" lets a city claim
-# localities even when another city's centre is nearer. Everyone else takes
-# whatever is nearest within the radius. Places outside the US never load.
+# localities even when another city's centre is nearer; "exclude" keeps a
+# separate destination (across the bay, over the county line) out of a city.
+# Everyone else takes whatever is nearest within the radius. Places outside
+# the US never load.
 LOCALITIES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "city-localities.json")
 
 
 def norm_locality(s):
-    return re.sub(r"\s+", " ", re.sub(r"[.\u2019']", "", str(s or ""))).strip().lower()
+    """Fold spelling differences before matching: case, periods, 'Saint' vs 'St', spacing."""
+    s = re.sub(r"\s+", " ", re.sub(r"[.\u2019']", "", str(s or ""))).strip().lower()
+    return re.sub(r"^saint ", "st ", s)
 
 
 def load_limits(path=LOCALITIES_FILE):
@@ -88,9 +92,9 @@ def load_limits(path=LOCALITIES_FILE):
     for slug, rule in raw.items():
         if slug.startswith("_"):
             continue
-        if not isinstance(rule, dict) or not (set(rule) <= {"only", "also"}):
-            sys.exit(f"{path}: {slug} must be an object with \"only\" and/or \"also\" lists")
-        limits[slug] = {k: {norm_locality(x) for x in rule.get(k, [])} for k in ("only", "also")}
+        if not isinstance(rule, dict) or not (set(rule) <= {"only", "also", "exclude"}):
+            sys.exit(f"{path}: {slug} must be an object with \"only\", \"also\" and/or \"exclude\" lists")
+        limits[slug] = {k: {norm_locality(x) for x in rule.get(k, [])} for k in ("only", "also", "exclude")}
     return limits
 
 
@@ -98,7 +102,8 @@ def assign_city(all_cities, limits, lat, lng, locality, country=None):
     """The one TripVibz city a place belongs to, or None.
     1. Not in the US (Overture address country): none.
     2. A city that lists this locality (only/also) and is within the radius: the nearest such city.
-    3. Otherwise the nearest city within the radius that is not an "only" city."""
+    3. Otherwise the nearest city within the radius that is not an "only" city and
+       does not exclude this locality."""
     if country and str(country).upper() not in ("US", "USA"):
         return None
     loc = norm_locality(locality)
@@ -111,7 +116,7 @@ def assign_city(all_cities, limits, lat, lng, locality, country=None):
                 return c
     for d, c in near:
         rule = limits.get(c["slug"])
-        if rule and rule["only"]:
+        if rule and (rule["only"] or loc in rule["exclude"]):
             continue
         return c
     return None
@@ -138,6 +143,7 @@ def fetch_city(con, files, city, all_cities, limits):
     """
     rows = con.execute(q).fetchall()
     out = []
+    dropped = {}
     for r in rows:
         (pid, name, category, basic, address, locality, postcode, country, lat, lng, phone, website, instagram, confidence, status) = r
         name = re.sub(r"\s+", " ", str(name)).strip()
@@ -146,12 +152,17 @@ def fetch_city(con, files, city, all_cities, limits):
         # Inside the circle (not just the box) and this is the city it belongs to.
         home = assign_city(all_cities, limits, lat, lng, locality, country)
         if not home or home["id"] != city["id"]:
+            if home is None and haversine(city["lat"], city["lng"], lat, lng) <= RADIUS_KM:
+                dropped[locality or "(no address)"] = dropped.get(locality or "(no address)", 0) + 1
             continue
         if instagram:
             m = re.search(r"instagram\.com/([A-Za-z0-9_.]+)", instagram)
             instagram = m.group(1) if m else None
         out.append((pid, city["id"], name, category or basic, address, locality, postcode, lat, lng,
                     phone, (website or "")[:300] or None, instagram, confidence, status, "eat"))
+    if (limits.get(city["slug"], {}).get("only") or limits.get(city["slug"], {}).get("exclude")) and dropped:
+        top = sorted(dropped.items(), key=lambda x: -x[1])[:12]
+        print(f"    {city['name']}: outside its localities (data/city-localities.json): " + ", ".join(f"{k} {n}" for k, n in top))
     return out
 
 

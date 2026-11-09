@@ -1,5 +1,5 @@
 {
-  "_note": "Which places count as which city in the restaurant picker and the Guide (scripts/places_catalog.py). By default a place belongs to the nearest TripVibz city within the radius, which suits metro cities (Hollywood shows up under Fort Lauderdale). Islands and strictly defined cities list the address localities (Overture's spelling) that count as them under \"only\": anything else nearby goes to the next city that will take it. \"also\" claims localities for a city even when another city's centre is nearer. Places outside the US are never loaded.",
+  "_note": "Which places count as which city in the restaurant picker and the Guide (scripts/places_catalog.py). By default a place belongs to the nearest TripVibz city within the radius, which suits metro cities (Hollywood shows up under Fort Lauderdale). \"only\": islands and strictly defined cities list the address localities (Overture's spelling) that count as them; anything else nearby goes to the next city that will take it. \"also\": a city claims these localities even when another city's centre is nearer. \"exclude\": a city never takes these localities (a separate destination across the water or the county line); they go to the next city or nowhere. Places outside the US are never loaded. For an \"only\" city the loader prints the biggest localities it dropped, so a missing neighbourhood name shows up in the run log.",
   "miami-beach": {
     "only": [
       "Miami Beach"
@@ -13,6 +13,7 @@
   },
   "miami": {
     "also": [
+      "Miami",
       "Surfside",
       "Bal Harbour",
       "Bay Harbor Islands",
@@ -23,6 +24,111 @@
       "Miami Shores",
       "Key Biscayne",
       "Virginia Key"
+    ]
+  },
+  "fort-lauderdale": {
+    "exclude": [
+      "Boca Raton"
+    ]
+  },
+  "new-york": {
+    "only": [
+      "New York",
+      "New York City",
+      "Manhattan",
+      "Brooklyn",
+      "Bronx",
+      "The Bronx",
+      "Staten Island",
+      "Queens",
+      "Astoria",
+      "Long Island City",
+      "Sunnyside",
+      "Woodside",
+      "Jackson Heights",
+      "East Elmhurst",
+      "Elmhurst",
+      "Corona",
+      "Flushing",
+      "College Point",
+      "Whitestone",
+      "Bayside",
+      "Little Neck",
+      "Douglaston",
+      "Oakland Gardens",
+      "Fresh Meadows",
+      "Kew Gardens Hills",
+      "Forest Hills",
+      "Rego Park",
+      "Kew Gardens",
+      "Briarwood",
+      "Jamaica",
+      "Jamaica Estates",
+      "Hollis",
+      "Queens Village",
+      "Bellerose",
+      "Glen Oaks",
+      "St. Albans",
+      "Saint Albans",
+      "Cambria Heights",
+      "Laurelton",
+      "Rosedale",
+      "Springfield Gardens",
+      "Richmond Hill",
+      "South Richmond Hill",
+      "Woodhaven",
+      "Ozone Park",
+      "South Ozone Park",
+      "Howard Beach",
+      "Ridgewood",
+      "Glendale",
+      "Maspeth",
+      "Middle Village",
+      "Far Rockaway",
+      "Arverne",
+      "Edgemere",
+      "Rockaway Beach",
+      "Rockaway Park",
+      "Belle Harbor",
+      "Neponsit",
+      "Breezy Point"
+    ]
+  },
+  "san-francisco": {
+    "only": [
+      "San Francisco"
+    ]
+  },
+  "seattle": {
+    "only": [
+      "Seattle"
+    ]
+  },
+  "tampa": {
+    "exclude": [
+      "St Petersburg",
+      "St. Petersburg",
+      "Saint Petersburg",
+      "Clearwater",
+      "Largo",
+      "Pinellas Park",
+      "Dunedin",
+      "Safety Harbor",
+      "Gulfport",
+      "Seminole"
+    ]
+  },
+  "sarasota": {
+    "exclude": [
+      "Bradenton",
+      "Palmetto",
+      "Ellenton",
+      "Parrish"
+    ]
+  },
+  "fort-myers": {
+    "exclude": [
+      "Lehigh Acres"
     ]
   }
 }
