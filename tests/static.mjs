@@ -239,6 +239,57 @@ await test("Locals' top 3 restaurants: section pre-rendered on every city page; 
   for (const f of ["assets/city.js", "build.mjs"]) assert(/<a href="https:\/\/overturemaps\.org\/"[^>]*>Overture Maps<\/a>/.test(await readFile(f, "utf8")), `${f}: Overture attribution missing from the top-3 list`);
 });
 
+await test("Catalogue city limits: islands keep only their own localities (Miami Beach, Key West + Stock Island), Miami claims its barrier-island towns, metro cities take the nearest, nothing outside the US", async () => {
+  const limits = JSON.parse(await readFile("data/city-localities.json", "utf8"));
+  const slugs = new Set(cities.map(c => c.slug));
+  for (const [slug, rule] of Object.entries(limits)) {
+    if (slug.startsWith("_")) continue;
+    assert(slugs.has(slug), `data/city-localities.json: "${slug}" is not a city on the site`);
+    assert(rule && typeof rule === "object" && Object.keys(rule).every(k => k === "only" || k === "also") && Object.values(rule).every(v => Array.isArray(v) && v.length && v.every(x => typeof x === "string" && x.trim())),
+      `data/city-localities.json: "${slug}" needs non-empty "only" and/or "also" lists of locality names`);
+  }
+  assert(limits["miami-beach"] && limits["miami-beach"].only.includes("Miami Beach"), "Miami Beach must be an island-only city");
+  assert(limits["key-west"] && limits["key-west"].only.includes("Key West") && limits["key-west"].only.includes("Stock Island"), "Key West must keep Stock Island with it");
+  // The loader's assignment, run on real coordinates with a stub for the database libraries.
+  const out = execFileSync("python3", ["-c", `
+import sys, types, json, importlib.util
+for m in ("duckdb", "psycopg"): sys.modules[m] = types.ModuleType(m)
+spec = importlib.util.spec_from_file_location("pc", "scripts/places_catalog.py"); pc = importlib.util.module_from_spec(spec); spec.loader.exec_module(pc)
+limits = pc.load_limits("data/city-localities.json")
+C = [dict(id="mb", slug="miami-beach", name="Miami Beach", lat=25.7907, lng=-80.1300), dict(id="mia", slug="miami", name="Miami", lat=25.7617, lng=-80.1918),
+     dict(id="ftl", slug="fort-lauderdale", name="Fort Lauderdale", lat=26.1224, lng=-80.1373), dict(id="kw", slug="key-west", name="Key West", lat=24.5551, lng=-81.7800),
+     dict(id="sd", slug="san-diego", name="San Diego", lat=32.7157, lng=-117.1611)]
+def a(lat, lng, loc, country="US"):
+    c = pc.assign_city(C, limits, lat, lng, loc, country); return c and c["id"]
+print(json.dumps({
+  "south_beach": a(25.7826, -80.1341, "Miami Beach"),
+  "aventura": a(25.9565, -80.1392, "Aventura"),
+  "sunny_isles": a(25.9507, -80.1226, "Sunny Isles Beach"),
+  "north_miami": a(25.8901, -80.1868, "North Miami"),
+  "hollywood": a(26.0112, -80.1495, "Hollywood"),
+  "wynwood": a(25.8010, -80.1994, "Miami"),
+  "no_address_on_island": a(25.8000, -80.1300, None),
+  "stock_island": a(24.5672, -81.7384, "Stock Island"),
+  "key_west": a(24.5560, -81.8010, "Key West"),
+  "big_pine": a(24.6697, -81.3540, "Big Pine Key"),
+  "tijuana": a(32.5149, -117.0382, "Tijuana", "MX"),
+  "chula_vista": a(32.6401, -117.0842, "Chula Vista"),
+  "norm": [pc.norm_locality("St. Augustine"), pc.norm_locality("Lauderdale-by-the-Sea ")]
+}))`]).toString();
+  const r = JSON.parse(out);
+  assert(r.south_beach === "mb", "a Miami Beach address belongs to Miami Beach");
+  assert(r.aventura === "mia" && r.sunny_isles === "mia" && r.north_miami === "mia", `Aventura, Sunny Isles and North Miami go to Miami, not Miami Beach: ${JSON.stringify(r)}`);
+  assert(r.hollywood === "ftl" && r.wynwood === "mia", "metro places still go to the nearest city");
+  assert(r.no_address_on_island === "mia", "a place with no address never lands in an island-only city");
+  assert(r.stock_island === "kw" && r.key_west === "kw" && r.big_pine === null, "Stock Island stays with Key West; Big Pine Key is out of range");
+  assert(r.tijuana === null && r.chula_vista === "sd", "places outside the US are never loaded; US suburbs still are");
+  assert(r.norm.join("|") === "st augustine|lauderdale-by-the-sea", "locality names fold punctuation and spacing before matching");
+  // The re-run must drop rows it no longer writes for a city (moved or gone), not just rows from another release.
+  const loader = await readFile("scripts/places_catalog.py", "utf8");
+  assert(/delete from public\.places_catalog where city_id = %s and \(release <> %s or updated_at < %s\)/.test(loader), "loader must delete catalogue rows the run did not touch");
+  assert(/addresses\[1\]\.country as country/.test(loader) && /assign_city\(/.test(loader), "loader must read the address country and assign through assign_city");
+});
+
 await test("How-we-verify-locals page: exists, linked, describes the method without the exact thresholds", async () => {
   const h = await readFile("dist/how-we-verify-locals/index.html", "utf8");
   for (const t of ["Verified local", "unverified", "Founding local", "several different days", "VPN", "remove", "What we store", "privacy"])

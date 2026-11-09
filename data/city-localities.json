@@ -1,0 +1,28 @@
+{
+  "_note": "Which places count as which city in the restaurant picker and the Guide (scripts/places_catalog.py). By default a place belongs to the nearest TripVibz city within the radius, which suits metro cities (Hollywood shows up under Fort Lauderdale). Islands and strictly defined cities list the address localities (Overture's spelling) that count as them under \"only\": anything else nearby goes to the next city that will take it. \"also\" claims localities for a city even when another city's centre is nearer. Places outside the US are never loaded.",
+  "miami-beach": {
+    "only": [
+      "Miami Beach"
+    ]
+  },
+  "key-west": {
+    "only": [
+      "Key West",
+      "Stock Island"
+    ]
+  },
+  "miami": {
+    "also": [
+      "Surfside",
+      "Bal Harbour",
+      "Bay Harbor Islands",
+      "North Miami",
+      "North Miami Beach",
+      "Sunny Isles Beach",
+      "Aventura",
+      "Miami Shores",
+      "Key Biscayne",
+      "Virginia Key"
+    ]
+  }
+}
