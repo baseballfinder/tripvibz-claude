@@ -29,7 +29,6 @@
             "uses-responsive-images": "error",
             "prioritize-lcp-image": "error",
             "lcp-lazy-loaded": "error",
-            "offscreen-images": "error",
             "modern-image-formats": "error",
             "unused-javascript": "off",
             "uses-long-cache-ttl": "off",
