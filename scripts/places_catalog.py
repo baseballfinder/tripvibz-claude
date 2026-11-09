@@ -29,10 +29,6 @@ Maps' open data:
 """
 import os, re, sys, math, json, time, urllib.request, urllib.parse
 
-
-import duckdb
-import psycopg
-
 BUCKET = "https://overturemaps-us-west-2.s3.us-west-2.amazonaws.com"
 RADIUS_KM = float(os.environ.get("PLACES_RADIUS_KM", "25"))
 MIN_CONFIDENCE = float(os.environ.get("PLACES_MIN_CONFIDENCE", "0.5"))
@@ -70,13 +66,70 @@ def bbox(lat, lng, km):
     return lng - dlng, lng + dlng, lat - dlat, lat + dlat
 
 
-def fetch_city(con, files, city, all_cities):
-    """Places within RADIUS_KM of this city — and nearer to it than to any other
-    TripVibz city, so a place between two cities lands in exactly one catalogue."""
+# --- Which city a place belongs to ---------------------------------------
+# data/city-localities.json: islands and strictly defined cities ("only") keep
+# just the address localities listed for them; "also" lets a city claim
+# localities even when another city's centre is nearer; "exclude" keeps a
+# separate destination (across the bay, over the county line) out of a city.
+# Everyone else takes whatever is nearest within the radius. Places outside
+# the US never load.
+LOCALITIES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "city-localities.json")
+
+
+def norm_locality(s):
+    """Fold spelling differences before matching: case, periods, 'Saint' vs 'St', spacing."""
+    s = re.sub(r"\s+", " ", re.sub(r"[.\u2019']", "", str(s or ""))).strip().lower()
+    return re.sub(r"^saint ", "st ", s)
+
+
+def load_limits(path=LOCALITIES_FILE):
+    try:
+        with open(path, encoding="utf-8") as f:
+            raw = json.load(f)
+    except FileNotFoundError:
+        raw = {}
+    limits = {}
+    for slug, rule in raw.items():
+        if slug.startswith("_"):
+            continue
+        if not isinstance(rule, dict) or not (set(rule) <= {"only", "also", "exclude"}):
+            sys.exit(f"{path}: {slug} must be an object with \"only\", \"also\" and/or \"exclude\" lists")
+        limits[slug] = {k: {norm_locality(x) for x in rule.get(k, [])} for k in ("only", "also", "exclude")}
+    return limits
+
+
+def assign_city(all_cities, limits, lat, lng, locality, country=None):
+    """The one TripVibz city a place belongs to, or None.
+    1. Not in the US (Overture address country): none.
+    2. A city that lists this locality (only/also) and is within the radius: the nearest such city.
+    3. Otherwise the nearest city within the radius that is not an "only" city and
+       does not exclude this locality."""
+    if country and str(country).upper() not in ("US", "USA"):
+        return None
+    loc = norm_locality(locality)
+    near = sorted(((haversine(c["lat"], c["lng"], lat, lng), c) for c in all_cities), key=lambda x: x[0])
+    near = [(d, c) for d, c in near if d <= RADIUS_KM]
+    if loc:
+        for d, c in near:
+            rule = limits.get(c["slug"])
+            if rule and (loc in rule["only"] or loc in rule["also"]):
+                return c
+    for d, c in near:
+        rule = limits.get(c["slug"])
+        if rule and (rule["only"] or loc in rule["exclude"]):
+            continue
+        return c
+    return None
+
+
+def fetch_city(con, files, city, all_cities, limits):
+    """Places within RADIUS_KM of this city that belong to it (assign_city), so a
+    place between two cities lands in exactly one catalogue."""
     xmin, xmax, ymin, ymax = bbox(city["lat"], city["lng"], RADIUS_KM)
     q = f"""
       select id, names.primary as name, taxonomy.primary as category, basic_category,
              addresses[1].freeform as address, addresses[1].locality as locality, addresses[1].postcode as postcode,
+             addresses[1].country as country,
              st_y(geometry) as lat, st_x(geometry) as lng,
              phones[1] as phone, websites[1] as website,
              list_filter(coalesce(socials, []), lambda s: s like '%instagram.com%')[1] as instagram,
@@ -90,22 +143,26 @@ def fetch_city(con, files, city, all_cities):
     """
     rows = con.execute(q).fetchall()
     out = []
+    dropped = {}
     for r in rows:
-        (pid, name, category, basic, address, locality, postcode, lat, lng, phone, website, instagram, confidence, status) = r
+        (pid, name, category, basic, address, locality, postcode, country, lat, lng, phone, website, instagram, confidence, status) = r
         name = re.sub(r"\s+", " ", str(name)).strip()
         if len(name) < 2 or len(name) > 80:
             continue
-        # Keep it inside the circle, not just the box, and only if this is its nearest city.
-        d = haversine(city["lat"], city["lng"], lat, lng)
-        if d > RADIUS_KM:
-            continue
-        if any(haversine(o["lat"], o["lng"], lat, lng) < d for o in all_cities if o["id"] != city["id"]):
+        # Inside the circle (not just the box) and this is the city it belongs to.
+        home = assign_city(all_cities, limits, lat, lng, locality, country)
+        if not home or home["id"] != city["id"]:
+            if home is None and haversine(city["lat"], city["lng"], lat, lng) <= RADIUS_KM:
+                dropped[locality or "(no address)"] = dropped.get(locality or "(no address)", 0) + 1
             continue
         if instagram:
             m = re.search(r"instagram\.com/([A-Za-z0-9_.]+)", instagram)
             instagram = m.group(1) if m else None
         out.append((pid, city["id"], name, category or basic, address, locality, postcode, lat, lng,
                     phone, (website or "")[:300] or None, instagram, confidence, status, "eat"))
+    if (limits.get(city["slug"], {}).get("only") or limits.get(city["slug"], {}).get("exclude")) and dropped:
+        top = sorted(dropped.items(), key=lambda x: -x[1])[:12]
+        print(f"    {city['name']}: outside its localities (data/city-localities.json): " + ", ".join(f"{k} {n}" for k, n in top))
     return out
 
 
@@ -143,17 +200,18 @@ def keep_one_per_name(rows):
     return out
 
 
-def in_city(city, all_cities, lat, lng):
-    d = haversine(city["lat"], city["lng"], lat, lng)
-    return d <= RADIUS_KM and not any(haversine(o["lat"], o["lng"], lat, lng) < d for o in all_cities if o["id"] != city["id"])
+def in_city(city, all_cities, limits, lat, lng, locality=None, country=None):
+    home = assign_city(all_cities, limits, lat, lng, locality, country)
+    return bool(home) and home["id"] == city["id"]
 
 
-def fetch_spots(con, files, div_files, city, all_cities):
+def fetch_spots(con, files, div_files, city, all_cities, limits):
     """Spots for the Guide: sights from the places theme plus neighborhoods from divisions."""
     xmin, xmax, ymin, ymax = bbox(city["lat"], city["lng"], RADIUS_KM)
     rows = con.execute(f"""
       select id, names.primary as name, taxonomy.primary as category, basic_category,
              addresses[1].freeform as address, addresses[1].locality as locality, addresses[1].postcode as postcode,
+             addresses[1].country as country,
              st_y(geometry) as lat, st_x(geometry) as lng, websites[1] as website, confidence, operating_status
         from read_parquet({json.dumps(files)})
        where bbox.xmin between {xmin} and {xmax} and bbox.ymin between {ymin} and {ymax}
@@ -162,9 +220,9 @@ def fetch_spots(con, files, div_files, city, all_cities):
          and coalesce(operating_status, '') <> 'closed'
     """).fetchall()
     out = []
-    for (pid, name, category, basic, address, locality, postcode, lat, lng, website, confidence, status) in rows:
+    for (pid, name, category, basic, address, locality, postcode, country, lat, lng, website, confidence, status) in rows:
         name = re.sub(r"\s+", " ", str(name)).strip()
-        if len(name) < 3 or len(name) > 80 or SPOT_NOISE_RE.search(name) or not in_city(city, all_cities, lat, lng):
+        if len(name) < 3 or len(name) > 80 or SPOT_NOISE_RE.search(name) or not in_city(city, all_cities, limits, lat, lng, locality, country):
             continue
         if basic == "historic_site" and (confidence or 0) < 0.95:
             continue
@@ -180,7 +238,8 @@ def fetch_spots(con, files, div_files, city, all_cities):
     """).fetchall()
     seen_wd = set()
     for (did, name, subtype, wikidata, lat, lng) in divs:
-        if not wikidata or wikidata in seen_wd or lat is None or not in_city(city, all_cities, lat, lng):
+        # A neighbourhood has no address; it goes by position alone (an "only" city gets none from here).
+        if not wikidata or wikidata in seen_wd or lat is None or not in_city(city, all_cities, limits, lat, lng):
             continue
         seen_wd.add(wikidata)
         out.append((did, city["id"], str(name).strip()[:80], "neighborhood", None, None, None, lat, lng,
@@ -197,10 +256,12 @@ def haversine(lat1, lng1, lat2, lng2):
 
 
 def main():
+    import duckdb, psycopg
     dsn = os.environ.get("BOT_DB_URL") or os.environ.get("SUPABASE_DB_URL")
     if not dsn:
         sys.exit("BOT_DB_URL (or SUPABASE_DB_URL) is not set")
     only = sys.argv[1] if len(sys.argv) > 1 else None
+    limits = load_limits()
     release = latest_release()
     files = place_files(release)
     div_files = place_files(release, "divisions", "division")
@@ -218,10 +279,11 @@ def main():
         total = 0
         for city in cities:
             t = time.time()
-            eat = fetch_city(con, files, city, cities_all)
-            spots = fetch_spots(con, files, div_files, city, cities_all)
+            eat = fetch_city(con, files, city, cities_all, limits)
+            spots = fetch_spots(con, files, div_files, city, cities_all, limits)
             rows = eat + spots
             with pg.transaction(), pg.cursor() as cur:
+                started = cur.execute("select now()").fetchone()[0]
                 cur.executemany(
                     """insert into public.places_catalog
                          (id, city_id, name, category, address, locality, postcode, lat, lng, phone, website, instagram, confidence, status, kind, release, updated_at)
@@ -232,8 +294,9 @@ def main():
                          phone = excluded.phone, website = excluded.website, instagram = excluded.instagram,
                          confidence = excluded.confidence, status = excluded.status, kind = excluded.kind, release = excluded.release, updated_at = now()""",
                     [r + (release,) for r in rows])
-                # Places that left the release for this city (closed, merged, removed) leave the picker.
-                cur.execute("delete from public.places_catalog where city_id = %s and release <> %s", (city["id"], release))
+                # Anything this run did not write for the city leaves the picker: places that left the
+                # release (closed, merged, removed) and places that now belong to another city or nowhere.
+                cur.execute("delete from public.places_catalog where city_id = %s and (release <> %s or updated_at < %s)", (city["id"], release, started))
                 gone = cur.rowcount
             total += len(rows)
             print(f"  {city['name']:<18} {len(eat):>6} places to eat  {len(spots):>5} spots  (-{gone} gone)  {time.time() - t:.1f}s")
