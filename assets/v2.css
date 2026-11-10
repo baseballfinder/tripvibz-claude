@@ -148,6 +148,7 @@ a.bdg:hover{text-decoration:underline}
 
 /* after posting */
 .live{display:inline-flex;align-items:center;gap:6px;background:#20402f;color:#fff;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:800}
+.live svg{width:14px;height:14px}
 .dark{background:var(--ink);color:#fff;border-radius:18px;padding:18px}
 .dark h2{font-weight:900;font-size:20px;line-height:1.2}
 .dark ul{margin:10px 0 14px;padding:0 0 0 18px;font-size:14px;line-height:1.6;color:#e9e3d7}
