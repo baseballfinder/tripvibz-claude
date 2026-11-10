@@ -295,9 +295,15 @@ await test("Vote: one tap records the vote and shows results + why box", async (
   await page.click("#sharesheet .sheet-x");
 });
 
-await test("Post a take anonymously: kinds, starter, place, months, preview, posted page", async () => {
+await test("Post a take anonymously: kinds, starter, place, months, posted page", async () => {
   await go("/nashville/add/");
+  // The simple layout: the same nav as the rest of the site, one card, a 3-way kind control, months behind a disclosure
+  // that opens on its own for a "When to go" take, one primary button and a quiet anonymous option.
+  assert(await page.locator('header.nav .nav-links a[href="/cities/"]').count() === 1, "add page should carry the site nav (Cities)");
+  assert(await page.locator(".card .segs [data-kind]").count() === 3 && await page.locator(".bigbtn, .kinds, .preview-k").count() === 0, "add page should use the card layout: segmented kinds, no big buttons or preview block");
+  assert(!(await page.evaluate(() => document.querySelector("#more").open)), "months should start folded for a 'Do this' take");
   await page.click('[data-kind="worst_times"]');
+  assert(await page.evaluate(() => document.querySelector("#more").open), "months should open for a 'When to go' take");
   await page.click("[data-starter] >> nth=0");
   await page.fill("#take", "TEST avoid Broadway on CMA Fest weekend, sidewalks do not move");
   // "Where is this?": a name the search doesn't know still posts, as typed and without a map pin.
@@ -307,8 +313,9 @@ await test("Post a take anonymously: kinds, starter, place, months, preview, pos
   assert(/Not on the map/.test(await page.textContent("#where")), "a typed place should say it isn't on the map");
   await page.unroute("**/rest/v1/rpc/search_take_places");
   await page.click('[data-month="6"]');
+  assert(/Jun/.test(await page.textContent("#more summary")), "the months disclosure should sum up the picked months");
   if (await page.locator('[data-tenure="10+"]').count()) await page.click('[data-tenure="10+"]');
-  assert(/Lower Broadway/.test(await page.textContent(".sect .take")), "preview missing place");
+  assert(await page.locator("#post-badge.btn-primary").count() === 1 && await page.locator("#post-anon.btn-quiet").count() === 1, "one primary button, anonymous as the quiet option");
   await page.click("#post-anon");
   await page.waitForTimeout(1500);
   const sent = writes.filter(w => w.table.startsWith("posts")).pop();
@@ -399,7 +406,6 @@ await test("Where is this? (add page): search spots and restaurants, pick one, a
   assert(opts.length === 4 && /Market Square.*1 take here/.test(opts[0]) && /Restaurant or bar/.test(opts[2]) && /Use “market”/.test(opts[3]), `suggestions: ${opts.join(" / ")}`);
   await page.click('#pl-sugg [data-sugg="1"]');
   assert(/Market Square Farmers Market/.test(await page.textContent("#where")) && /On the Guide map/.test(await page.textContent("#where")), "picked spot should show as on the map");
-  assert(/Market Square Farmers Market/.test(await page.textContent(".sect .take")), "preview should carry the spot");
   if (await page.locator('[data-tenure="10+"]').count()) await page.click('[data-tenure="10+"]');
   const before = writes.length;
   await page.click("#post-anon"); await page.waitForTimeout(1500);

@@ -94,6 +94,31 @@ a.bdg:hover{text-decoration:underline}
 /* floating CTA */
 .fab{position:fixed;left:50%;transform:translateX(-50%);bottom:max(18px,env(safe-area-inset-bottom));width:min(608px,calc(100% - 32px));display:flex;align-items:center;justify-content:center;gap:8px;height:54px;border-radius:999px;background:#c4391b;color:#fff;font:800 16px "Archivo",sans-serif;text-decoration:none;box-shadow:0 10px 24px rgba(22,19,14,.22);z-index:40}
 
+/* The simple form language (add page): white cards, small uppercase labels,
+   a segmented control, one primary button. Same look as the city page. */
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin:14px 0 0}
+.card-k{font-family:"Archivo";font-weight:700;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}
+.card-k:first-child{margin-top:0}
+.card-k small{font:500 11px "Public Sans",sans-serif;letter-spacing:0;text-transform:none;color:var(--muted)}
+.card .hint{font-size:12.5px;color:var(--muted);margin:-2px 0 8px}
+.segs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;background:var(--sand);border-radius:12px;padding:4px}
+.segs button{min-height:40px;border:0;border-radius:9px;background:transparent;color:var(--ink);font:600 13.5px "Public Sans",sans-serif;cursor:pointer;padding:0 4px;white-space:nowrap}
+.segs button[aria-pressed=true]{background:var(--ink);color:#fff;font-weight:700}
+.segs button:focus-visible{outline:2px solid var(--coral-ink);outline-offset:-2px}
+.more{margin-top:12px;border-top:1px solid var(--line);padding-top:4px}
+.more summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:40px;font-size:13.5px;font-weight:700;color:var(--ink)}
+.more summary::-webkit-details-marker{display:none}
+.more summary small{font-weight:500;color:var(--muted)}
+.btn-quiet small{font-weight:500;font-size:12.5px}
+.more summary::after{content:"+";font:700 18px/1 "Archivo",sans-serif;color:var(--muted)}
+.more[open] summary::after{content:"–"}
+.btn-primary{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;min-height:48px;padding:8px 16px;border:0;border-radius:12px;background:var(--coral-btn);color:#fff;font:800 15px "Public Sans",sans-serif;cursor:pointer;text-decoration:none}
+.btn-primary small{display:block;font:500 12px "Public Sans",sans-serif;opacity:.92;margin-top:2px}
+.btn-primary[disabled]{opacity:.55;cursor:not-allowed}
+.btn-quiet{display:block;width:100%;margin-top:10px;padding:10px;border:0;background:none;color:var(--muted);font:600 13.5px "Public Sans",sans-serif;cursor:pointer;text-align:center}
+.btn-quiet:hover{color:var(--ink);text-decoration:underline}
+.btn-quiet[disabled]{opacity:.55;cursor:not-allowed}
+
 /* forms (post page) */
 .sect{margin:22px 0 0}
 .sect h2,.sect label.h{display:block;font-family:"Archivo";font-weight:800;font-size:15px;margin:0 0 10px;letter-spacing:0}
