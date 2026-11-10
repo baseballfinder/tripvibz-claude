@@ -295,38 +295,76 @@ await test("Vote: one tap records the vote and shows results + why box", async (
   await page.click("#sharesheet .sheet-x");
 });
 
-await test("Post a take anonymously: kinds, starter, place, months, posted page", async () => {
+await test("Add page = the city's questions: every active question as a card with options, one tap answers (recorded) and opens a why box, a sentence posts a take tied to the question, the card then shows it; place search available in the why box; progress counts up", async () => {
   await go("/nashville/add/");
-  // The simple layout: the same nav as the rest of the site, one card, a 3-way kind control, months behind a disclosure
-  // that opens on its own for a "When to go" take, one primary button and a quiet anonymous option.
+  const qsLive = await api("questions?select=id,prompt,options&city_id=eq." + encodeURIComponent(cities.find(c => c.slug === "nashville").id) + "&active=eq.true&order=sort");
+  assert(qsLive.length >= 1, "Nashville has no active questions to test with");
+  // The simple layout: the site nav, one card per question, no free-text composer.
   assert(await page.locator('header.nav .nav-links a[href="/cities/"]').count() === 1, "add page should carry the site nav (Cities)");
-  assert(await page.locator(".card .segs [data-kind]").count() === 3 && await page.locator(".bigbtn, .kinds, .preview-k").count() === 0, "add page should use the card layout: segmented kinds, no big buttons or preview block");
-  assert(!(await page.evaluate(() => document.querySelector("#more").open)), "months should start folded for a 'Do this' take");
-  await page.click('[data-kind="worst_times"]');
-  assert(await page.evaluate(() => document.querySelector("#more").open), "months should open for a 'When to go' take");
-  await page.click("[data-starter] >> nth=0");
-  await page.fill("#take", "TEST avoid Broadway on CMA Fest weekend, sidewalks do not move");
-  // "Where is this?": a name the search doesn't know still posts, as typed and without a map pin.
+  assert(await page.locator("#qlist .qa").count() === qsLive.length, `one card per active question (${await page.locator("#qlist .qa").count()} vs ${qsLive.length})`);
+  assert(await page.locator("#take, .segs, [data-kind], .bigbtn, .kinds").count() === 0, "the free-text composer must not be on the add page");
+  assert(/0 of \d+ answered/.test(await page.textContent(".progress")), "progress should start at 0");
+  const first = page.locator("#qlist .qa").first();
+  const firstPrompt = (await first.locator("h2").textContent()).trim();
+  const q0 = qsLive.find(q => q.prompt === firstPrompt) || qsLive[0];
+  assert(await first.locator(".qopt").count() === q0.options.length, "every option should be a pill");
+  assert(await first.locator(".why-box").count() === 0, "the why box waits for an answer");
+  // One tap: the vote is sent, results show, the why box opens.
+  const before = writes.length;
+  await first.locator(".qopt").first().click(); await page.waitForTimeout(400);
+  const vote = writes.slice(before).find(w => w.table === "question_votes");
+  assert(vote && vote.body.question_id === q0.id && vote.body.option_id === q0.options[0].id, `the tap should record the vote: ${JSON.stringify(writes.slice(before))}`);
+  assert(await first.locator('.qopt[aria-pressed="true"]').count() === 1 && /vote/.test(await first.locator(".tally").textContent()), "picked option should fill and a tally should show");
+  assert(await first.locator(".why-box").count() === 1 && /1 of \d+ answered/.test(await page.textContent(".progress")), "a why box should open and progress should count the answer");
+  // The optional place search lives in the why box (16px, so iPhones don't zoom).
+  await first.locator(".where summary").click();
+  assert(await page.$eval("#place-q", e => parseFloat(getComputedStyle(e).fontSize)) >= 16, "place search under 16px makes iPhones zoom in");
   await page.route("**/rest/v1/rpc/search_take_places", r => r.fulfill({ json: [] }));
   await page.fill("#place-q", "Lower Broadway"); await page.waitForTimeout(500);
   await page.click("#pl-sugg .pl-opt.typed");
-  assert(/Not on the map/.test(await page.textContent("#where")), "a typed place should say it isn't on the map");
   await page.unroute("**/rest/v1/rpc/search_take_places");
-  await page.click('[data-month="6"]');
-  assert(/Jun/.test(await page.textContent("#more summary")), "the months disclosure should sum up the picked months");
-  if (await page.locator('[data-tenure="10+"]').count()) await page.click('[data-tenure="10+"]');
-  assert(await page.locator("#post-badge.btn-primary").count() === 1 && await page.locator("#post-anon.btn-quiet").count() === 1, "one primary button, anonymous as the quiet option");
-  await page.click("#post-anon");
-  await page.waitForTimeout(1500);
-  const sent = writes.filter(w => w.table.startsWith("posts")).pop();
+  assert(/Not on the map/.test(await page.textContent("#where")), "a typed place should say it isn't on the map");
+  // Too short a why is refused in place; a sentence posts a take tied to the question.
+  await page.fill("[data-why]", "TEST");
+  await page.click("[data-post-why]"); await page.waitForTimeout(300);
+  assert(await page.locator(".qa .err").count() === 1 && !writes.slice(before).some(w => w.table.startsWith("posts")), "a four-letter why must not post");
+  await page.fill("[data-why]", "TEST the sidewalks do not move on a CMA Fest weekend, go a week later");
+  await page.click("[data-post-why]"); await page.waitForTimeout(1200);
+  const sent = writes.slice(before).filter(w => w.table.startsWith("posts")).pop();
   assert(sent, "take was not sent");
-  assert(sent.body.place_label === "Lower Broadway" && !sent.body.place_id, `typed place should post as a label only: ${JSON.stringify(sent.body)}`);
-  assert(/Your take is live/.test(await page.textContent("#root")), "posted page missing");
-  assert(await page.evaluate(() => { const c = document.querySelector("#card"); return c && c.width === 1080; }), "share card not drawn");
+  const label = q0.options[0].label.toLowerCase();
+  assert(sent.body.question_id === q0.id && sent.body.place_label === "Lower Broadway" && !sent.body.place_id && sent.body.title.toLowerCase().includes(label) && /CMA Fest/.test(sent.body.title),
+    `the take should carry the question, the picked answer and the sentence: ${JSON.stringify(sent.body)}`);
+  assert(await first.locator(".mine-take").count() === 1 && await first.locator(".why-box").count() === 0, "the card should now show the posted take instead of the why box");
+  // "Just the answer is fine" closes the box on another question without posting.
+  const second = page.locator("#qlist .qa").nth(1);
+  if (await second.count()) {
+    await second.locator(".qopt").first().click(); await page.waitForTimeout(300);
+    const n = writes.length; await second.locator("[data-skip-why]").click(); await page.waitForTimeout(200);
+    assert(await second.locator(".why-box").count() === 0 && writes.length === n, "skipping the why should close the box and send nothing");
+  }
+  // Anonymous: a quiet sign-in nudge, never a wall.
+  assert(await page.locator("#nudge-signin").count() === 1, "anonymous visitors should see the sign-in nudge");
 });
 
-await test("Vibes: 'Do this' takes offer up to two vibes (none on warnings), saved with the take; a take card takes a vibe in one tap", async () => {
-  await go("/knoxville/add/");
+await test("Add page: ?kind= from a topic page puts matching questions first; suggesting a question goes to review as a pending take with a topic", async () => {
+  await go("/nashville/add/?kind=worst_times");
+  const prompts = await page.locator("#qlist .qa h2").allTextContents();
+  if (prompts.some(p => /time to visit|worst time|best time/i.test(p))) assert(/time to visit|worst time|best time/i.test(prompts[0]), `a timing question should lead for ?kind=worst_times: ${prompts.join(" | ")}`);
+  await page.click("#nt summary");
+  await page.fill("#nt-text", "TEST this is not a question");
+  await page.click("#nt-send"); await page.waitForTimeout(300);
+  assert(await page.locator("#nt .err").count() === 1, "a statement should be refused as a suggestion");
+  const before = writes.length;
+  await page.fill("#nt-text", "TEST Is the Broadway honky-tonk crawl worth one night, or skip it?");
+  await page.click("#nt-send"); await page.waitForTimeout(1200);
+  const sent = writes.slice(before).find(w => w.table.startsWith("posts"));
+  assert(sent && sent.body.topic && /honky-tonk/.test(sent.body.title), `the suggestion should go in as a take with a topic (review): ${JSON.stringify(sent && sent.body)}`);
+  assert(/we'll look at it/i.test(await page.textContent("#root")), "the person should be thanked");
+});
+
+await test("Vibes: a custom take (admin reply link) offers up to two vibes (none on warnings), saved with the take; a take card takes a vibe in one tap", async () => {
+  await go("/knoxville/add/?kind=hidden_gem&text=" + encodeURIComponent("TEST take your parents to the Sunsphere at golden hour, then dinner in Market Square"));
   assert(await page.locator('[data-kind="hidden_gem"][aria-pressed="true"]').count() === 1, "'Do this' should be the default kind");
   assert(await page.locator("#vibe-sect").count() === 1, "vibe picker missing on a 'Do this' take");
   await page.click('[data-pick-vibe="t:date-night"]');
@@ -339,7 +377,6 @@ await test("Vibes: 'Do this' takes offer up to two vibes (none on warnings), sav
   assert(await page.locator("#vibe-sect").count() === 0, "warnings must not take a vibe");
   await page.click('[data-kind="hidden_gem"]');
   assert(await page.locator('#vibe-sect [aria-pressed="true"]').count() === 2, "picked vibes should survive switching kinds");
-  await page.fill("#take", "TEST take your parents to the Sunsphere at golden hour, then dinner in Market Square");
   const before = writes.length;
   await page.click("#post-anon");
   await page.waitForTimeout(1500);
@@ -359,10 +396,9 @@ await test("Vibes: 'Do this' takes offer up to two vibes (none on warnings), sav
   assert(await card.locator('[data-vibe="first-timer"][aria-pressed="true"]').count() === 1, "your vibe should show as yours");
 });
 
-await test("Sign in with Google: badge button opens the sign-in box", async () => {
+await test("Sign in with Google: the add page's sign-in nudge opens the sign-in box", async () => {
   await go("/nashville/add/");
-  await page.fill("#take", "TEST the badge flow opens sign in");
-  await page.click("#post-badge");
+  await page.click("#nudge-signin");
   await page.waitForTimeout(800);
   assert(await page.isVisible("#loginmodal"), "sign-in box did not open");
 });
@@ -392,15 +428,15 @@ await test("City page: When-to-go strip links to the month-by-month calendar", a
   assert(/Best/i.test(best) && /·\s*\S/.test(best), "Best line should name the reason (e.g. 'Mar–May · Spring')");
 });
 
-await test("Where is this? (add page): search spots and restaurants, pick one, and the take is pinned to it (catalogue spots copied in server-side)", async () => {
+await test("Where is this? (custom take via an admin reply link): search spots and restaurants, pick one, and the take is pinned to it (catalogue spots copied in server-side)", async () => {
   await page.route("**/rest/v1/rpc/search_take_places", r => r.fulfill({ json: [
     { ref: "p:a0000000-0000-0000-0000-000000000001", name: "Market Square", kind: "spot", category: "plaza", detail: "Downtown Knoxville", lat: 35.9656, lng: -83.9198, takes: 1 },
     { ref: "c:ov-msfm", name: "Market Square Farmers Market", kind: "spot", category: "farmers_market", detail: "60 Market Sq", lat: 35.965, lng: -83.9195, takes: 0 },
     { ref: "c:ov-mkt", name: "Market House Restaurant", kind: "eat", category: "restaurant", detail: "33 Market Sq", lat: 35.9658, lng: -83.9195, takes: 0 }
   ] }));
-  await go("/knoxville/add/");
+  await go("/knoxville/add/?kind=hidden_gem&text=" + encodeURIComponent("TEST the farmers market on Saturday mornings is the best hour in town"));
+  assert(await page.locator("#take").count() === 1 && await page.locator("#qlist").count() === 0, "a reply link opens the composer, not the questions");
   assert(await page.$eval("#place-q", e => parseFloat(getComputedStyle(e).fontSize)) >= 16, "place search under 16px makes iPhones zoom in");
-  await page.fill("#take", "TEST the farmers market on Saturday mornings is the best hour in town");
   await page.fill("#place-q", "market"); await page.waitForTimeout(500);
   const opts = await page.locator("#pl-sugg .pl-opt").allTextContents();
   assert(opts.length === 4 && /Market Square.*1 take here/.test(opts[0]) && /Restaurant or bar/.test(opts[2]) && /Use “market”/.test(opts[3]), `suggestions: ${opts.join(" / ")}`);
@@ -414,8 +450,7 @@ await test("Where is this? (add page): search spots and restaurants, pick one, a
   assert(copy && copy.body.p_place === "ov-msfm", `the catalogue spot should be copied in server-side: ${JSON.stringify(mine)}`);
   assert(take && take.body.place_id === FAKE_SPOT_ID && take.body.place_label === "Market Square Farmers Market", `take not pinned: ${JSON.stringify(take && take.body)}`);
   // A spot TripVibz already has needs no copy: its id goes straight on the take; "Change" clears it.
-  await go("/knoxville/add/");
-  await page.fill("#take", "TEST Market Square at lunch on a weekday is calm and easy");
+  await go("/knoxville/add/?kind=hidden_gem&text=" + encodeURIComponent("TEST Market Square at lunch on a weekday is calm and easy"));
   await page.fill("#place-q", "market"); await page.waitForTimeout(500);
   await page.click('#pl-sugg [data-sugg="0"]');
   await page.click("#pl-change");
@@ -491,9 +526,10 @@ await test("New topic: city page box sends a take for review (with its topic)", 
   await page.fill("#nt-topic", "TEST parking near South Beach");
   await page.click('[data-ntk="hidden_gem"]');
   await page.fill("#nt-text", "TEST use the city garages on 7th and 13th, cheaper than the meters.");
+  const before = writes.length;
   await page.click("#nt-send");
   await page.waitForTimeout(1200);
-  const w = writes.find(x => x.table.startsWith("posts") && x.body.topic);
+  const w = writes.slice(before).find(x => x.table.startsWith("posts") && x.body.topic);
   assert(w && w.body.topic === "TEST parking near South Beach" && w.body.type === "hidden_gem", "take with topic was not sent");
   assert(/Thanks, it's in/.test(await page.textContent("#nt")), "thank-you state missing");
 });

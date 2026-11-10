@@ -779,7 +779,7 @@ await test("Info pages follow the features: Privacy names every outside service 
     for (const re of RETIRED) assert(!re.test(txt), `${f}: retired wording ${re}`);
   }
   // 4. About lists the main features (add one here when a feature ships).
-  for (const k of ["Takes.", "Quick questions.", "top 3 restaurants", "The Guide.", "Vibes.", "Local badges.", "month-by-month calendar"])
+  for (const k of ["Questions.", "Takes.", "Suggest it", "top 3 restaurants", "The Guide.", "Vibes.", "Local badges.", "month-by-month calendar"])
     assert(about.includes(k), `About page doesn't describe: ${k}`);
   // 5. Outside services the page scripts load on their own (not in the CSP host list): the Guide's map tiles.
   const guideSrc = await readFile("assets/guide.js", "utf8");

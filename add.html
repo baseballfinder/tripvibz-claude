@@ -21,6 +21,38 @@
 .post-wrap{margin:16px 0 8px}
 .post-fine{font-size:12.5px;color:var(--muted);text-align:center;margin-top:8px;line-height:1.4}
 .tenure-card .wrapchips .chip{min-height:36px;font-size:13px}
+/* The city's questions, one card each; options are pills (picked = ink). */
+.progress{font-size:13px;color:var(--muted);margin:2px 0 0}
+.qa{position:relative}
+.qa .qa-k{font-family:"Archivo";font-weight:700;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.qa .qa-k b{color:var(--ocean);font-weight:700}
+.qa h2{font:800 16.5px/1.25 "Archivo",sans-serif;margin:6px 0 10px;color:var(--ink)}
+.qa .qopts{display:flex;flex-direction:row;flex-wrap:wrap;gap:8px}
+.qa .qopt{position:relative;display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 14px;border:1.5px solid var(--ink);border-radius:999px;background:#fff;color:var(--ink);font:600 14px "Public Sans",sans-serif;cursor:pointer;text-decoration:none;overflow:hidden}
+.qa .qopt .fill{display:none}
+.qa .qopt .you{display:none}
+.qa .qopt[aria-pressed=true]{background:var(--ink);color:#fff}
+.qa .qopt span:last-child{font-size:12.5px;color:var(--muted)}
+.qa .qopt[aria-pressed=true] span:last-child{color:#e9e3d6}
+.qa .tally{font-size:12.5px;color:var(--muted);margin:10px 0 0}
+.qa .why-box{margin-top:10px;border-top:1px solid var(--line);padding-top:10px}
+.qa .why-box label{display:block;font-size:13px;font-weight:700;margin:0 0 6px}
+.qa .why-box label small{font-weight:500;color:var(--muted)}
+.qa .why-box .ta{min-height:64px;padding:10px 12px;font-size:16px}
+.qa .why-acts{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
+.qa .why-acts .btn-primary{width:auto;min-height:40px;padding:0 16px;font-size:14px;border-radius:999px}
+.qa .why-acts .btn-quiet{width:auto;margin:0;padding:8px 4px}
+.qa .mine-take{margin-top:10px;border-top:1px solid var(--line);padding-top:10px;font-size:14px;line-height:1.4}
+.qa .mine-take b{font-family:"Archivo";font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ocean);display:block;margin-bottom:3px}
+.qa .where{margin-top:10px}
+.qa .where summary{font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;list-style:none;min-height:32px;display:flex;align-items:center}
+.qa .where summary::-webkit-details-marker{display:none}
+.qa .where summary::before{content:"+";font:700 15px/1 "Archivo",sans-serif;margin-right:6px}
+.qa .where[open] summary::before{content:"–"}
+.done{text-align:center}
+.done .live{margin:0 0 8px}
+.nudge{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.nudge .btn-primary{width:auto;min-height:40px;padding:0 16px;font-size:14px;border-radius:999px;background:var(--ink)}
 .pl-sugg{margin-top:6px;border:1px solid var(--line);border-radius:14px;background:#fff;overflow:hidden}
 .pl-opt{display:block;width:100%;min-height:48px;padding:9px 14px;text-align:left;border:0;border-top:1px solid var(--line);background:#fff;cursor:pointer;font:inherit;color:var(--ink)}
 .pl-opt:first-child{border-top:0}
@@ -59,6 +91,8 @@
   const DRAFT_KEY = "tv_v2_draft";
 
   let CITY = null, PLACES = [], MY_TENURE = null, QS = [];
+  // The questions flow: which question's "why" box is open, the takes this person already posted per question.
+  const A = { open: null, why: "", posted: {}, err: "", busy: false };
   // place: the label shown on the take; placeRef: where it is ("p:<places id>" for a spot TripVibz has,
   // "c:<catalogue id>" for one from the places catalogue, copied in on post), so it lands on the Guide map.
   const S = { kind: "hidden_gem", vibes: [], text: "", place: "", placeRef: null, placeDetail: "", placeQ: "", months: [], tenure: null, err: "", busy: false };
@@ -68,7 +102,186 @@
   const placeValue = () => (S.place || "").trim();
   let PSUGG = [], PSEQ = 0, PTIMER = null;
 
-  /* ---------------- compose ---------------- */
+  /* ---------------- the city's questions ----------------
+     The add page is the preset questions: one tap answers, and an optional sentence
+     turns the answer into a take (same as /vote/, all questions on one page). Free
+     text only survives for the admin's reply links (/add/?text=…, see compose()). */
+  const subjectOf = prompt => { const i = prompt.indexOf(":"); return i > 0 ? prompt.slice(0, i) : ""; };
+  const pickedLabel = q => (q.options.find(o => o.id === q.mine) || {}).label || "";
+  const kindOf = q => T2.answerKind(q.prompt, pickedLabel(q) || (q.options[0] || {}).label || "");
+  const wantKind = qs.get("kind");
+
+  // Settled once when the page opens, so cards don't jump around as answers land:
+  // unanswered first; a ?kind= from a topic page puts its questions at the top.
+  let ORDER = null;
+  function orderedQuestions(){
+    if (!ORDER) {
+      ORDER = QS.slice().sort((a, b) => {
+        const ka = wantKind && kindOf(a) === wantKind ? 0 : 1, kb = wantKind && kindOf(b) === wantKind ? 0 : 1;
+        if (ka !== kb) return ka - kb;
+        const ma = a.mine ? 1 : 0, mb = b.mine ? 1 : 0;
+        if (ma !== mb) return ma - mb;
+        return (a.sort || 0) - (b.sort || 0);
+      }).map(q => q.id);
+    }
+    return ORDER.map(id => QS.find(q => q.id === id)).filter(Boolean);
+  }
+
+  function questionCard(q){
+    const total = T2.qTotal(q), voted = !!q.mine, mineTake = A.posted[q.id];
+    const open = A.open === q.id && voted && !mineTake;
+    let tally = "";
+    if (voted) {
+      const share = total ? Math.round(100 * (q.counts[q.mine] || 0) / total) : 100;
+      tally = total <= 1 ? "You're the first to answer." : share >= 50 ? `${share}% of people agree with you.` : `Only ${share}% picked that.`;
+      tally += ` ${total} vote${total === 1 ? "" : "s"} so far.`;
+    }
+    return `<section class="card qa" data-q="${esc(q.id)}" aria-label="${esc(q.prompt)}">
+      <div class="qa-k">Settle this${q.place_label && q.place_label !== "Whole city" ? ` · <b>${esc(q.place_label)}</b>` : ""}</div>
+      <h2>${esc(q.prompt)}</h2>
+      <div class="qopts">${T2.qOptionsHtml(q, false)}</div>
+      ${voted ? `<div class="tally">${esc(tally)}</div>` : ""}
+      ${mineTake ? `<div class="mine-take"><b>Your take</b>${esc(mineTake.title)}</div>` : ""}
+      ${open ? `<div class="why-box">
+        <label for="why-${esc(q.id)}">Say why <small>optional, one sentence. It becomes your take.</small></label>
+        <textarea class="ta" id="why-${esc(q.id)}" data-why autocapitalize="sentences" autocorrect="on" spellcheck="true" maxlength="400" placeholder="${esc(pickedLabel(q))} because…">${esc(A.why)}</textarea>
+        <details class="where" id="where"${S.place ? " open" : ""}><summary>Where exactly?&nbsp;<small style="font-weight:500">optional, goes on the Guide map</small></summary>${placeBox()}</details>
+        ${A.err ? `<div class="err">${esc(A.err)}</div>` : ""}
+        <div class="why-acts">
+          <button type="button" class="btn-primary" data-post-why="${esc(q.id)}"${A.busy ? " disabled" : ""}>Post my take</button>
+          <button type="button" class="btn-quiet" data-skip-why>Just the answer is fine</button>
+        </div></div>` : ""}
+    </section>`;
+  }
+
+  function questionsPage(){
+    const list = orderedQuestions();
+    const answered = QS.filter(q => q.mine).length, all = QS.length && answered === QS.length;
+    const needTenure = !MY_TENURE;
+    $("#root").innerHTML = `
+      <div class="row-between" style="min-height:40px;margin-top:4px"><a class="back" href="/${CITY.slug}/">← ${esc(CITY.name)}</a>
+        ${QS.length ? `<span class="progress">${answered} of ${QS.length} answered</span>` : ""}</div>
+      <h1 class="add-h1">Know ${esc(CITY.name)}? Settle these.</h1>
+      <p class="add-sub">One tap each. Add a sentence if you want to say why. People planning a trip see what locals picked.</p>
+      ${all ? `<section class="card done"><span class="live">${T2.ICON.check}You've answered every ${esc(CITY.name)} question</span>
+        <div class="hint">Thank you. Ask a friend who'd argue with you, or suggest a question we should be asking below.</div>
+        <div class="why-acts" style="justify-content:center"><button type="button" class="btn-primary" id="share-all" style="width:auto;min-height:40px;border-radius:999px;font-size:14px">${T2.ICON.share}Ask a friend</button>
+        <a class="btn-quiet" style="width:auto;margin:0" href="/${CITY.slug}/">See what others said</a></div></section>` : ""}
+      <div id="qlist">${list.map(questionCard).join("")}</div>
+      ${!QS.length ? `<section class="card"><div class="hint" style="margin:0">No questions for ${esc(CITY.name)} yet. Suggest one below and we'll add it.</div></section>` : ""}
+      ${needTenure && answered ? `<section class="card tenure-card" aria-label="How long you've lived here">
+        <div class="card-k">How long have you lived in ${esc(CITY.name)}? <small>asked once</small></div>
+        <div class="wrapchips">${Object.keys(T2.TENURE).map(t => `<button type="button" class="chip" data-tenure="${t}" aria-pressed="${S.tenure===t}">${esc(T2.TENURE[t])}</button>`).join("")}</div>
+        <div class="hint" style="margin:8px 0 0">Shows on your badge when you sign in. The ✓ comes on its own once we've seen you around ${esc(CITY.name)} (<a href="/how-we-verify-locals/" target="_blank" rel="noopener">how that works</a>).</div>
+      </section>` : ""}
+      ${suggestBox()}
+      ${!signedIn() ? `<section class="card nudge"><div><b style="font-family:Archivo;font-size:14.5px">Post with your name</b><div class="hint" style="margin:2px 0 0">Your answers get your Local badge and rank higher.</div></div>
+        <button type="button" class="btn-primary" id="nudge-signin">Sign in</button></section>` : ""}`;
+    wireQuestions();
+  }
+
+  // "Something we didn't ask about?" — a suggested question, reviewed before it appears
+  // (same path as a new topic on the city page: a pending take with a topic).
+  const NT = { open: false, text: "", busy: false, done: false, err: "" };
+  function suggestBox(){
+    if (NT.done) return `<section class="card"><b style="font-family:Archivo;font-size:14.5px">Thanks, we'll look at it</b><div class="hint" style="margin:2px 0 0">If it's a question worth asking ${esc(CITY.name)} locals, it shows up here and on the ${esc(CITY.name)} page.</div></section>`;
+    return `<details class="card more" id="nt" style="border-top:1px solid var(--line);padding-top:14px"${NT.open ? " open" : ""}>
+      <summary style="min-height:auto"><span><b>Something we didn't ask about?</b> <small>Suggest a question</small></span></summary>
+      <div class="hint" style="margin:8px 0 8px">What should we be asking ${esc(CITY.name)} locals? One question, the way you'd ask a friend.</div>
+      <input class="inp" id="nt-text" type="text" maxlength="160" style="width:100%;min-height:44px;border-radius:12px;font-size:16px" placeholder="e.g. Is the streetcar worth it, or just take a cab?" value="${esc(NT.text)}">
+      ${NT.err ? `<div class="err">${esc(NT.err)}</div>` : ""}
+      <div class="why-acts" style="margin-top:10px"><button type="button" class="btn-primary" id="nt-send" style="width:auto;min-height:40px;border-radius:999px;font-size:14px"${NT.busy ? " disabled" : ""}>Suggest it</button></div>
+    </details>`;
+  }
+
+  function wireQuestions(){
+    const root = $("#root");
+    const list = $("#qlist");
+    if (list) list.addEventListener("click", async e => {
+      const opt = e.target.closest("[data-opt]");
+      if (opt) {
+        const card = opt.closest("[data-q]"), q = QS.find(x => x.id === card.dataset.q); if (!q) return;
+        const was = q.mine;
+        if (!(await T2.answer(q, opt.dataset.opt))) return;
+        if (was !== q.mine) T2.track("question_answer", { city: CITY.slug, question: q.id, source: "add" });
+        A.open = q.id; A.why = ""; A.err = ""; Object.assign(S, { place: "", placeRef: null, placeDetail: "", placeQ: "" });
+        questionsPage();
+        const ta = $(`#why-${q.id}`); if (ta) ta.focus({ preventScroll: true });
+        return;
+      }
+      const skip = e.target.closest("[data-skip-why]");
+      if (skip) { A.open = null; A.why = ""; questionsPage(); return; }
+      const post = e.target.closest("[data-post-why]");
+      if (post) { await postWhy(QS.find(x => x.id === post.dataset.postWhy)); }
+    });
+    const why = root.querySelector("[data-why]"); if (why) why.addEventListener("input", () => { A.why = why.value; });
+    // The place search inside the open "why" box (shared with the custom composer).
+    wirePlace(root);
+    root.querySelectorAll("[data-tenure]").forEach(b => b.onclick = async () => {
+      S.tenure = b.dataset.tenure; questionsPage();
+      try { await T2.saveTenure(CITY.id, S.tenure); MY_TENURE = S.tenure; toast("Saved. It shows on your badge when you sign in."); questionsPage(); } catch (err) { console.error(err); }
+    });
+    const ns = $("#nudge-signin"); if (ns) ns.onclick = () => { T2.track("add_signin", { city: CITY.slug }); T2.signInForBadge({ pending: false }); };
+    const sa = $("#share-all"); if (sa) sa.onclick = () => { const q = QS[0]; if (q) T2.share(T2.questionShare(q, CITY, pickedLabel(q))); };
+    const nt = $("#nt"); if (nt) nt.addEventListener("toggle", () => { NT.open = nt.open; if (nt.open) { const f = $("#nt-text"); if (f) f.focus({ preventScroll: true }); } });
+    const nti = $("#nt-text"); if (nti) nti.addEventListener("input", () => { NT.text = nti.value; });
+    const nts = $("#nt-send"); if (nts) nts.onclick = suggestQuestion;
+  }
+
+  async function postWhy(q){
+    if (!q || A.busy) return;
+    const why = window.TV.tidy((A.why || "").trim());
+    if (why.length < 8) { A.err = "A few words on why. One sentence is fine."; questionsPage(); const ta = $(`#why-${q.id}`); if (ta) ta.focus(); return; }
+    const opt = pickedLabel(q), subj = subjectOf(q.prompt);
+    const lead = subj ? `${subj}: ${opt.toLowerCase()}.` : `${opt}.`;
+    const text = `${lead} ${why}`.replace(/\s+/g, " ").trim();
+    const title = text.length <= 160 ? text : text.slice(0, 157).replace(/\s+\S*$/, "") + "…";
+    A.busy = true; A.err = ""; questionsPage();
+    try {
+      if (S.tenure && !MY_TENURE) { await T2.saveTenure(CITY.id, S.tenure); MY_TENURE = S.tenure; }
+      const place_id = await placeIdFor(S.placeRef);
+      const { row } = await submitTake({
+        title, body: subj ? null : `On: ${q.prompt}`, type: T2.answerKind(q.prompt, opt),
+        city_id: CITY.id, city_name: CITY.name, place_id, place_label: placeValue() || q.place_label || null, question_id: q.id
+      });
+      A.posted[q.id] = { id: row && row.id, title };
+      A.open = null; A.why = ""; A.busy = false;
+      Object.assign(S, { place: "", placeRef: null, placeDetail: "", placeQ: "" });
+      T2.track("take_post", { city: CITY.slug, source: "add_question" });
+      toast("Posted. Your take is live.");
+      questionsPage();
+    } catch (err) {
+      console.error(err);
+      A.busy = false;
+      A.err = moderationMessage(err) || (/RATE_LIMITED/.test(String(err && err.message))
+        ? (signedIn() ? "That's your limit for today. Come back tomorrow." : "You've posted 3 today without signing in. Sign in to post more.")
+        : "That didn't post. Try again.");
+      questionsPage();
+    }
+  }
+
+  async function suggestQuestion(){
+    const text = window.TV.tidy((NT.text || "").trim());
+    if (text.length < 12 || !/\?|\bor\b/i.test(text)) { NT.err = "Ask it as a question, the way you'd ask a friend."; questionsPage(); return; }
+    NT.busy = true; NT.err = ""; questionsPage();
+    try {
+      await submitTake({ title: text.slice(0, 160), body: null, type: "take", city_id: CITY.id, city_name: CITY.name, topic: text.slice(0, 120) });
+      NT.done = true; NT.busy = false; T2.track("question_suggest", { city: CITY.slug });
+    } catch (err) {
+      console.error(err); NT.busy = false;
+      NT.err = moderationMessage(err) || "That didn't send. Try again.";
+    }
+    questionsPage();
+  }
+
+  // Which of these questions this person already turned into a take (so the card shows it instead of asking again).
+  async function loadMyTakes(){
+    if (!auth.me || !QS.length) return;
+    const r = await sb.from("posts").select("id,question_id,title").eq("author_id", auth.me.id).in("question_id", QS.map(q => q.id));
+    (r.data || []).forEach(p => { if (p.question_id) A.posted[p.question_id] = { id: p.id, title: p.title }; });
+  }
+
+  /* ---------------- custom take (admin reply links only: /add/?text=…) ---------------- */
   function compose(){
     const K = T2.KIND[S.kind];
     const needTenure = !MY_TENURE;
@@ -161,9 +374,29 @@
       const inp = $("#place-q"); if (inp) inp.setAttribute("aria-expanded", "true");
     }, 180);
   }
+  // Whichever page is showing (the questions, or the custom composer) redraws after a place is chosen.
+  let redraw = () => {};
   function choosePlace(name, ref, detail){
     Object.assign(S, { place: name || "", placeRef: ref || null, placeDetail: detail || "", placeQ: "" });
-    PSUGG = []; compose();
+    PSUGG = []; redraw();
+  }
+  function wirePlace(root){
+    root.querySelectorAll("[data-place-ref]").forEach(b => b.onclick = () => choosePlace(b.dataset.placeName, b.dataset.placeRef, ""));
+    const pc = $("#pl-change"); if (pc) pc.onclick = () => { Object.assign(S, { place: "", placeRef: null, placeDetail: "" }); redraw(); const f = $("#place-q"); if (f) f.focus(); };
+    const pq = $("#place-q");
+    if (pq) {
+      pq.addEventListener("input", () => { S.placeQ = pq.value; searchPlaces(pq.value); });
+      pq.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); const f = $("#pl-sugg .pl-opt"); if (f && !$("#pl-sugg").hidden) f.click(); } });
+    }
+    const ps = $("#pl-sugg");
+    if (ps) {
+      ps.addEventListener("mousedown", e => e.preventDefault());
+      ps.addEventListener("click", e => {
+        const b = e.target.closest(".pl-opt"); if (!b) return;
+        if (b.dataset.typed) { choosePlace(S.placeQ.trim().slice(0, 60), null, ""); return; }
+        const r = PSUGG[Number(b.dataset.sugg)]; if (r) choosePlace(r.name, r.ref, r.detail || "");
+      });
+    }
   }
   // "c:<id>" (a catalogue place) becomes a places row server-side; a failure just posts without the pin.
   async function placeIdFor(ref){
@@ -187,22 +420,7 @@
     });
     const ta = $("#take");
     ta.addEventListener("input", () => { S.text = ta.value; });
-    root.querySelectorAll("[data-place-ref]").forEach(b => b.onclick = () => choosePlace(b.dataset.placeName, b.dataset.placeRef, ""));
-    const pc = $("#pl-change"); if (pc) pc.onclick = () => { Object.assign(S, { place: "", placeRef: null, placeDetail: "" }); compose(); const f = $("#place-q"); if (f) f.focus(); };
-    const pq = $("#place-q");
-    if (pq) {
-      pq.addEventListener("input", () => { S.placeQ = pq.value; searchPlaces(pq.value); });
-      pq.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); const f = $("#pl-sugg .pl-opt"); if (f && !$("#pl-sugg").hidden) f.click(); } });
-    }
-    const ps = $("#pl-sugg");
-    if (ps) {
-      ps.addEventListener("mousedown", e => e.preventDefault());
-      ps.addEventListener("click", e => {
-        const b = e.target.closest(".pl-opt"); if (!b) return;
-        if (b.dataset.typed) { choosePlace(S.placeQ.trim().slice(0, 60), null, ""); return; }
-        const r = PSUGG[Number(b.dataset.sugg)]; if (r) choosePlace(r.name, r.ref, r.detail || "");
-      });
-    }
+    wirePlace(root);
     root.querySelectorAll("[data-month]").forEach(b => b.onclick = () => {
       const m = Number(b.dataset.month); S.months = S.months.includes(m) ? S.months.filter(x => x !== m) : S.months.concat(m); compose();
       const d = $("#more"); if (d) d.open = true;
@@ -282,7 +500,7 @@
 
     $("#root").innerHTML = `
       <div class="row-between" style="min-height:44px;margin-top:6px"><a class="back" href="/${CITY.slug}/">← ${esc(CITY.name)}</a></div>
-      <span class="live">${T2.ICON.check.replace("<svg", '<svg width="14" height="14"')}Your take is live</span>
+      <span class="live">${T2.ICON.check}Your take is live</span>
       <div style="margin-top:12px">${T2.takeHtml(p, ctx, { noBar: true })}</div>
 
       ${mine && !verified ? `
@@ -341,7 +559,7 @@
   (async function init(){
     CITY = SLUG && await T2.loadCity(SLUG);
     if (!CITY) { $("#root").innerHTML = `<div class="state"><b>City not found</b><a href="/cities/">← All cities</a></div>`; return; }
-    document.title = `Add a take about ${CITY.name} · TripVibz`;
+    document.title = `Know ${CITY.name}? Settle these · TripVibz`;
     await auth.ensure();
     await T2.finishClaim();
     const [pl, tn, qq] = await Promise.all([
@@ -356,13 +574,17 @@
     const postedId = qs.get("posted");
     if (postedId) { await posted(postedId); return; }
 
-    // Returning from Google sign-in with a saved draft: publish it now.
+    // Returning from Google sign-in with a saved custom draft: publish it now.
     let d = null; try { d = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || "null"); } catch (e) {}
     if (d && d.slug === SLUG) {
       Object.assign(S, d.S, { err: "", busy: false });
-      if (signedIn()) { compose(); await publish(); return; }
+      if (signedIn()) { redraw = compose; compose(); await publish(); return; }
     }
-    compose();
+    // The composer stays only for the admin's reply links (text pre-filled from an email answer).
+    if (qs.get("text")) { redraw = compose; compose(); return; }
+    redraw = questionsPage;
+    await loadMyTakes();
+    questionsPage();
   })();
 })();
 </script>
