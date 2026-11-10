@@ -12,8 +12,15 @@
 <script src="/assets/analytics.js" defer></script>
 <style>
 /* "Where is this?" (the spot a take is about; it puts the take on the city's Guide map) */
-.pl-search{margin-top:10px}
-#place-q{width:100%;min-height:46px;font-size:16px}
+.pl-search{margin-top:0}
+#place-q{width:100%;min-height:44px;font-size:16px;border-radius:12px}
+.pl-common{margin-bottom:8px}
+.pl-common .chip{min-height:34px;font-size:13px;padding:0 12px}
+.v2 h1.add-h1{font-size:clamp(22px,5.6vw,28px);margin:4px 0 2px}
+.add-sub{font-size:14px;color:var(--muted);margin:0 0 4px}
+.post-wrap{margin:16px 0 8px}
+.post-fine{font-size:12.5px;color:var(--muted);text-align:center;margin-top:8px;line-height:1.4}
+.tenure-card .wrapchips .chip{min-height:36px;font-size:13px}
 .pl-sugg{margin-top:6px;border:1px solid var(--line);border-radius:14px;background:#fff;overflow:hidden}
 .pl-opt{display:block;width:100%;min-height:48px;padding:9px 14px;text-align:left;border:0;border-top:1px solid var(--line);background:#fff;cursor:pointer;font:inherit;color:var(--ink)}
 .pl-opt:first-child{border-top:0}
@@ -32,6 +39,7 @@
 <header class="nav">
   <div class="nav-inner">
     <a class="brand" href="/"><img class="brand-mark" src="/assets/brand/mark.svg" width="30" height="30" alt="">TripVibz</a>
+    <nav class="nav-links"><a href="/cities/">Cities</a></nav>
     <div class="nav-right"><div id="auth-slot"></div></div>
   </div>
 </header>
@@ -66,56 +74,48 @@
     const needTenure = !MY_TENURE;
     const tenureLabel = S.tenure || MY_TENURE;
     const badge = tenureLabel ? T2.tenureBadge(tenureLabel) : "Local";
+    const hasVibes = !!(T2.VIBE_KINDS && T2.VIBE_KINDS[S.kind]);
+    // Months matter most for a "When to go" take, so that one opens them; otherwise they wait behind "Add the months".
+    const monthsOpen = S.kind === "worst_times" || S.months.length > 0;
     $("#root").innerHTML = `
-      <div class="row-between" style="min-height:44px;margin-top:6px">
-        <a class="back" href="/${CITY.slug}/">← ${esc(CITY.name)}</a>
-      </div>
-      <h1 style="font-size:24px">A friend is visiting ${esc(CITY.name)}. What do you tell them?</h1>
+      <div class="row-between" style="min-height:40px;margin-top:4px"><a class="back" href="/${CITY.slug}/">← ${esc(CITY.name)}</a></div>
+      <h1 class="add-h1">A friend is visiting ${esc(CITY.name)}. What do you tell them?</h1>
+      <p class="add-sub">One sentence is plenty. It goes on the ${esc(CITY.name)} page for people planning a trip.</p>
 
-      <div class="sect"><h2>What kind of take?</h2>
-        <div class="kinds">${["hidden_gem", "what_not_to_do", "worst_times"].filter(k => T2.KIND[k] && !T2.KIND[k].answerOnly).map(k => `<button class="kind" data-kind="${k}" aria-pressed="${S.kind===k}"><b>${esc(T2.KIND[k].label)}</b><span>${esc(T2.KIND[k].sub)}</span></button>`).join("")}</div>
-      </div>
+      <section class="card" aria-label="Your take">
+        <div class="segs" role="group" aria-label="What kind of take">${["hidden_gem", "what_not_to_do", "worst_times"].filter(k => T2.KIND[k] && !T2.KIND[k].answerOnly).map(k =>
+          `<button type="button" data-kind="${k}" aria-pressed="${S.kind===k}">${esc(T2.KIND[k].label)}</button>`).join("")}</div>
+        <div class="hint" style="margin-top:8px">${esc(K.sub)}</div>
 
-      <div class="sect"><label class="h" for="take">Say it in one sentence</label>
-        <div class="wrapchips" style="margin-bottom:8px">${K.starters(CITY.name).map(s => `<button class="starter" data-starter="${esc(s)}">${esc(s)}</button>`).join("")}</div>
-        <textarea class="ta" id="take" autocapitalize="sentences" autocorrect="on" spellcheck="true" maxlength="400" placeholder="Tap a starter, or just say it.">${esc(S.text)}</textarea>
-      </div>
+        <div class="wrapchips" style="margin:10px 0 8px">${K.starters(CITY.name).map(st => `<button type="button" class="starter" data-starter="${esc(st)}">${esc(st)}</button>`).join("")}</div>
+        <textarea class="ta" id="take" autocapitalize="sentences" autocorrect="on" spellcheck="true" maxlength="400" aria-label="Your take" placeholder="Tap a starter, or just say it.">${esc(S.text)}</textarea>
 
-      ${T2.VIBE_KINDS && T2.VIBE_KINDS[S.kind] ? `<div class="sect" id="vibe-sect"><h2>What's the vibe? <span style="font:500 13px 'Public Sans';color:#5f5a50">optional, up to 2</span></h2>
-        <div class="sub">Who would you take, and what kind of time is it?</div>
-        ${T2.vibePickHtml("t", S.vibes || [], "take")}
-      </div>` : ""}
+        ${hasVibes ? `<div class="card-k">Vibe <small>optional, up to 2</small></div>
+        <div id="vibe-sect">${T2.vibePickHtml("t", S.vibes || [], "take")}</div>` : ""}
 
-      <div class="sect" id="where"><h2>Where is this? <span style="font:500 13px 'Public Sans';color:#5f5a50">optional</span></h2>
-        <div class="sub">Pick the spot and it goes on the ${esc(CITY.name)} Guide map.</div>
-        ${placeBox()}
-      </div>
+        <div id="where"><div class="card-k">Where is this? <small>optional · goes on the Guide map</small></div>
+        ${placeBox()}</div>
 
-      <div class="sect"><h2>When? <span style="font:500 13px 'Public Sans';color:#5f5a50">optional</span></h2>
-        <div class="sub">Tap the months it's true. Leave blank if it's year-round.</div>
-        <div class="months">${T2.MON.map((m,i) => `<button data-month="${i+1}" aria-pressed="${S.months.includes(i+1)}">${m}</button>`).join("")}</div>
-      </div>
+        <details class="more" id="more"${monthsOpen ? " open" : ""}>
+          <summary><span>${S.months.length ? `When: ${esc(T2.monthsLabel(S.months))}` : `Add the months <small>optional</small>`}</span></summary>
+          <div class="hint" style="margin:4px 0 8px">Tap the months it's true. Leave blank if it's year-round.</div>
+          <div class="months" style="margin:0 0 6px">${T2.MON.map((m,i) => `<button type="button" data-month="${i+1}" aria-pressed="${S.months.includes(i+1)}">${m}</button>`).join("")}</div>
+        </details>
+      </section>
 
-      ${needTenure ? `<div class="sect box"><h2 style="margin-bottom:4px">How long have you lived in ${esc(CITY.name)}?</h2>
-        <div class="sub" style="margin:0 0 10px">We ask once. It shows on your badge when you sign in; the ✓ comes on its own once we've seen you around ${esc(CITY.name)} a few times (<a href="/how-we-verify-locals/" target="_blank" rel="noopener">how that works</a>).</div>
-        <div class="wrapchips">${Object.keys(T2.TENURE).map(t => `<button class="chip" data-tenure="${t}" aria-pressed="${S.tenure===t}">${esc(T2.TENURE[t])}</button>`).join("")}</div>
-      </div>` : ""}
-
-      <div class="sect"><div class="preview-k">How it will look</div>
-        <div class="take" style="padding-bottom:14px">
-          <div class="tags"><span class="tag2">${esc(K.label)}</span>${placeValue() ? `<span class="tag2">${T2.ICON.pin}${esc(placeValue())}</span>` : ""}${S.months.length ? `<span class="tag2">${esc(T2.monthsLabel(S.months))}</span>` : ""}${T2.VIBE_KINDS && T2.VIBE_KINDS[S.kind] ? (S.vibes || []).map(v => `<span class="tag2">${esc(T2.VIBE_BY[v].label)}</span>`).join("") : ""}</div>
-          <div class="tt" id="pv">${esc(S.text) || '<span style="color:#9a937f">Your take shows here.</span>'}</div>
-          <div class="who" style="margin-bottom:0"><b>You</b><span class="bdg local pending">${esc(badge)} · unverified</span></div>
-        </div>
-      </div>
+      ${needTenure ? `<section class="card tenure-card" aria-label="How long you've lived here">
+        <div class="card-k">How long have you lived in ${esc(CITY.name)}? <small>asked once</small></div>
+        <div class="wrapchips">${Object.keys(T2.TENURE).map(t => `<button type="button" class="chip" data-tenure="${t}" aria-pressed="${S.tenure===t}">${esc(T2.TENURE[t])}</button>`).join("")}</div>
+        <div class="hint" style="margin:8px 0 0">Shows on your badge when you sign in. The ✓ comes on its own once we've seen you around ${esc(CITY.name)} (<a href="/how-we-verify-locals/" target="_blank" rel="noopener">how that works</a>).</div>
+      </section>` : ""}
 
       <div id="slot">${S.err ? `<div class="err">${esc(S.err)}</div>` : ""}</div>
 
-      <div class="sect" style="display:flex;flex-direction:column;gap:10px">
+      <div class="post-wrap">
         ${signedIn() ? `
-          <button class="bigbtn" id="post-badge"><b>Post it</b><small>With your name and ${esc(badge)} badge</small></button>` : `
-          <button class="bigbtn" id="post-badge"><b>Post with my Local badge</b><small>Your name · ${esc(badge)} · ranks higher · can become a founding local</small></button>
-          <button class="bigbtn ghost" id="post-anon"><b>Post anonymously</b><small>No sign-in. Shows as “Unverified”.</small></button>`}
+          <button type="button" class="btn-primary" id="post-badge">Post it<small>With your name and ${esc(badge)} badge</small></button>` : `
+          <button type="button" class="btn-primary" id="post-badge">Post with my Local badge<small>Your name · ranks higher · can become a founding local</small></button>
+          <button type="button" class="btn-quiet" id="post-anon">Post anonymously instead <small>(no sign-in · shows as “Unverified”)</small></button>`}
       </div>`;
     wireCompose();
   }
@@ -129,9 +129,9 @@
         <span class="pl-note">${pinned ? "On the Guide map" : S.place === "Whole city" ? "The whole city, no pin" : "Not on the map (we couldn't find it)"}</span>
         <button type="button" class="chip" id="pl-change">Change</button></div>`;
     }
-    return `<div class="wrapchips">
-        ${PLACES.map(p => `<button class="chip" data-place-ref="p:${esc(p.id)}" data-place-name="${esc(p.name)}">${esc(p.name)}</button>`).join("")}
-        <button class="chip" data-place-ref="" data-place-name="Whole city">Whole city</button>
+    return `<div class="wrapchips pl-common">
+        ${PLACES.slice(0, 5).map(p => `<button type="button" class="chip" data-place-ref="p:${esc(p.id)}" data-place-name="${esc(p.name)}">${esc(p.name)}</button>`).join("")}
+        <button type="button" class="chip" data-place-ref="" data-place-name="Whole city">Whole city</button>
       </div>
       <div class="pl-search"><input class="inp" id="place-q" type="search" maxlength="60" autocomplete="off" enterkeyhint="search"
         role="combobox" aria-autocomplete="list" aria-controls="pl-sugg" aria-expanded="${PSUGG.length ? "true" : "false"}"
@@ -186,7 +186,7 @@
       const ta = $("#take"); ta.focus(); const i = ta.value.indexOf("___"); if (i >= 0) ta.setSelectionRange(i, i + 3);
     });
     const ta = $("#take");
-    ta.addEventListener("input", () => { S.text = ta.value; $("#pv").textContent = ta.value || "Your take shows here."; });
+    ta.addEventListener("input", () => { S.text = ta.value; });
     root.querySelectorAll("[data-place-ref]").forEach(b => b.onclick = () => choosePlace(b.dataset.placeName, b.dataset.placeRef, ""));
     const pc = $("#pl-change"); if (pc) pc.onclick = () => { Object.assign(S, { place: "", placeRef: null, placeDetail: "" }); compose(); const f = $("#place-q"); if (f) f.focus(); };
     const pq = $("#place-q");
@@ -205,6 +205,7 @@
     }
     root.querySelectorAll("[data-month]").forEach(b => b.onclick = () => {
       const m = Number(b.dataset.month); S.months = S.months.includes(m) ? S.months.filter(x => x !== m) : S.months.concat(m); compose();
+      const d = $("#more"); if (d) d.open = true;
     });
     root.querySelectorAll("[data-tenure]").forEach(b => b.onclick = () => { S.tenure = b.dataset.tenure; compose(); });
     const vs = $("#vibe-sect");
@@ -240,7 +241,7 @@
 
   async function publish(){
     S.busy = true;
-    const btns = document.querySelectorAll(".bigbtn"); btns.forEach(b => b.disabled = true);
+    document.querySelectorAll(".btn-primary, .btn-quiet").forEach(b => b.disabled = true);
     const text = S.text.trim();
     const title = text.length <= 160 ? text : text.slice(0, 157).replace(/\s+\S*$/, "") + "…";
     try {
