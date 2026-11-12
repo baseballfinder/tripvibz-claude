@@ -166,7 +166,8 @@ await test("Add page: the headline is in the HTML of every city's add page, in t
   // What questionsPage() draws once the data has loaded.
   const drawn = /<h1 class="add-h1">Know \$\{esc\(CITY\.name\)\}\? Settle these\.<\/h1>\s*<p class="add-sub">([^<]+)<\/p>/.exec(tpl);
   assert(drawn, "add.html no longer draws the 'Know <City>? Settle these.' headline; update build.mjs (addHead) and this test together");
-  const decode = t => t.replace(/&amp;/g, "&").replace(/&#39;|&#x27;/g, "'").replace(/&quot;/g, '"');
+  // &amp; is turned back last, so text that really says "&quot;" isn't decoded twice.
+  const decode = t => t.replace(/&#39;|&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
   const pages = await files("dist", p => /[\\/]add[\\/]index\.html$/.test(p));
   assert(pages.length >= 20, `only ${pages.length} add pages built`);
   for (const p of pages) {
