@@ -22,9 +22,9 @@ changing a test.
   in `tests/README.md`. The table is documentation; it doesn't count as a test.
 - **Pick the suite that fits** (`tests/README.md` lists them): `static.mjs` for
   build output, data rules and pure functions; `e2e.mjs` for anything a person
-  clicks; `security.mjs` for headers, input handling and workflows; `perf.mjs`
-  for size budgets; `schema.mjs` for structured data; `db-security.sql` for
-  database policies. A bug fix gets a test that fails without the fix.
+  clicks; `regression.mjs` for the two site-wide rules below; `security.mjs`
+  for headers, input handling and workflows; `perf.mjs` for size budgets;
+  `schema.mjs` for structured data; `db-security.sql` for database policies. A bug fix gets a test that fails without the fix.
 - **A real exception** (a pure refactor, a style-only edit inside an app page,
   copy inside a script): add the `no-tests-needed` label and say why in the
   pull-request description. Don't use it for new behavior.
@@ -34,9 +34,33 @@ Before opening a PR, run the suites locally (first time:
 
 ```
 node build.mjs && node tests/static.mjs && node tests/security.mjs && node tests/perf.mjs \
-  && node tests/schema.mjs && node tests/e2e.mjs && node tests/csp.mjs
+  && node tests/schema.mjs && node tests/e2e.mjs && node tests/regression.mjs && node tests/csp.mjs
 git diff --name-only origin/main...HEAD | node scripts/tests-included.mjs
 ```
+
+## Two rules every feature keeps (`tests/regression.mjs`)
+
+Both came from bugs that passed every other test (Nov 2026). The suite checks
+them across the whole site, so a feature that breaks one fails the build.
+
+- **A page's script keeps what the build wrote.** `build.mjs` writes the search
+  title, description, headline, structured data and the pre-rendered blocks
+  (`id="tv-…"`). Google runs the script too, so a script may add to the page
+  but must not replace or remove those. Every page in `dist/` is compared with
+  its script off and on. A deliberate exception goes in `ALLOWED_CHANGES` with
+  its reason.
+- **What a person did is still there when they come back.** If a page lets
+  someone answer, vote, post, pick or ask, the same page (and any other page
+  that shows it) must show it as done on their next visit, and must not ask
+  again. A new write (a new `.from("…").insert/upsert/update/delete`, `.rpc()`
+  or `/api/…` call in a page) fails the suite until it has a "Comes back" check
+  there, or a line in `NOTHING_TO_SHOW` saying why there is nothing to show.
+
+Not checked automatically, same idea: **a change to how something is stored
+brings the old rows along.** When a feature starts reading a new column or
+table (as the add page did with `question_id`), the same pull request carries
+a migration that fills it in for existing rows, so what people already did
+keeps showing.
 
 ## Keep the info pages current
 
