@@ -304,6 +304,10 @@ await test("Add page = the city's questions: every active question as a card wit
   assert(await page.locator("#qlist .qa").count() === qsLive.length, `one card per active question (${await page.locator("#qlist .qa").count()} vs ${qsLive.length})`);
   assert(await page.locator("#take, .segs, [data-kind], .bigbtn, .kinds").count() === 0, "the free-text composer must not be on the add page");
   assert(/0 of \d+ answered/.test(await page.textContent(".progress")), "progress should start at 0");
+  // The headline is the one that came in the HTML (data-built), not one the script drew after the data
+  // loaded: a redrawn headline is what the browser times as the page's largest paint (5.9 s on a phone).
+  assert(await page.locator("#root h1.add-h1").count() === 1 && await page.locator("#root h1.add-h1[data-built]").count() === 1, "the add page's script redrew the headline instead of keeping the built one");
+  assert(await page.locator("#add-body .state").count() === 0, "the Loading note should be gone once the questions are in");
   const first = page.locator("#qlist .qa").first();
   const firstPrompt = (await first.locator("h2").textContent()).trim();
   const q0 = qsLive.find(q => q.prompt === firstPrompt) || qsLive[0];

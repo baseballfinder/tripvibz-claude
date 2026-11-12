@@ -173,11 +173,18 @@
     const list = orderedQuestions();
     const answered = QS.filter(q => q.mine).length, all = QS.length && answered === QS.length;
     const needTenure = !MY_TENURE;
-    $("#root").innerHTML = `
+    // The headline block comes in the page's HTML (build.mjs, addHead) and is left alone here:
+    // redrawing it made the browser count the headline as painted only once the data had loaded.
+    // It is only written by this script when it isn't there (after the composer, or on a page built without it).
+    const root = $("#root");
+    if (!root.querySelector("#add-body")) root.innerHTML = `
       <div class="row-between" style="min-height:40px;margin-top:4px"><a class="back" href="/${CITY.slug}/">← ${esc(CITY.name)}</a>
-        ${QS.length ? `<span class="progress">${answered} of ${QS.length} answered</span>` : ""}</div>
+        <span class="progress" id="add-progress"></span></div>
       <h1 class="add-h1">Know ${esc(CITY.name)}? Settle these.</h1>
       <p class="add-sub">One tap each. Add a sentence if you want to say why. People planning a trip see what locals picked.</p>
+      <div id="add-body"></div>`;
+    root.querySelector("#add-progress").textContent = QS.length ? `${answered} of ${QS.length} answered` : "";
+    root.querySelector("#add-body").innerHTML = `
       ${all ? `<section class="card done"><span class="live">${T2.ICON.check}You've answered every ${esc(CITY.name)} question</span>
         <div class="hint">Thank you. Ask a friend who'd argue with you, or suggest a question we should be asking below.</div>
         <div class="why-acts" style="justify-content:center"><button type="button" class="btn-primary" id="share-all" style="width:auto;min-height:40px;border-radius:999px;font-size:14px">${T2.ICON.share}Ask a friend</button>

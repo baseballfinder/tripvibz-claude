@@ -161,6 +161,27 @@ await test("City grid photos: pre-rendered with local srcset and dimensions; fir
   }
 });
 
+await test("Add page: the headline is in the HTML of every city's add page, in the same words the script draws", async () => {
+  const tpl = await readFile("add.html", "utf8");
+  // What questionsPage() draws once the data has loaded.
+  const drawn = /<h1 class="add-h1">Know \$\{esc\(CITY\.name\)\}\? Settle these\.<\/h1>\s*<p class="add-sub">([^<]+)<\/p>/.exec(tpl);
+  assert(drawn, "add.html no longer draws the 'Know <City>? Settle these.' headline; update build.mjs (addHead) and this test together");
+  const decode = t => t.replace(/&amp;/g, "&").replace(/&#39;|&#x27;/g, "'").replace(/&quot;/g, '"');
+  const pages = await files("dist", p => /[\\/]add[\\/]index\.html$/.test(p));
+  assert(pages.length >= 20, `only ${pages.length} add pages built`);
+  for (const p of pages) {
+    const html = await readFile(p, "utf8");
+    const root = /<main class="?v2"? id="?root"?>([\s\S]*?)<\/main>/.exec(html);
+    assert(root, `${p}: no #root`);
+    const h1 = /<h1 class="?add-h1"?[^>]*>([^<]+)<\/h1>/.exec(root[1]);
+    assert(h1 && /^Know .+\? Settle these\.$/.test(decode(h1[1])), `${p}: headline is not in the HTML (it would wait for the database calls)`);
+    const sub = /<p class="?add-sub"?>([^<]+)<\/p>/.exec(root[1]);
+    assert(sub && decode(sub[1]).trim() === drawn[1].trim(), `${p}: the line under the headline differs from what add.html draws, so the page would jump when the data arrives`);
+    assert(/id="?add-body"?/.test(root[1]) && /id="?add-progress"?/.test(root[1]), `${p}: #add-body and #add-progress are what the script fills in; without them it redraws the headline`);
+    assert(root[1].indexOf("<h1") < root[1].indexOf("add-body"), `${p}: the questions should load below the headline`);
+  }
+});
+
 await test(`Sitemap has ≤ ${BUDGET.sitemapUrls} URLs; dist is under ${kb(BUDGET.distTotal)}`, async () => {
   const sm = await readFile("dist/sitemap.xml", "utf8");
   const n = (sm.match(/<loc>/g) || []).length;
