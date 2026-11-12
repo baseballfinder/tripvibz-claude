@@ -44,6 +44,12 @@
 .qa .why-acts .btn-quiet{width:auto;margin:0;padding:8px 4px}
 .qa .mine-take{margin-top:10px;border-top:1px solid var(--line);padding-top:10px;font-size:14px;line-height:1.4}
 .qa .mine-take b{font-family:"Archivo";font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ocean);display:block;margin-bottom:3px}
+.qa .said{margin:10px 0 4px;border-top:1px solid var(--line);padding-top:10px}
+.qa .said>b{font-family:"Archivo";font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px}
+.qa .said-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;font-size:14px;line-height:1.4;padding:6px 0}
+.qa .said-row+.said-row{border-top:1px dashed var(--line)}
+.qa .said-row .btn-quiet{width:auto;margin:0;padding:6px 10px;white-space:nowrap;border:1px solid var(--line);border-radius:999px;font-size:13px}
+.qa .said .more-said{font-size:13px;color:var(--muted);margin-top:4px}
 .qa .where{margin-top:10px}
 .qa .where summary{font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;list-style:none;min-height:32px;display:flex;align-items:center}
 .qa .where summary::-webkit-details-marker{display:none}
@@ -92,7 +98,10 @@
 
   let CITY = null, PLACES = [], MY_TENURE = null, QS = [];
   // The questions flow: which question's "why" box is open, the takes this person already posted per question.
-  const A = { open: null, why: "", posted: {}, err: "", busy: false };
+  // posted: this person's takes by question. said: everyone else's approved takes by
+  // question, shown before they write one (so nobody repeats a take already there).
+  // agreed: the take they tapped "Same as mine" on, instead of writing their own.
+  const A = { open: null, why: "", posted: {}, said: {}, agreed: {}, err: "", busy: false };
   // place: the label shown on the take; placeRef: where it is ("p:<places id>" for a spot TripVibz has,
   // "c:<catalogue id>" for one from the places catalogue, copied in on post), so it lands on the Guide map.
   const S = { kind: "hidden_gem", vibes: [], text: "", place: "", placeRef: null, placeDetail: "", placeQ: "", months: [], tenure: null, err: "", busy: false };
@@ -129,7 +138,9 @@
 
   function questionCard(q){
     const total = T2.qTotal(q), voted = !!q.mine, mineTake = A.posted[q.id];
-    const open = A.open === q.id && voted && !mineTake;
+    const agreed = !mineTake && A.agreed[q.id] && (A.said[q.id] || []).find(t => t.id === A.agreed[q.id]);
+    const open = A.open === q.id && voted && !mineTake && !agreed;
+    const said = A.said[q.id] || [];
     let tally = "";
     if (voted) {
       const share = total ? Math.round(100 * (q.counts[q.mine] || 0) / total) : 100;
@@ -142,8 +153,12 @@
       <div class="qopts">${T2.qOptionsHtml(q, false)}</div>
       ${voted ? `<div class="tally">${esc(tally)}</div>` : ""}
       ${mineTake ? `<div class="mine-take"><b>Your take</b>${esc(mineTake.title)}</div>` : ""}
+      ${agreed ? `<div class="mine-take agreed"><b>You agreed with</b>${esc(agreed.title)}</div>` : ""}
+      ${open && said.length ? `<div class="said" aria-label="Already said about this"><b>Already said · ${said.length}</b>
+        ${said.slice(0, 3).map(t => `<div class="said-row"><span>${esc(t.title)}</span><button type="button" class="btn-quiet" data-same="${esc(t.id)}">Same as mine</button></div>`).join("")}
+        ${said.length > 3 ? `<div class="more-said">+${said.length - 3} more on the <a href="/${CITY.slug}/">${esc(CITY.name)} page</a></div>` : ""}</div>` : ""}
       ${open ? `<div class="why-box">
-        <label for="why-${esc(q.id)}">Say why <small>optional, one sentence. It becomes your take.</small></label>
+        <label for="why-${esc(q.id)}">${said.length ? "Something to add?" : "Say why"} <small>optional, one sentence. It becomes your take.</small></label>
         <textarea class="ta" id="why-${esc(q.id)}" data-why autocapitalize="sentences" autocorrect="on" spellcheck="true" maxlength="400" placeholder="${esc(pickedLabel(q))} because…">${esc(A.why)}</textarea>
         <details class="where" id="where"${S.place ? " open" : ""}><summary>Where exactly?&nbsp;<small style="font-weight:500">optional, goes on the Guide map</small></summary>${placeBox()}</details>
         ${A.err ? `<div class="err">${esc(A.err)}</div>` : ""}
@@ -175,7 +190,7 @@
         <div class="hint" style="margin:8px 0 0">Shows on your badge when you sign in. The ✓ comes on its own once we've seen you around ${esc(CITY.name)} (<a href="/how-we-verify-locals/" target="_blank" rel="noopener">how that works</a>).</div>
       </section>` : ""}
       ${suggestBox()}
-      ${!signedIn() ? `<section class="card nudge"><div><b style="font-family:Archivo;font-size:14.5px">Post with your name</b><div class="hint" style="margin:2px 0 0">Your answers get your Local badge and rank higher.</div></div>
+      ${!signedIn() ? `<section class="card nudge"><div><b style="font-family:Archivo;font-size:14.5px">Post with your name</b><div class="hint" style="margin:2px 0 0">Your answers get your Local badge and rank higher. Answered on another phone or browser? Sign in and they follow you.</div></div>
         <button type="button" class="btn-primary" id="nudge-signin">Sign in</button></section>` : ""}`;
     wireQuestions();
   }
@@ -209,6 +224,8 @@
         const ta = $(`#why-${q.id}`); if (ta) ta.focus({ preventScroll: true });
         return;
       }
+      const same = e.target.closest("[data-same]");
+      if (same) { await sameAsMine(same.closest("[data-q]").dataset.q, same.dataset.same); return; }
       const skip = e.target.closest("[data-skip-why]");
       if (skip) { A.open = null; A.why = ""; questionsPage(); return; }
       const post = e.target.closest("[data-post-why]");
@@ -272,6 +289,33 @@
       NT.err = moderationMessage(err) || "That didn't send. Try again.";
     }
     questionsPage();
+  }
+
+  // "Same as mine": a True vote on that take instead of writing the same thing again.
+  async function sameAsMine(qid, postId){
+    if (!qid || !postId) return;
+    A.agreed[qid] = postId; A.open = null; A.why = ""; questionsPage();
+    if (await window.TV.persistVote(postId, 1)) { T2.track("take_same", { city: CITY.slug, question: qid }); toast("Counted. Your agreement shows on that take."); }
+    else { delete A.agreed[qid]; A.open = qid; toast("That didn't save. Try again."); questionsPage(); }
+  }
+
+  // Everyone's approved takes on these questions, newest first; this person's own
+  // go to A.posted (so the card shows "Your take"), the rest to A.said.
+  async function loadSaid(){
+    if (!QS.length) return;
+    const r = await sb.from("posts").select("id,question_id,title,author_id,ups").in("question_id", QS.map(q => q.id)).eq("status", "approved").order("ups", { ascending: false }).order("created_at", { ascending: false }).limit(200);
+    const me = auth.me && auth.me.id;
+    (r.data || []).forEach(p => {
+      if (!p.question_id) return;
+      if (me && p.author_id === me) { A.posted[p.question_id] = A.posted[p.question_id] || { id: p.id, title: p.title }; return; }
+      (A.said[p.question_id] = A.said[p.question_id] || []).push({ id: p.id, title: p.title });
+    });
+    const saidIds = Object.values(A.said).flat().map(t => t.id);
+    if (me && saidIds.length) {
+      const v = await sb.from("votes").select("post_id").eq("user_id", me).eq("value", 1).in("post_id", saidIds);
+      const liked = new Set((v.data || []).map(x => x.post_id));
+      Object.keys(A.said).forEach(qid => { const t = A.said[qid].find(x => liked.has(x.id)); if (t) A.agreed[qid] = t.id; });
+    }
   }
 
   // Which of these questions this person already turned into a take (so the card shows it instead of asking again).
@@ -583,7 +627,7 @@
     // The composer stays only for the admin's reply links (text pre-filled from an email answer).
     if (qs.get("text")) { redraw = compose; compose(); return; }
     redraw = questionsPage;
-    await loadMyTakes();
+    await Promise.all([loadMyTakes(), loadSaid()]);
     questionsPage();
   })();
 })();
