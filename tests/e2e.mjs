@@ -347,6 +347,30 @@ await test("Add page = the city's questions: every active question as a card wit
   assert(await page.locator("#nudge-signin").count() === 1, "anonymous visitors should see the sign-in nudge");
 });
 
+await test("Add page: takes already posted on a question show before you write one; 'Same as mine' counts as agreeing (a True vote) instead of a repeat; the sign-in nudge says answers follow you", async () => {
+  const nash = cities.find(c => c.slug === "nashville");
+  const qsLive = await api("questions?select=id,prompt&city_id=eq." + encodeURIComponent(nash.id) + "&active=eq.true&order=sort");
+  const FAKE = qsLive.map((q, i) => ({ id: `00000000-0000-4000-8000-00000000000${i}`, question_id: q.id, title: `TEST already said ${i}: go early, it fills up by noon`, author_id: "00000000-0000-4000-8000-0000000000ff", ups: 2 }));
+  const isSaid = u => u.href.includes("/rest/v1/posts") && u.href.includes("question_id=in.") && u.href.includes("status=eq.approved");
+  await page.route(isSaid, r => r.fulfill({ json: FAKE }));
+  try {
+    await go("/nashville/add/");
+    const first = page.locator("#qlist .qa").first();
+    const prompt = (await first.locator("h2").textContent()).trim();
+    const fake = FAKE.find(f => f.question_id === qsLive.find(q => q.prompt === prompt).id);
+    await first.locator(".qopt").first().click(); await page.waitForTimeout(400);
+    assert(await first.locator(".said .said-row").count() === 1 && (await first.locator(".said").textContent()).includes(fake.title), "the take already posted on this question should show above the why box");
+    assert(/Something to add/.test(await first.locator(".why-box label").textContent()), "with takes already there, the why box should ask for something to add");
+    const before = writes.length;
+    await first.locator("[data-same]").click(); await page.waitForTimeout(600);
+    const v = writes.slice(before).find(w => w.table === "votes");
+    assert(v && v.body.post_id === fake.id && v.body.value === 1, `'Same as mine' should send a True vote on that take: ${JSON.stringify(writes.slice(before))}`);
+    assert(!writes.slice(before).some(w => w.table.startsWith("posts")), "'Same as mine' must not post a new take");
+    assert(await first.locator(".why-box").count() === 0 && /You agreed with/.test(await first.locator(".mine-take.agreed").textContent()), "the card should show what they agreed with instead of the why box");
+    assert(/another phone or browser/.test(await page.textContent(".nudge")), "the sign-in nudge should say answers follow you when you sign in");
+  } finally { await page.unroute(isSaid); }
+});
+
 await test("Add page: ?kind= from a topic page puts matching questions first; suggesting a question goes to review as a pending take with a topic", async () => {
   await go("/nashville/add/?kind=worst_times");
   const prompts = await page.locator("#qlist .qa h2").allTextContents();
