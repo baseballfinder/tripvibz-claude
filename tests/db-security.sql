@@ -18,6 +18,8 @@
 --   7. (after migration 20261107170000) Guide spots: a take's spot can only be
 --      a catalogue copy made server-side (no session-less calls), a take can't
 --      point at another city's spot, and the restaurant search stays food-only.
+--   8. (after migration 20261112210000) trigger functions are run by their
+--      triggers only: none can be called through the API.
 --
 -- Checks under 5 are skipped with a NOTICE until that migration has been
 -- applied (merging the pull request applies it), so this file never blocks the
@@ -169,6 +171,18 @@ begin
     end if;
   else
     raise notice 'db-security: migration 20261107170000_guide_spots not applied yet - skipping the Guide spot checks';
+  end if;
+
+  -- 8. Trigger functions are not on the API (migration 20261112210000). A new one
+  --    must end with: revoke execute on function public.<name>() from public, anon, authenticated;
+  if exists (select 1 from supabase_migrations.schema_migrations where version = '20261112210000') then
+    select string_agg(p.proname, ', ' order by p.proname) into v_rows
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public' and p.prorettype = 'trigger'::regtype
+       and (has_function_privilege('anon', p.oid, 'EXECUTE') or has_function_privilege('authenticated', p.oid, 'EXECUTE'));
+    if v_rows is not null then v_fail := v_fail || E'\n  trigger function callable through the API: ' || v_rows; end if;
+  else
+    raise notice 'db-security: migration 20261112210000_close_trigger_functions not applied yet - skipping the trigger-function check';
   end if;
 
   if v_fail <> '' then

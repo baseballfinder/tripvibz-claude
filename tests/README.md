@@ -76,7 +76,7 @@ The database lint needs the database URL: `psql "$SUPABASE_DB_URL" -f tests/db-s
 | Security headers | CSP, HSTS, frame-ancestors, nosniff, Referrer-Policy, Permissions-Policy in `_headers` and on Function HTML | security |
 | Supply chain | No third-party `<script>` (Supabase client bundled from the pinned package), no secrets committed, `npm audit` | security + workflow |
 | API hardening | `/api/take` rejects oversize/malformed input, `/api/hit` ignores bots, TikTok bridge rejects bad state and open redirects | security |
-| Database rules | RLS on every table, no open write policies, authors can't edit counts/status/badges, visitor calendar entries wait for review | db-security.sql |
+| Database rules | RLS on every table, no open write policies, authors can't edit counts/status/badges, visitor calendar entries wait for review, trigger functions can't be called through the API | db-security.sql + database |
 | Speed | Lighthouse scores and Core Web Vitals; render-blocking ≤ 250 ms; file-size budgets | lighthouse + perf |
 | Accessibility | Lighthouse accessibility ≥ 90 and zero colour-contrast failures, valid ARIA | lighthouse |
 | Structured data | Valid, self-contained schema.org on every page type | schema |
