@@ -3,7 +3,7 @@
 # tests intercept every write, so nothing is posted, voted or requested.
 #
 # One job, one required check ("test"): build → static → security → performance
-# budgets → end-to-end → CSP in a browser → Lighthouse → database policy lint.
+# budgets → end-to-end → regression guards → CSP in a browser → Lighthouse → database policy lint.
 
 name: Tests
 
@@ -63,6 +63,9 @@ jobs:
 
       - name: End-to-end (every feature in a real browser, writes intercepted)
         run: node tests/e2e.mjs
+
+      - name: Regression guards (page scripts keep what the build wrote; what a visitor did is still there when they come back)
+        run: node tests/regression.mjs
 
       - name: Content-Security-Policy enforced in a real browser on every page type
         run: node tests/csp.mjs
