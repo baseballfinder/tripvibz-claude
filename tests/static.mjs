@@ -470,15 +470,16 @@ await test("Installable (PWA): manifest, service worker with a build id and an e
   assert((await readFile("dist/index.html", "utf8")).includes('rel="manifest" href="/site.webmanifest"'), "home page must link the manifest");
 });
 
-await test("Worst-times pages answer the search: titled 'Worst time to visit', best/avoid months in the description, summary above the takes; 'by locals' only with takes", async () => {
+await test("Worst-times pages answer the search: titled for weather-by-month searches, best/avoid months in the description, summary above the takes; 'by locals' only with takes", async () => {
   const titles = new Set();
   for (const c of cities) {
     const h = await readFile(`dist/${c.slug}/worst-times-to-visit/index.html`, "utf8");
     const title = (h.match(/<title>([^<]*)<\/title>/) || [])[1] || "";
     const desc = (h.match(/<meta name="description" content="([^"]*)"/) || [])[1] || "";
     assert(!titles.has(title), `${c.slug}: duplicate title ${title}`); titles.add(title);
+    if (h.includes('id="tv-climate"')) assert(/^.+ weather by month (&amp;|&) worst time to visit \(\d{4}\)$/.test(title), `${c.slug}: title ${title}`);
+    else if (h.includes('class="cal"')) assert(/^Worst time to visit .+: month-by-month guide \(\d{4}\)$/.test(title), `${c.slug}: title ${title}`);
     if (h.includes('class="cal"')) {
-      assert(/^Worst time to visit .+: month-by-month guide \(\d{4}\)$/.test(title), `${c.slug}: title ${title}`);
       assert(/^(Best months|Avoid):/.test(desc) && desc.length <= 170, `${c.slug}: description ${desc}`);
       assert(h.indexOf("cal-sum") > 0 && h.indexOf("cal-sum") < h.indexOf('class="chips"'), `${c.slug}: summary not above the takes`);
     }
@@ -487,6 +488,27 @@ await test("Worst-times pages answer the search: titled 'Worst time to visit', b
     const h = await readFile(f, "utf8");
     if (/— by locals<\/title>/.test(h)) assert(/class="entry"/.test(h), `${f}: claims "by locals" with no takes`);
   }
+});
+
+await test("Worst-times pages carry NOAA's weather by month for every city: 12 rows matching data/climate/normals.json, sane values, labeled as NOAA averages", async () => {
+  const N = JSON.parse(await readFile("data/climate/normals.json", "utf8")).cities;
+  for (const c of cities) {
+    const n = N[c.slug];
+    assert(n, `${c.slug}: no NOAA normals in data/climate/normals.json (add the nearest NOAA station when a city is added)`);
+    assert(Array.isArray(n.months) && n.months.length === 12, `${c.slug}: needs 12 months`);
+    for (const [hi, lo, pr, days] of n.months) {
+      assert(hi > lo && hi < 125 && lo > -30 && pr >= 0 && pr < 30 && (days == null || (days >= 0 && days <= 31)), `${c.slug}: implausible month ${[hi, lo, pr, days]}`);
+    }
+    const h = await readFile(`dist/${c.slug}/worst-times-to-visit/index.html`, "utf8");
+    const sec = (h.match(/<section class="climate" id="tv-climate"[\s\S]*?<\/section>/) || [])[0] || "";
+    assert(sec, `${c.slug}: weather table missing`);
+    assert((sec.match(/<tr><th scope="row">/g) || []).length === 12, `${c.slug}: weather table should have 12 month rows`);
+    assert(sec.includes(`<th scope="row">Jul</th><td>${n.months[6][0]}°</td><td>${n.months[6][1]}°</td>`), `${c.slug}: July row doesn't match the NOAA data`);
+    assert(sec.includes("NOAA") && sec.includes("1991–2020") && sec.includes("Not a forecast"), `${c.slug}: weather table must say it is NOAA averages, not a forecast`);
+    if (h.includes('class="cal"')) assert(h.indexOf('class="cal"') < h.indexOf('id="tv-climate"') && h.indexOf('id="tv-climate"') < h.indexOf('class="chips"'), `${c.slug}: weather table should sit between the calendar and the takes`);
+  }
+  for (const f of pages.filter(f => /\/(what-not-to-do|what-locals-do)\/index\.html$/.test(f)))
+    assert(!(await readFile(f, "utf8")).includes('id="tv-climate"'), `${f}: weather table belongs on worst-times pages only`);
 });
 
 await test("Cover page during database updates: page loads get a 503 cover while the switch is on; APIs, assets, admin and ?preview=live never do; fails open; /assets/* skips Functions", async () => {

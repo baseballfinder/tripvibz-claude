@@ -455,6 +455,11 @@ function articleLd(city, theme, takes, url, cfg, image) {
    locals have actually posted. */
 function pageTitle(t, theme, city, takes, events) {
   const yr = new Date().getFullYear();
+  // Nov 2026: the searches reaching these pages are "<city> weather",
+  // "average temps in <city> by month"; the page now carries NOAA's monthly
+  // averages, so the title leads with what people type.
+  if (theme === "worst_times" && CLIMATE[city.slug])
+    return `${city.name} weather by month & worst time to visit (${yr})`;
   if (theme === "worst_times" && events.length)
     return `Worst time to visit ${city.name}: month-by-month guide (${yr})`;
   return `${t.title(city.name)} (${yr})${takes.length ? " — by locals" : ""}`;
@@ -468,6 +473,27 @@ function pageDesc(t, theme, city, takes, events) {
     }
   }
   return t.desc(city.name);
+}
+
+/* ---------------- weather by month ----------------
+   Search Console (Nov 2026): most impressions on the worst-times pages come
+   from "<city> weather by month" / "average temps in <city> in January"
+   searches. The page now answers them with NOAA's 1991–2020 climate normals
+   (data/climate/normals.json, fetched once; normals change once a decade).
+   Pre-rendered only: article.html keeps this block across hydration. */
+let CLIMATE = {};
+function climateHtml(city) {
+  const c = CLIMATE[city.slug];
+  if (!c || !Array.isArray(c.months) || c.months.length !== 12) return "";
+  const M = c.months;
+  const hot = M.reduce((b, m, i) => m[0] > M[b][0] ? i : b, 0);
+  const cold = M.reduce((b, m, i) => m[1] < M[b][1] ? i : b, 0);
+  const wet = M.reduce((b, m, i) => m[2] > M[b][2] ? i : b, 0);
+  const rows = M.map((m, i) => `<tr><th scope="row">${MONTHS[i].slice(0, 3)}</th><td>${m[0]}°</td><td>${m[1]}°</td><td>${m[2].toFixed(1)}</td><td>${m[3] ?? "–"}</td></tr>`).join("");
+  return `<section class="climate" id="tv-climate" aria-labelledby="climate-h"><h2 id="climate-h">Average weather in ${esc(city.name)} by month</h2>
+<p class="sub">Warmest: ${MONTHS[hot]} (avg high ${M[hot][0]}°F). Coolest nights: ${MONTHS[cold]} (avg low ${M[cold][1]}°F). Wettest: ${MONTHS[wet]} (${M[wet][2].toFixed(1)} in of rain).</p>
+<div class="clim-wrap"><table class="clim"><thead><tr><th scope="col">Month</th><th scope="col">High °F</th><th scope="col">Low °F</th><th scope="col">Rain (in)</th><th scope="col">Rainy days</th></tr></thead><tbody>${rows}</tbody></table></div>
+<p class="src">Averages for 1991–2020 at ${esc(c.station_label)}, from NOAA's U.S. Climate Normals. Not a forecast. Rainy days = days with at least 0.1 in.</p></section>`;
 }
 
 /* ---------------- article body ---------------- */
@@ -500,6 +526,8 @@ function articleBody(city, theme, takes, events) {
       }</section>`
     : "";
 
+  const clim = theme === "worst_times" ? climateHtml(city) : "";
+
   return `<a class="back" href="/${esc(city.slug)}/">← ${esc(city.name)}</a>
 ${heroImg(city, { short: true })}
 <div class="hd">
@@ -509,6 +537,7 @@ ${heroImg(city, { short: true })}
   <div class="by">${list.length} take${list.length === 1 ? "" : "s"}</div>
 </div>
 ${cal}
+${clim}
 <nav class="chips" aria-label="Show"><a class="chip" href="/${esc(city.slug)}/" aria-pressed="false">Everything</a>${Object.keys(THEMES).map(k =>
   `<a class="chip" href="/${esc(city.slug)}/${THEMES[k].slug}/" aria-pressed="${k === theme}">${esc(THEMES[k].chip)}</a>`).join("")}</nav>
 ${entries}`;
@@ -1115,6 +1144,8 @@ await resizeCityPhotos(cities);
 let INTROS = {};
 try { INTROS = JSON.parse(await readFile("data/editorial/intros.json", "utf8")); }
 catch { console.warn("  (no data/editorial/intros.json — city pages build without editor intros)"); }
+try { CLIMATE = JSON.parse(await readFile("data/climate/normals.json", "utf8")).cities || {}; }
+catch { console.warn("  (no data/climate/normals.json — worst-times pages build without the weather table)"); }
 
 const articleTpl = await readFile("article.html", "utf8");
 const cityTpl = await readFile("city.html", "utf8");
