@@ -22,7 +22,8 @@ changing a test.
   in `tests/README.md`. The table is documentation; it doesn't count as a test.
 - **Pick the suite that fits** (`tests/README.md` lists them): `static.mjs` for
   build output, data rules and pure functions; `e2e.mjs` for anything a person
-  clicks; `regression.mjs` for the two site-wide rules below; `security.mjs`
+  clicks; `regression.mjs` for the two site-wide rules below; `database.mjs` for
+  anything that must hold in the real database; `security.mjs`
   for headers, input handling and workflows; `perf.mjs` for size budgets;
   `schema.mjs` for structured data; `db-security.sql` for database policies. A bug fix gets a test that fails without the fix.
 - **A real exception** (a pure refactor, a style-only edit inside an app page,
@@ -37,6 +38,11 @@ node build.mjs && node tests/static.mjs && node tests/security.mjs && node tests
   && node tests/schema.mjs && node tests/e2e.mjs && node tests/regression.mjs && node tests/csp.mjs
 git diff --name-only origin/main...HEAD | node scripts/tests-included.mjs
 ```
+
+`node tests/database.mjs` runs the visitor flows against a throwaway copy of
+the real database (CI always runs it; locally it needs Postgres with PostGIS
+and PostgREST, see `tests/README.md`). Run it before opening a PR that adds a
+migration or changes what a page saves.
 
 ## Two rules every feature keeps (`tests/regression.mjs`)
 
@@ -54,7 +60,11 @@ them across the whole site, so a feature that breaks one fails the build.
   that shows it) must show it as done on their next visit, and must not ask
   again. A new write (a new `.from("…").insert/upsert/update/delete`, `.rpc()`
   or `/api/…` call in a page) fails the suite until it has a "Comes back" check
-  there, or a line in `NOTHING_TO_SHOW` saying why there is nothing to show.
+  in `tests/_flows.mjs`, or a line in `NOTHING_TO_SHOW` saying why there is
+  nothing to show. The same flows run twice: against an in-memory copy
+  (`regression.mjs`) and against a test database built from the schema
+  snapshot plus the migrations (`database.mjs`), where the save must really
+  be accepted and is read back from the tables.
 
 Not checked automatically, same idea: **a change to how something is stored
 brings the old rows along.** When a feature starts reading a new column or
@@ -102,6 +112,8 @@ the database or a background job. In short:
 
 - **Tests never write to the live database.** `tests/e2e.mjs` intercepts every
   post, vote and request; a new write path needs a matching intercept there.
+  `tests/database.mjs` saves for real, but only into the throwaway database it
+  builds and drops itself.
 - **Database changes are migrations** in `supabase/migrations/`
   (`YYYYMMDDHHMMSS_name.sql`), applied by the Supabase GitHub integration on
   merge. A merge that adds one puts the "Back in a few minutes" cover over the

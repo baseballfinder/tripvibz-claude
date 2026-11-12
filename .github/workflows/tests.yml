@@ -3,7 +3,7 @@
 # tests intercept every write, so nothing is posted, voted or requested.
 #
 # One job, one required check ("test"): build → static → security → performance
-# budgets → end-to-end → regression guards → CSP in a browser → Lighthouse → database policy lint.
+# budgets → end-to-end → regression guards → database round trip → CSP in a browser → Lighthouse → database policy lint.
 
 name: Tests
 
@@ -27,6 +27,20 @@ jobs:
     env:
       # Read-only use (tests/db-security.sql). Empty on forks, and the lint step skips itself.
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    services:
+      # A throwaway Postgres for tests/database.mjs: same major version and PostGIS as the live
+      # project, empty at the start of every run. It is not the live database and never talks to it.
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -66,6 +80,16 @@ jobs:
 
       - name: Regression guards (page scripts keep what the build wrote; what a visitor did is still there when they come back)
         run: node tests/regression.mjs
+
+      # ---- data: the pages really save, into a database built from this repo ----
+      - name: PostgREST (the API server Supabase runs in front of Postgres; pinned version, checksum verified)
+        run: |
+          curl -fsSL -o /tmp/postgrest.tar.xz https://github.com/PostgREST/postgrest/releases/download/v12.2.3/postgrest-v12.2.3-linux-static-x64.tar.xz
+          echo "9f71269e61ac3a940281e93ff415760f5957e430e475ba4c3889f3ede7d5527c  /tmp/postgrest.tar.xz" | sha256sum -c -
+          sudo tar -xJf /tmp/postgrest.tar.xz -C /usr/local/bin postgrest
+          postgrest --version
+      - name: Database round trip (schema snapshot + migrations build a test database; every input flow saves to it and is read back)
+        run: node tests/database.mjs   # uses the postgres service above (127.0.0.1:5432)
 
       - name: Content-Security-Policy enforced in a real browser on every page type
         run: node tests/csp.mjs
