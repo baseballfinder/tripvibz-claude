@@ -228,6 +228,19 @@ if (flows) {
     assert(!r.ok && count(`select count(*) from public.top3_picks where user_id = ${lit(anon.id)};`) === 0, `an anonymous session saved a top 3 pick (HTTP ${r.status})`);
   });
 
+  await test("Trigger functions are not on the API: none can be called by a visitor or a signed-in person, and every trigger is still attached", async () => {
+    const open = db.rows(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.prorettype = 'trigger'::regtype
+        and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute')) order by 1`);
+    assert(open.length === 0, `these trigger functions can be called through the API: ${open.map(r => r.proname).join(", ")}. End the migration that adds one with: revoke execute on function public.<name>() from public, anon, authenticated;`);
+    const r = await nativeFetch(`${db.rest}/rpc/top3_picks_guard`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${local.token}` }, body: "{}" });
+    assert(r.status === 401 || r.status === 403 || r.status === 404, `a signed-in person reached a trigger function through the API (HTTP ${r.status})`);
+    const loose = db.rows(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.prorettype = 'trigger'::regtype
+        and not exists (select 1 from pg_trigger t where t.tgfoid = p.oid and not t.tgisinternal) order by 1`);
+    assert(loose.length === 0, `these trigger functions are no longer attached to any table: ${loose.map(r => r.proname).join(", ")}`);
+  });
+
   await flows.close();
 }
 
