@@ -182,6 +182,78 @@ await test("Add page: the headline is in the HTML of every city's add page, in t
   }
 });
 
+await test("Trackers stay off the page load: Google tag and Clarity start on first touch/scroll/key or 5 s after load, once, Clarity after Google", async () => {
+  // Runs assets/analytics.js against a stand-in browser with a clock we move by hand.
+  const vm = await import("node:vm");
+  const src = await readFile("assets/analytics.js", "utf8");
+  function page(readyState) {
+    const added = [], listeners = {}, timers = [];
+    let now = 0;
+    const el = () => ({ parentNode: { insertBefore: s => added.push(s.src) } });
+    const document = {
+      readyState, referrer: "",
+      createElement: () => ({}),
+      head: { appendChild: s => added.push(s.src) },
+      getElementsByTagName: () => [el()],
+    };
+    const window = {
+      document, location: { hostname: "www.tripvibz.com", protocol: "https:", pathname: "/knoxville/" },
+      navigator: {}, sessionStorage: { getItem: () => null, setItem() {} }, console,
+      URL, Blob: class {}, fetch: () => {},
+      setTimeout: (fn, ms) => { timers.push({ at: now + (ms || 0), fn }); },
+      addEventListener: (t, fn) => { (listeners[t] = listeners[t] || []).push(fn); },
+      removeEventListener: (t, fn) => { listeners[t] = (listeners[t] || []).filter(f => f !== fn); },
+    };
+    window.window = window;
+    vm.runInNewContext(src, window);
+    return {
+      added, window,
+      fire: t => (listeners[t] || []).slice().forEach(fn => fn({ type: t })),
+      tick: ms => {
+        now += ms;
+        for (;;) {
+          const due = timers.filter(x => x.at <= now).sort((a, b) => a.at - b.at)[0];
+          if (!due) break;
+          timers.splice(timers.indexOf(due), 1); due.fn();
+        }
+      },
+    };
+  }
+  // Compared as parsed addresses (exact host and path), so a look-alike host can't pass.
+  const at = (u, host, path) => { const x = new URL(u); return x.protocol === "https:" && x.hostname === host && x.pathname.startsWith(path); };
+  const isGoogle = u => at(u, "www.googletagmanager.com", "/gtag/js"), isClarity = u => at(u, "www.clarity.ms", "/tag/");
+
+  // 1. Nobody touches the page: nothing during load or the 4.9 s after it, both by 5 s + the gap.
+  let p = page("loading");
+  assert(p.window.dataLayer.length === 2, "page view must be queued before the tag loads");
+  p.tick(10000);
+  assert(p.added.length === 0, "a tracker loaded before the page finished loading");
+  p.fire("load"); p.tick(4900);
+  assert(p.added.length === 0, `a tracker loaded ${4.9} s after load with no interaction: ${p.added}`);
+  p.tick(100);
+  assert(p.added.length === 1 && isGoogle(p.added[0]), "Google tag should start 5 s after load");
+  p.tick(1000);
+  assert(p.added.length === 1, "Clarity must not start back to back with the Google tag");
+  p.tick(1000);
+  assert(p.added.length === 2 && isClarity(p.added[1]), "Clarity should follow the Google tag");
+
+  // 2. First touch starts them early, not inside the handler, and only once.
+  for (const type of ["pointerdown", "touchstart", "keydown", "scroll", "wheel"]) {
+    p = page("loading");
+    p.fire(type);
+    assert(p.added.length === 0, `${type}: tracker loaded inside the event handler`);
+    p.tick(0);
+    assert(p.added.length === 1 && isGoogle(p.added[0]), `${type} should start the Google tag`);
+    p.fire("pointerdown"); p.fire("scroll"); p.fire("load"); p.tick(20000);
+    assert(p.added.length === 2 && isClarity(p.added[1]), `${type}: expected each tracker exactly once, got ${p.added.length}`);
+  }
+
+  // 3. Script runs after the page has already loaded (cached page): same wait.
+  p = page("complete");
+  p.tick(4999); assert(p.added.length === 0, "tracker loaded early on an already-loaded page");
+  p.tick(1); assert(p.added.length === 1, "Google tag should start 5 s after an already-loaded page");
+});
+
 await test(`Sitemap has ≤ ${BUDGET.sitemapUrls} URLs; dist is under ${kb(BUDGET.distTotal)}`, async () => {
   const sm = await readFile("dist/sitemap.xml", "utf8");
   const n = (sm.match(/<loc>/g) || []).length;

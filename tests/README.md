@@ -20,11 +20,12 @@ The database lint needs the database URL: `psql "$SUPABASE_DB_URL" -f tests/db-s
 |---|---|---|
 | `static.mjs` | Pages, links, share cards, questions, sitemap, private files, migration names | build |
 | `security.mjs` | Security headers + CSP (one source: `functions/_security.js`), no third-party scripts, no secrets in the repo, workflow hygiene, API input rejection, open-redirect guard, SECURITY DEFINER search_path | build |
-| `perf.mjs` | Size budgets: pages, scripts, styles, fonts, share images, lazy-loaded grid photos, sitemap size; analytics deferred, no external render-blocking requests | build |
+| `perf.mjs` | Size budgets: pages, scripts, styles, fonts, share images, lazy-loaded grid photos, sitemap size; analytics deferred and held until first touch/scroll/key or 5 s after load, no external render-blocking requests | build |
 | `schema.mjs` | Structured data: every type/property is real schema.org (live vocabulary) and allowed on its type, `@id` references resolve on the same page, Google's required fields for Article / Breadcrumb / ItemList / DiscussionForumPosting / Organization / WebSite, canonical matches; also renders `/t/<id>` for a real take | build (+ network for the vocabulary) |
 | `e2e.mjs` | Every feature in a real browser, writes intercepted | build + Chromium |
 | `csp.mjs` | Every page type loads with the Content-Security-Policy enforced, no violations | build + Chromium |
-| `regression.mjs` | Two site-wide rules a new or changed feature must not break: page scripts keep what the build wrote (every page in `dist/`, script off vs. on), and what a visitor did is still there when they come back (each write, then return as the same person) | build + Chromium |
+| `regression.mjs` | Two site-wide rules a new or changed feature must not break: page scripts keep what the build wrote (every page in `dist/`, script off vs. on), and what a visitor did is still there when they come back (the flows in `_flows.mjs`, saved to an in-memory copy) | build + Chromium |
+| `database.mjs` | The same visitor flows against a throwaway copy of the real database, built from `supabase/schema.sql` plus the migrations after it: every save goes through the real permissions, triggers and limits and is read back | build + Chromium + Postgres/PostGIS + PostgREST |
 | `lighthouserc.json` | Lighthouse, desktop: performance ≥ 85, accessibility/best-practices/SEO ≥ 90, LCP ≤ 4 s, CLS ≤ 0.1, TBT ≤ 300 ms, zero contrast failures, render-blocking ≤ 250 ms, resource budgets on 5 page types | build + Chrome |
 | `lighthouserc.mobile.json` | Lighthouse, mobile (PageSpeed's phone emulation): performance ≥ 85, LCP ≤ 3.5 s, FCP ≤ 2 s, TBT ≤ 300 ms, CLS ≤ 0.1, responsive images, LCP image preloaded and not lazy, on the Fort Lauderdale, home and a topic page | build + Chrome |
 | `db-security.sql` | Read-only database lint: RLS everywhere, no open write policies, SECURITY DEFINER allow-list and search_path, tamper guards from migration 20261029174500 | `SUPABASE_DB_URL` |
@@ -61,7 +62,8 @@ The database lint needs the database URL: `psql "$SUPABASE_DB_URL" -f tests/db-s
 | Threads and replies | Split bar, typed "I disagree" reply sent | e2e |
 | JavaScript health | No errors on any page visited | e2e |
 | Scripts keep what the build wrote (site-wide) | Every page in `dist/` is loaded with its script off and on: robots, canonical and share tags match on all pages; search title, description, headline, structured data match on indexed pages; no pre-rendered heading or `id="tv-…"` block is removed or doubled. New pages are picked up automatically; a deliberate exception goes in `ALLOWED_CHANGES` with its reason | regression |
-| What you did comes back (site-wide) | A visitor does each thing, leaves, and returns as the same person: answered question (add page shows it, progress counts it, city page moves to the next question), a take written on a question, "Same as mine", how long you've lived there (asked once), True on a take (city page and topic pages), a vibe on a take, a reply, a city request, a signed-in person's top 3. Writes go to an in-memory copy of the tables. The suite scans the pages for every write (`.from(…).insert/upsert/update/delete`, `.rpc(…)`, `/api/…`) and fails on one that is in neither `COMES_BACK` nor `NOTHING_TO_SHOW` | regression |
+| What you did comes back (site-wide) | A visitor does each thing, leaves, and returns as the same person: answered question (add page shows it, progress counts it, city page moves to the next question), a take written on a question, "Same as mine", how long you've lived there (asked once), True on a take (city page and topic pages), a vibe on a take, a reply, a city request, a signed-in person's top 3. Writes go to an in-memory copy of the tables. The suite scans the pages for every write (`.from(…).insert/upsert/update/delete`, `.rpc(…)`, `/api/…`) and fails on one that is in neither `COMES_BACK` nor `NOTHING_TO_SHOW` | regression + database |
+| Input really reaches the database | A test database is built from the repo (schema snapshot + every later migration, so a migration in the pull request is tried before it reaches the live site; one that doesn't apply fails here). The visitor flows then save to it through PostgREST and the real `/api/take` Function: no save and no read may be refused; the answer, take, reply, votes and top 3 are read back from the tables (right question, city, owner, words; True and reply counts go up by one); and the database still refuses saving as someone else, saving while signed out, and an anonymous top 3 | database |
 | City pages exist | Page, vote page and add page for every city in the database | static |
 | Facebook previews | Every page type points at its own 1200×630 card on www (home, cities, city question, topic pages, post page), the shared-take card exists for every city, and the /t/<id> preview function is present | e2e + static |
 | Questions | 5 active per city numbered 1–5, 2–4 options each, labels short enough for buttons, database matches `scripts/questions/spec.py` | static |
@@ -79,6 +81,38 @@ The database lint needs the database URL: `psql "$SUPABASE_DB_URL" -f tests/db-s
 | Accessibility | Lighthouse accessibility ≥ 90 and zero colour-contrast failures, valid ARIA | lighthouse |
 | Structured data | Valid, self-contained schema.org on every page type | schema |
 | Tooling | Python scripts compile, workflow files parse | static |
+
+## Database round trip (`tests/database.mjs`)
+
+Every other browser test answers a save with a pretend "saved". This one builds a real database from
+the repo and lets the pages save to it, so a migration that renames a column, drops a grant, tightens
+a policy or changes a limit fails here instead of on the live site.
+
+- **What it builds** (`tests/db/start.mjs`): a new database on a local Postgres, then
+  `tests/db/supabase-shim.sql` (the Supabase roles, `auth.uid()`/`auth.jwt()` and extensions the schema
+  assumes), `supabase/schema.sql`, and every file in `supabase/migrations/` newer than the snapshot's
+  "Includes migrations through" line. PostgREST, the server Supabase runs in front of Postgres, sits in
+  front of it. The database is dropped at the end. It will only build on `127.0.0.1`/`localhost` or the
+  CI service; it never connects to the live project.
+- **What is real:** the built pages, PostgREST, every table, policy, trigger and function, and the
+  `/api/take` Function. **What is not:** sign-in itself (the test hands the browser a session signed with
+  that run's key) and Cloudflare's location stamp. Public reference data (cities, questions, approved
+  takes, places, events, restaurants) is copied from the live site's public API at the start so the built
+  pages find the ids they were built with.
+- **When the snapshot is refreshed** (the weekly "Schema snapshot" pull request), its header line moves
+  forward and fewer migrations are replayed. If the test database ever stops matching the live one,
+  refresh the snapshot first.
+- **Run it locally:** needs Docker or a local Postgres with PostGIS, plus `psql` and
+  [PostgREST](https://github.com/PostgREST/postgrest/releases) on the PATH (or `POSTGREST_BIN`):
+
+  ```
+  docker run -d --name tv-test-db -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgis/postgis:17-3.5
+  node build.mjs && node tests/database.mjs
+  ```
+
+  It looks for Postgres on 127.0.0.1:5432 with user and password `postgres` (what that command starts);
+  `TEST_PG_URL` points it elsewhere on the same machine. Without a database, run the other suites as
+  usual; CI always runs this one.
 
 ## Not covered automatically (check by hand when they change)
 

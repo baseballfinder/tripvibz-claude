@@ -61,33 +61,51 @@
   })();
 
   /* ---- Google Analytics 4 ---- */
-  // gtag() is defined now so events fired before the tag loads queue in the
-  // dataLayer; the tag itself (177 KB) and Clarity load after the page is
-  // interactive — on a phone they were blocking the main thread for ~660 ms
-  // during load (PageSpeed, Oct 2026) without changing what gets measured.
+  // gtag() is defined now, so the page view and any event fired before the
+  // tag loads wait in the dataLayer and are sent when it does.
+  //
+  // The tag itself (177 KB) and Clarity are held back until the visitor first
+  // touches, scrolls or types, or WAIT_MS after the page has loaded, whichever
+  // comes first. Loaded straight after "load" (Oct 2026) they still ran on a
+  // phone while the page was settling: two Google tag tasks of 190 + 273 ms
+  // and an 82 ms Clarity task (PageSpeed, /knoxville/, Nov 12 2026), which was
+  // nearly all of the page's blocking time. Clarity follows the Google tag by
+  // GAP_MS so the two never run back to back.
+  // Trade-off: a visit that ends within WAIT_MS of loading with no touch,
+  // scroll or key press is not counted.
+  var WAIT_MS = 5000, GAP_MS = 1500;
   window.dataLayer = window.dataLayer || [];
   function gtag() { window.dataLayer.push(arguments); }
   window.gtag = gtag;
   gtag("js", new Date());
   gtag("config", GA4_ID);
 
-  function loadTrackers() {
+  function loadGoogle() {
     var ga = document.createElement("script");
     ga.async = true;
     ga.src = "https://www.googletagmanager.com/gtag/js?id=" + GA4_ID;
     document.head.appendChild(ga);
-
-    /* ---- Microsoft Clarity ---- */
+  }
+  function loadClarity() {
     (function (c, l, a, r, i, t, y) {
       c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
       t = l.createElement(r); t.async = 1; t.src = "https://www.clarity.ms/tag/" + i;
       y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
     })(window, document, "clarity", "script", CLARITY_ID);
   }
-  function whenIdle() {
-    if (window.requestIdleCallback) window.requestIdleCallback(loadTrackers, { timeout: 4000 });
-    else setTimeout(loadTrackers, 1500);
+
+  var FIRST_USE = ["pointerdown", "touchstart", "keydown", "scroll", "wheel"];
+  var started = false;
+  function start() {
+    if (started) return;
+    started = true;
+    FIRST_USE.forEach(function (t) { window.removeEventListener(t, start, true); });
+    // Not inside the tap or key handler itself: let the page answer first.
+    setTimeout(loadGoogle, 0);
+    setTimeout(loadClarity, GAP_MS);
   }
-  if (document.readyState === "complete") whenIdle();
-  else window.addEventListener("load", whenIdle);
+  FIRST_USE.forEach(function (t) { window.addEventListener(t, start, { capture: true, passive: true }); });
+  function afterLoad() { setTimeout(start, WAIT_MS); }
+  if (document.readyState === "complete") afterLoad();
+  else window.addEventListener("load", afterLoad);
 })();
