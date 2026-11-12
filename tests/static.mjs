@@ -511,6 +511,15 @@ await test("Worst-times pages carry NOAA's weather by month for every city: 12 r
     assert(!(await readFile(f, "utf8")).includes('id="tv-climate"'), `${f}: weather table belongs on worst-times pages only`);
 });
 
+await test("Schema snapshot says which migrations it contains, so a test database can be rebuilt from it (tests/db/start.mjs)", async () => {
+  const head = (await readFile("supabase/schema.sql", "utf8")).split("\n").slice(0, 6).join("\n");
+  const through = (head.match(/^-- Includes migrations through (\d{14})\b/m) || [])[1];
+  assert(through, "supabase/schema.sql needs a '-- Includes migrations through <version>' line in its header (the schema-snapshot workflow writes it)");
+  const versions = (await readdir("supabase/migrations")).filter(f => /^\d{14}_/.test(f)).map(f => f.slice(0, 14));
+  assert(versions.includes(through), `supabase/schema.sql says it includes migrations through ${through}, which is not a file in supabase/migrations/`);
+  assert((await readFile(".github/workflows/schema-snapshot.yml", "utf8")).includes("Includes migrations through $THROUGH"), "the schema-snapshot workflow must keep writing the 'Includes migrations through' line");
+});
+
 await test("Cover page during database updates: page loads get a 503 cover while the switch is on; APIs, assets, admin and ?preview=live never do; fails open; /assets/* skips Functions", async () => {
   const mw = await import("../functions/_middleware.js");
   const NOW = Date.parse("2026-11-05T22:00:00Z");
