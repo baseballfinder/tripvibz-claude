@@ -414,6 +414,13 @@ await test("Topic page: new take cards, starters open the add page, calendar on 
   await go("/nashville/worst-times-to-visit/");
   assert(await page.locator(".cal-months .m").count() === 12, "month calendar missing");
   assert(/Researched by the TripVibz editors/.test(await page.textContent(".cal")), "calendar must be labeled as editors' research, not locals");
+  // Pre-rendered NOAA table survives hydration (article.html re-renders #root).
+  await page.waitForSelector(".cal-months .m");
+  assert(await page.locator("#tv-climate tbody tr").count() === 12, "weather-by-month table lost after the page loaded");
+  assert(await page.locator("#tv-climate").count() === 1, "weather table rendered twice");
+  // Google renders scripts: hydration must not swap the build's search title for a generic one.
+  await page.waitForTimeout(300);
+  assert(/weather by month/.test(await page.title()), `topic page title replaced on load: ${await page.title()}`);
   const sel = page.locator('.cal-months .m[aria-pressed="true"] .mn');
   assert(await sel.count() === 1 && await sel.evaluate(e => getComputedStyle(e).color !== getComputedStyle(e.closest("button")).backgroundColor), "selected month label invisible");
 });

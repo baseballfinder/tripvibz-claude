@@ -27,6 +27,15 @@
 
   /* ---- month calendar (worst_times only) ---- */
   .cal{margin-top:18px}
+  .climate{margin-top:22px}
+  .climate h2{font-family:"Archivo";font-weight:900;font-size:21px}
+  .climate .sub{font-size:13.5px;color:var(--muted);margin:6px 0 10px;line-height:1.5}
+  .clim-wrap{overflow-x:auto}
+  .clim{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+  .clim th,.clim td{padding:6px 8px;text-align:right;border-bottom:1px solid rgba(0,0,0,.08)}
+  .clim th:first-child,.clim thead th:first-child{text-align:left}
+  .clim thead th{font-size:12px;color:var(--muted);font-weight:600}
+  .climate .src{font-size:12px;color:var(--muted);margin-top:8px}
   .ev .w a{color:inherit;text-decoration:underline}
   .cal-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}
   .cal-head h2{font-family:"Archivo";font-weight:900;font-size:21px}
@@ -175,6 +184,8 @@
   let CITY = null, ENTRIES = [], CTX = null;
   // Pre-rendered hero (build.mjs heroImg): keep it so it is never re-fetched.
   const HERO_HTML = (function () { const el = document.getElementById("tv-hero"); return el ? el.outerHTML : ""; })();
+  // Pre-rendered NOAA weather table (build.mjs climateHtml): static data, kept as is.
+  const CLIMATE_HTML = (function () { const el = document.getElementById("tv-climate"); return el ? el.outerHTML : ""; })();
   let EVENTS = [], SEL_MONTH = new Date().getMonth() + 1, evEgIx = 0;
 
   // Deliberately generic. Naming one city's festival on another city's page
@@ -233,7 +244,7 @@
         ${ENTRIES.length ? `<div class="by">${ENTRIES.length} take${ENTRIES.length===1?"":"s"}${locals ? ` · ${locals} signed-in local${locals===1?"":"s"}` : ""}</div>` : ""}
       </div>
 
-      ${THEME === "worst_times" ? calendarBlock() : ""}
+      ${THEME === "worst_times" ? calendarBlock() + CLIMATE_HTML : ""}
 
       <section class="takes" aria-labelledby="takes-h">
         <div class="takes-h"><h2 id="takes-h">Local takes${list.length ? ` <span>${list.length}</span>` : ""}</h2>
@@ -427,7 +438,9 @@
 
     CITY = await T2.loadCity(SLUG);
     if(!CITY){ fail("We're not covering that city yet."); return; }
-    document.title = `TripVibz · ${CFG.title(CITY.name)}`;
+    // Pre-rendered pages already carry the build's search title (build.mjs
+    // pageTitle); Google renders this script, so only fill a blank one.
+    if (document.title === "TripVibz") document.title = `TripVibz · ${CFG.title(CITY.name)}`;
 
     if(THEME === "worst_times"){
       const { data: evs } = await sb.from("city_events")
