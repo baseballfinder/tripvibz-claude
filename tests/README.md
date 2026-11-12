@@ -20,7 +20,7 @@ The database lint needs the database URL: `psql "$SUPABASE_DB_URL" -f tests/db-s
 |---|---|---|
 | `static.mjs` | Pages, links, share cards, questions, sitemap, private files, migration names | build |
 | `security.mjs` | Security headers + CSP (one source: `functions/_security.js`), no third-party scripts, no secrets in the repo, workflow hygiene, API input rejection, open-redirect guard, SECURITY DEFINER search_path | build |
-| `perf.mjs` | Size budgets: pages, scripts, styles, fonts, share images, lazy-loaded grid photos, sitemap size; analytics deferred, no external render-blocking requests | build |
+| `perf.mjs` | Size budgets: pages, scripts, styles, fonts, share images, lazy-loaded grid photos, sitemap size; analytics deferred and held until first touch/scroll/key or 5 s after load, no external render-blocking requests | build |
 | `schema.mjs` | Structured data: every type/property is real schema.org (live vocabulary) and allowed on its type, `@id` references resolve on the same page, Google's required fields for Article / Breadcrumb / ItemList / DiscussionForumPosting / Organization / WebSite, canonical matches; also renders `/t/<id>` for a real take | build (+ network for the vocabulary) |
 | `e2e.mjs` | Every feature in a real browser, writes intercepted | build + Chromium |
 | `csp.mjs` | Every page type loads with the Content-Security-Policy enforced, no violations | build + Chromium |
