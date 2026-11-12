@@ -1151,6 +1151,8 @@ const articleTpl = await readFile("article.html", "utf8");
 const cityTpl = await readFile("city.html", "utf8");
 const voteTpl = await readFile("vote.html", "utf8");
 const addTpl = await readFile("add.html", "utf8");
+const ADD_LOADING = `<main class="v2" id="root"><div class="state"><b>Loading…</b></div></main>`;
+const ADD_SUB = "One tap each. Add a sentence if you want to say why. People planning a trip see what locals picked.";
 const indexTpl = await readFile("index.html", "utf8");
 const placesTpl = await readFile("places.html", "utf8");
 const vibeTpl = await readFile("vibe.html", "utf8");
@@ -1244,7 +1246,17 @@ for (const city of cities) {
     canonical: `${SITE}/${city.slug}/`, image: shareCard(city) ? shareCard(city).image : photo(city.slug),
     og: shareCard(city) || undefined, noindex: true
   }), null));
-  await emit(`${city.slug}/add/index.html`, await minifyHtml(render(addTpl, {
+  // The headline is in the HTML, not drawn by the script after five database calls: on a phone it is
+  // the largest thing on screen, and waiting for the data put it at 5.9 s (PageSpeed, Nov 12 2026).
+  // Same markup and words as questionsPage() in add.html (tests/perf.mjs keeps the two in step), which
+  // fills #add-body and leaves this block as it is (tests/e2e.mjs checks the headline is not redrawn).
+  const addHead = `<div class="row-between" style="min-height:40px;margin-top:4px"><a class="back" href="/${esc(city.slug)}/">← ${esc(city.name)}</a>
+        <span class="progress" id="add-progress"></span></div>
+      <h1 class="add-h1" data-built>Know ${esc(city.name)}? Settle these.</h1>
+      <p class="add-sub">${ADD_SUB}</p>
+      <div id="add-body"><div class="state"><b>Loading…</b></div></div>`;
+  if (!addTpl.includes(ADD_LOADING)) throw new Error("add.html: the Loading… placeholder inside #root has changed; update ADD_LOADING");
+  await emit(`${city.slug}/add/index.html`, await minifyHtml(render(addTpl.replace(ADD_LOADING, () => `<main class="v2" id="root">${addHead}</main>`), {
     title: `A friend is visiting ${city.name}. What do you tell them? · TripVibz`,
     desc: `Where would you take a friend in ${city.name}? One sentence is enough.`,
     canonical: `${SITE}/${city.slug}/`, image: `${SITE}/assets/og/${city.slug}-add.jpg`, noindex: true,
