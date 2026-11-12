@@ -198,7 +198,9 @@ await test("Trackers stay off the page load: Google tag and Clarity start on fir
       },
     };
   }
-  const isGoogle = u => /googletagmanager\.com\/gtag\/js/.test(u), isClarity = u => /clarity\.ms\/tag\//.test(u);
+  // Compared as parsed addresses (exact host and path), so a look-alike host can't pass.
+  const at = (u, host, path) => { const x = new URL(u); return x.protocol === "https:" && x.hostname === host && x.pathname.startsWith(path); };
+  const isGoogle = u => at(u, "www.googletagmanager.com", "/gtag/js"), isClarity = u => at(u, "www.clarity.ms", "/tag/");
 
   // 1. Nobody touches the page: nothing during load or the 4.9 s after it, both by 5 s + the gap.
   let p = page("loading");
