@@ -1,0 +1,122 @@
+{
+  "austin": {
+    "photo": "city",
+    "prompt": "SXSW 2027: come for it, or stay away?",
+    "note": "Event question about the whole city."
+  },
+  "charleston": {
+    "photo": "needed",
+    "prompt": "Folly Beach or Sullivan's Island?",
+    "note": "Needs Folly Beach or Sullivan's Island; city photo is a downtown street."
+  },
+  "chicago": {
+    "photo": "needed",
+    "prompt": "Navy Pier: worth it, or skip it?",
+    "note": "Needs Navy Pier; city photo is the skyline."
+  },
+  "daytona-beach": {
+    "photo": "needed",
+    "prompt": "Daytona 500 2027: worth going without race tickets?",
+    "note": "Needs Daytona International Speedway; city photo is the beach."
+  },
+  "denver": {
+    "photo": "needed",
+    "prompt": "Red Rocks Amphitheatre: worth it without a concert?",
+    "note": "Needs Red Rocks Amphitheatre; city photo is the skyline."
+  },
+  "fort-lauderdale": {
+    "photo": "city",
+    "prompt": "Fort Lauderdale Beach, or drive to a quieter one?",
+    "note": "City photo is Fort Lauderdale Beach."
+  },
+  "fort-myers": {
+    "photo": "needed",
+    "prompt": "Sanibel Island for a beach day: worth the drive?",
+    "note": "Needs Sanibel Island; city photo is a pier."
+  },
+  "honolulu": {
+    "photo": "needed",
+    "prompt": "Waikiki Beach: worth staying there, or base yourself elsewhere?",
+    "note": "Needs Waikiki Beach itself; city photo is an aerial of high-rises (confirm)."
+  },
+  "key-west": {
+    "photo": "city",
+    "prompt": "Fantasy Fest 2026: come for it, or stay away?",
+    "note": "Event question about the whole island."
+  },
+  "las-vegas": {
+    "photo": "needed",
+    "prompt": "Red Rock Canyon: worth leaving the Strip for?",
+    "note": "Needs Red Rock Canyon; city photo is the Strip."
+  },
+  "miami": {
+    "photo": "place",
+    "prompt": "Little Havana: real local spot, or tourist trap now?",
+    "note": "Calle Ocho, Little Havana. Miami Take media library, item 6214."
+  },
+  "miami-beach": {
+    "photo": "city",
+    "prompt": "South Beach: worth the hype, or overrated?",
+    "note": "City photo is a South Beach lifeguard stand."
+  },
+  "naples": {
+    "photo": "city",
+    "prompt": "Naples Pier at sunset: worth the crowd?",
+    "note": "City photo is Naples Pier."
+  },
+  "nashville": {
+    "photo": "city",
+    "prompt": "Party wagons and pedal taverns: part of the fun, or the worst part of downtown?",
+    "note": "Question is about downtown; city photo is downtown."
+  },
+  "new-orleans": {
+    "photo": "city",
+    "prompt": "Mardi Gras 2027: come for it, or stay away?",
+    "note": "Event question about the whole city."
+  },
+  "new-york": {
+    "photo": "needed",
+    "prompt": "Times Square: worth seeing, or avoid it?",
+    "note": "Needs Times Square; city photo is Lower Manhattan from the water."
+  },
+  "orlando": {
+    "photo": "needed",
+    "prompt": "Disney World or Universal Orlando for a first trip?",
+    "note": "Needs a theme-park photo; city photo is downtown."
+  },
+  "san-diego": {
+    "photo": "city",
+    "prompt": "San Diego Comic-Con 2027: come for it, or stay away?",
+    "note": "Event question; city photo is the downtown waterfront."
+  },
+  "san-francisco": {
+    "photo": "needed",
+    "prompt": "Alcatraz: worth booking?",
+    "note": "Needs Alcatraz; city photo is the skyline."
+  },
+  "sarasota": {
+    "photo": "needed",
+    "prompt": "Siesta Key Beach on a Saturday: worth it?",
+    "note": "Needs Siesta Key Beach; city photo is the downtown marina."
+  },
+  "savannah": {
+    "photo": "needed",
+    "prompt": "Tybee Island for a beach day: worth the drive?",
+    "note": "Needs Tybee Island; city photo is the riverfront."
+  },
+  "seattle": {
+    "photo": "needed",
+    "prompt": "Space Needle: worth the ticket?",
+    "note": "Needs the Space Needle; city photo is the skyline and stadium."
+  },
+  "st-augustine": {
+    "photo": "city",
+    "prompt": "Castillo de San Marcos: worth the stop?",
+    "note": "City photo is the Castillo de San Marcos."
+  },
+  "tampa": {
+    "photo": "needed",
+    "prompt": "Clearwater Beach on a weekend: worth the traffic?",
+    "note": "Needs Clearwater Beach; city photo is downtown Tampa."
+  }
+}

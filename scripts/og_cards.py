@@ -13,6 +13,10 @@ og:image at its card; functions/t/[id].js does the same for shared takes.
   <slug>-take.jpg                  a shared take: "A <City> local says…" True / Nope
   <slug>-email.jpg                 the lead question with no answer pills, for the top of a city email
                                    (the email puts real answer buttons under it)
+
+A card whose headline is about one place shows that place. The lead-question cards
+(<slug>.jpg and <slug>-email.jpg) use data/card-photos/<slug>.jpg when there is one, otherwise
+the city photo; data/card-photos/index.json records which each city uses and why.
   home.jpg                         homepage
   cities.jpg                       the Cities page
 
@@ -29,6 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 FONT = os.path.join(HERE, "fonts", "Archivo.ttf")
 MARK = os.path.join(HERE, "..", "assets", "brand", "mark-512.png")
 OUT = os.path.join(HERE, "..", "assets", "og")
+CARD_PHOTOS = os.path.join(HERE, "..", "data", "card-photos")
 W, H, PAD = 1200, 630, 64
 CORAL, INK, WHITE, SOFT = (255, 86, 48), (22, 20, 15), (255, 255, 255), (232, 226, 214)
 JPEG = dict(quality=80, optimize=True, progressive=True)
@@ -258,8 +263,11 @@ def main(only):
             print(f"  skip {c['slug']}: no photo"); continue
         mine = [q for q in qs if q["city_id"] == c["id"]]
         if mine:
-            save(card_question(c, mine[0], pb), f"{c['slug']}.jpg")
-            save(card_email(c, mine[0], pb), f"{c['slug']}-email.jpg")
+            # The lead question's cards show the place the question is about, when there is a photo of it.
+            pp = os.path.join(CARD_PHOTOS, c["slug"] + ".jpg")
+            qb = open(pp, "rb").read() if os.path.exists(pp) else pb
+            save(card_question(c, mine[0], qb), f"{c['slug']}.jpg")
+            save(card_email(c, mine[0], qb), f"{c['slug']}-email.jpg")
             meta[c["slug"]] = {"prompt": mine[0]["prompt"]}
         for t in THEMES:
             save(card_theme(c, t, pb), f"{c['slug']}-{t}.jpg")
