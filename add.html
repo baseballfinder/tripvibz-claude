@@ -119,6 +119,9 @@
   const pickedLabel = q => (q.options.find(o => o.id === q.mine) || {}).label || "";
   const kindOf = q => T2.answerKind(q.prompt, pickedLabel(q) || (q.options[0] || {}).label || "");
   const wantKind = qs.get("kind");
+  // A link can carry one answer: /<city>/add/?q=<question id>&a=<option id> (the answer buttons in the
+  // city emails). It counts as that one tap; see answerFromLink().
+  const linkQ = qs.get("q"), linkA = qs.get("a");
 
   // Settled once when the page opens, so cards don't jump around as answers land:
   // unanswered first; a ?kind= from a topic page puts its questions at the top.
@@ -126,6 +129,8 @@
   function orderedQuestions(){
     if (!ORDER) {
       ORDER = QS.slice().sort((a, b) => {
+        const la = a.id === linkQ ? 0 : 1, lb = b.id === linkQ ? 0 : 1;
+        if (la !== lb) return la - lb;
         const ka = wantKind && kindOf(a) === wantKind ? 0 : 1, kb = wantKind && kindOf(b) === wantKind ? 0 : 1;
         if (ka !== kb) return ka - kb;
         const ma = a.mine ? 1 : 0, mb = b.mine ? 1 : 0;
@@ -250,6 +255,20 @@
     const nt = $("#nt"); if (nt) nt.addEventListener("toggle", () => { NT.open = nt.open; if (nt.open) { const f = $("#nt-text"); if (f) f.focus({ preventScroll: true }); } });
     const nti = $("#nt-text"); if (nti) nti.addEventListener("input", () => { NT.text = nti.value; });
     const nts = $("#nt-send"); if (nts) nts.onclick = suggestQuestion;
+  }
+
+  // The answer a link carried is saved once, as if the person had tapped it here: the question leads
+  // the page with its why box open. A link never changes an answer the person already gave, and the
+  // q/a pair is dropped from the address so a refresh or a shared link doesn't answer again.
+  async function answerFromLink(){
+    const q = linkQ && QS.find(x => x.id === linkQ);
+    try { qs.delete("q"); qs.delete("a"); const rest = qs.toString(); history.replaceState(null, "", location.pathname + (rest ? "?" + rest : "") + location.hash); } catch (e) {}
+    if (!q) return;
+    if (!q.mine && linkA && q.options.some(o => o.id === linkA)) {
+      if (await T2.answer(q, linkA)) T2.track("question_answer", { city: CITY.slug, question: q.id, source: "link" });
+    }
+    if (q.mine) { A.open = q.id; A.why = ""; A.err = ""; }
+    questionsPage();
   }
 
   async function postWhy(q){
@@ -636,6 +655,7 @@
     redraw = questionsPage;
     await Promise.all([loadMyTakes(), loadSaid()]);
     questionsPage();
+    if (linkQ) await answerFromLink();
   })();
 })();
 </script>

@@ -375,6 +375,28 @@ await test("Add page: takes already posted on a question show before you write o
   } finally { await page.unroute(isSaid); }
 });
 
+await test("Answer links (email buttons): /<city>/add/?q=&a= records that answer once, puts the question first with its why box open, drops q and a from the address, and ignores an answer that isn't one of the options", async () => {
+  const nash = cities.find(c => c.slug === "nashville");
+  const qsLive = await api("questions?select=id,prompt,options&city_id=eq." + encodeURIComponent(nash.id) + "&active=eq.true&order=sort");
+  assert(qsLive.length >= 2, "Nashville needs two active questions to test with");
+  const q = qsLive[qsLive.length - 1], opt = q.options[q.options.length - 1];   // the last one, so "first on the page" proves the reordering
+  let before = writes.length;
+  await go(`/nashville/add/?q=${q.id}&a=${encodeURIComponent(opt.id)}&utm_source=miamitake`); await page.waitForTimeout(600);
+  const votes = writes.slice(before).filter(w => w.table === "question_votes");
+  assert(votes.length === 1 && votes[0].body.question_id === q.id && votes[0].body.option_id === opt.id, `the link should record exactly that answer once: ${JSON.stringify(votes.map(v => v.body))}`);
+  const first = page.locator("#qlist .qa").first();
+  assert((await first.locator("h2").textContent()).trim() === q.prompt, "the linked question should lead the page");
+  assert((await first.locator('.qopt[aria-pressed="true"]').textContent()).includes(opt.label), "the linked answer should show as picked");
+  assert(await first.locator(".why-box").count() === 1 && /1 of \d+ answered/.test(await page.textContent(".progress")), "the why box should be open and the answer counted");
+  const url = new URL(page.url());
+  assert(!url.searchParams.has("q") && !url.searchParams.has("a") && url.searchParams.get("utm_source") === "miamitake", `q and a should leave the address (a refresh must not answer again) and the rest should stay: ${url.search}`);
+  // An answer that isn't one of the question's options saves nothing; the question still leads.
+  before = writes.length;
+  await go(`/nashville/add/?q=${qsLive[1].id}&a=not-an-option`); await page.waitForTimeout(600);
+  assert(!writes.slice(before).some(w => w.table === "question_votes" && w.body.question_id === qsLive[1].id), "an unknown answer must not be recorded");
+  assert((await page.locator("#qlist .qa h2").first().textContent()).trim() === qsLive[1].prompt, "the linked question should still lead");
+});
+
 await test("Add page: ?kind= from a topic page puts matching questions first; suggesting a question goes to review as a pending take with a topic", async () => {
   await go("/nashville/add/?kind=worst_times");
   const prompts = await page.locator("#qlist .qa h2").allTextContents();
