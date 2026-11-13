@@ -102,6 +102,26 @@ await test("Email cards: each city with questions has a 1200x630 card for the to
   assert(/save\(card_email\(/.test(src), "the card script no longer writes <slug>-email.jpg");
 });
 
+await test("Card photos match the place: every city's lead question is recorded in data/card-photos/index.json against its current wording, a 'place' entry has its photo, and the card script uses it", async () => {
+  const idx = JSON.parse(await readFile("data/card-photos/index.json", "utf8"));
+  const src = await readFile("scripts/og_cards.py", "utf8");
+  assert(/CARD_PHOTOS/.test(src) && /card_question\(c, mine\[0\], qb\)/.test(src) && /card_email\(c, mine\[0\], qb\)/.test(src), "the card script no longer draws the lead-question cards over the place photo");
+  const lead = new Map();
+  for (const q of qs.slice().sort((a, b) => (a.sort || 0) - (b.sort || 0))) if (!lead.has(q.city_id)) lead.set(q.city_id, q.prompt);
+  const withLead = cities.filter(c => lead.has(c.id));
+  for (const c of withLead) {
+    const e = idx[c.slug];
+    assert(e && ["place", "city", "needed"].includes(e.photo), `${c.slug}: no entry in data/card-photos/index.json. Look at its card: does the photo show what the lead question is about? Record place, city or needed`);
+    assert(e.prompt === lead.get(c.id), `${c.slug}: the lead question is now "${lead.get(c.id)}" but its card photo was checked against "${e.prompt}". Check the photo still matches, update index.json and re-run scripts/og_cards.py ${c.slug}`);
+    assert(e.note && e.note.length > 8, `${c.slug}: say in "note" what the photo shows or what is needed`);
+    const has = await exists(join("data/card-photos", `${c.slug}.jpg`));
+    assert(has === (e.photo === "place"), `${c.slug}: index.json says "${e.photo}" but data/card-photos/${c.slug}.jpg ${has ? "exists" : "is missing"}`);
+    if (has) assert((await readFile(join("data/card-photos", `${c.slug}.jpg`))).length > 20000, `${c.slug}: card photo is too small to be a real photo`);
+  }
+  const known = new Set(withLead.map(c => c.slug));
+  for (const slug of Object.keys(idx)) assert(known.has(slug), `data/card-photos/index.json lists "${slug}", which is not a city with questions`);
+});
+
 await test("Share cards for every page type exist and are wired up", async () => {
   const want = [["index.html", "home.jpg"], ["cities/index.html", "cities.jpg"]];
   for (const c of cities) {

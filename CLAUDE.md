@@ -90,6 +90,23 @@ can: Privacy must name every outside service the site loads or calls and
 every table that stores what people enter; retired wording fails the build;
 About must list the main features (add yours to its list).
 
+## The picture matches the place
+
+A share card, email card or any other preview image whose headline is about one
+place shows that place. "Little Havana: real local spot, or tourist trap now?"
+over a photo of Brickell is wrong, however good the photo.
+
+- `data/card-photos/index.json` records, for every city's lead question, whether
+  its cards use a photo of the place (`place`, the file is `data/card-photos/<slug>.jpg`),
+  the city photo because it already shows the place or the question is about the
+  whole city (`city`), or still need one (`needed`).
+- **A `needed` card is not used** in an email, an ad, a reel or a social post.
+  Get a photo first (one James has the rights to), or lead with a different question.
+- **Changing a lead question, or adding a city,** means looking at the card and
+  updating the entry; `tests/static.mjs` fails until the entry matches the question.
+- The same goes for images made outside the card script (reels, one-off graphics):
+  check the picture against the words before it goes out.
+
 ## How to build it
 
 Read `docs/ARCHITECTURE.md` before adding a feature that touches the server,
