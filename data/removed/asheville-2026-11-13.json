@@ -1,0 +1,232 @@
+{
+ "_note": "Asheville was removed from TripVibz on 2026-11-13 (migration 20261113150000_remove_knoxville_asheville_block_area.sql). Rows kept here so the city could be restored. People's question votes and local checks are not kept.",
+ "city": {
+  "id": "e713d31b-d9a4-4074-8891-8855a1898bba",
+  "name": "Asheville",
+  "state": "NC",
+  "slug": "asheville",
+  "lat": 35.5951,
+  "lng": -82.5515,
+  "blurb": "Mountains, breweries, and Biltmore. Locals know when to skip the Parkway traffic.",
+  "sort": 44,
+  "created_at": "2026-10-17T20:32:49.444793+00:00",
+  "photo": null
+ },
+ "editorial_intro": "Asheville and the surrounding mountains are still recovering from Hurricane Helene in 2024, so check that trails, roads and businesses are open before you go. Some sections of the Blue Ridge Parkway near Asheville have reopened and others remain closed for repairs. October leaf season is the busiest and most expensive time to visit.",
+ "og_card": {
+  "prompt": "Biltmore Estate: worth the ticket price?"
+ },
+ "posts": [],
+ "questions": [
+  {
+   "id": "3aeb0cf8-9980-4aab-87f1-cfcb043dba7a",
+   "city_id": "e713d31b-d9a4-4074-8891-8855a1898bba",
+   "prompt": "Biltmore Estate: worth the ticket price?",
+   "options": [
+    {
+     "id": "yes",
+     "label": "Worth it"
+    },
+    {
+     "id": "no",
+     "label": "Overpriced"
+    },
+    {
+     "id": "xmas",
+     "label": "Only at Christmas"
+    }
+   ],
+   "place_label": "Biltmore Estate",
+   "sort": 1,
+   "active": true,
+   "created_at": "2026-10-17T20:32:49.444793+00:00"
+  },
+  {
+   "id": "88b97dbf-8829-46ff-b62b-9e0858a666de",
+   "city_id": "e713d31b-d9a4-4074-8891-8855a1898bba",
+   "prompt": "Blue Ridge Parkway in the fall: worth the traffic?",
+   "options": [
+    {
+     "id": "worth",
+     "label": "Worth it"
+    },
+    {
+     "id": "weekday",
+     "label": "Go on a weekday"
+    },
+    {
+     "id": "skip",
+     "label": "Skip it"
+    }
+   ],
+   "place_label": "Blue Ridge Parkway",
+   "sort": 2,
+   "active": true,
+   "created_at": "2026-10-17T20:32:49.444793+00:00"
+  },
+  {
+   "id": "bd2bf0b9-fbe1-415f-8645-462a1bc49055",
+   "city_id": "e713d31b-d9a4-4074-8891-8855a1898bba",
+   "prompt": "River Arts District or downtown: where should visitors spend the afternoon?",
+   "options": [
+    {
+     "id": "downtown",
+     "label": "Downtown"
+    },
+    {
+     "id": "rad",
+     "label": "River Arts District"
+    },
+    {
+     "id": "west",
+     "label": "West Asheville"
+    }
+   ],
+   "place_label": "Whole city",
+   "sort": 3,
+   "active": true,
+   "created_at": "2026-10-17T20:32:49.444793+00:00"
+  },
+  {
+   "id": "8080b224-1605-4e33-ba25-f6cf6ef28b44",
+   "city_id": "e713d31b-d9a4-4074-8891-8855a1898bba",
+   "prompt": "Asheville breweries: do the South Slope crawl, or pick one good spot?",
+   "options": [
+    {
+     "id": "crawl",
+     "label": "Do the crawl"
+    },
+    {
+     "id": "one",
+     "label": "Pick one good spot"
+    },
+    {
+     "id": "out",
+     "label": "Head out of town"
+    }
+   ],
+   "place_label": "South Slope",
+   "sort": 4,
+   "active": true,
+   "created_at": "2026-10-17T20:32:49.444793+00:00"
+  },
+  {
+   "id": "696cb554-762c-4ca8-9032-f78c863a64d9",
+   "city_id": "e713d31b-d9a4-4074-8891-8855a1898bba",
+   "prompt": "Best time to visit Asheville?",
+   "options": [
+    {
+     "id": "spring",
+     "label": "Spring"
+    },
+    {
+     "id": "summer",
+     "label": "Summer"
+    },
+    {
+     "id": "fall",
+     "label": "Fall"
+    },
+    {
+     "id": "winter",
+     "label": "Winter"
+    }
+   ],
+   "place_label": "Whole city",
+   "sort": 5,
+   "active": true,
+   "created_at": "2026-10-18T17:05:49.59732+00:00"
+  }
+ ],
+ "city_events": [
+  {
+   "id": "cfb783ed-f75e-4cea-b970-b349105832c3",
+   "city_id": "e713d31b-d9a4-4074-8891-8855a1898bba",
+   "name": "Christmas at Biltmore",
+   "blurb": "Early November to early January. Daytime visits need a timed reservation, and Candlelight Christmas Evenings need a separate ticket booked ahead.",
+   "kind": "holiday",
+   "severity": "busy",
+   "start_month": 11,
+   "end_month": 1,
+   "author_id": null,
+   "ups": 0,
+   "created_at": "2026-10-21T06:31:36.092963+00:00",
+   "status": "approved",
+   "source": "https://www.exploreasheville.com/article/christmas-at-biltmore",
+   "verified_at": "2026-10-22T18:50:38.89236+00:00",
+   "check_note": null
+  },
+  {
+   "id": "13f851ab-81d8-4f4f-85f8-a5977cd2f2f1",
+   "city_id": "e713d31b-d9a4-4074-8891-8855a1898bba",
+   "name": "Fall leaf season",
+   "blurb": "October is the busiest month. Colors peak in the city in the second half of the month, rooms book early and rates are at their highest.",
+   "kind": "season",
+   "severity": "busy",
+   "start_month": 10,
+   "end_month": 10,
+   "author_id": null,
+   "ups": 0,
+   "created_at": "2026-10-21T06:31:36.092963+00:00",
+   "status": "approved",
+   "source": "https://www.lonelyplanet.com/articles/when-to-visit-asheville",
+   "verified_at": "2026-10-22T18:50:38.89236+00:00",
+   "check_note": null
+  },
+  {
+   "id": "d1d59f2d-27f8-4eb7-a4dd-29c974e65811",
+   "city_id": "e713d31b-d9a4-4074-8891-8855a1898bba",
+   "name": "Mountain Dance and Folk Festival",
+   "blurb": "Late July into early August. Three evenings of traditional mountain music and dance, held every summer since 1928.",
+   "kind": "festival",
+   "severity": "good",
+   "start_month": 7,
+   "end_month": 8,
+   "author_id": null,
+   "ups": 0,
+   "created_at": "2026-10-21T06:31:36.092963+00:00",
+   "status": "approved",
+   "source": "https://www.exploreasheville.com/asheville/events/99th-mountain-dance-and-folk-festival",
+   "verified_at": "2026-10-22T18:50:38.89236+00:00",
+   "check_note": null
+  },
+  {
+   "id": "12e8c697-cfde-49ca-bb39-afeb2aee408a",
+   "city_id": "e713d31b-d9a4-4074-8891-8855a1898bba",
+   "name": "January lull",
+   "blurb": "One of the least busy months, with affordable hotel rates. It is also the snowiest month, with temperatures in the 30s, and mountain roads can be tricky.",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 1,
+   "end_month": 1,
+   "author_id": null,
+   "ups": 0,
+   "created_at": "2026-10-21T06:31:36.092963+00:00",
+   "status": "approved",
+   "source": "https://www.lonelyplanet.com/articles/when-to-visit-asheville",
+   "verified_at": "2026-10-22T18:50:38.89236+00:00",
+   "check_note": null
+  },
+  {
+   "id": "03e94cf5-3df3-431f-abff-c09aea57415b",
+   "city_id": "e713d31b-d9a4-4074-8891-8855a1898bba",
+   "name": "Biltmore Blooms",
+   "blurb": "Late March to late May. Tulips, daffodils, azaleas and wisteria fill the Biltmore Estate gardens and house.",
+   "kind": "festival",
+   "severity": "good",
+   "start_month": 3,
+   "end_month": 5,
+   "author_id": null,
+   "ups": 0,
+   "created_at": "2026-10-21T06:31:36.092963+00:00",
+   "status": "approved",
+   "source": "https://www.biltmore.com/events/biltmore-blooms/",
+   "verified_at": "2026-10-22T18:50:38.89236+00:00",
+   "check_note": null
+  }
+ ],
+ "places": [],
+ "restaurants": [],
+ "top3_picks": [],
+ "places_catalog_rows": 1965
+}

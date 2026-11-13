@@ -35,11 +35,12 @@ The database lint needs the database URL: `psql "$SUPABASE_DB_URL" -f tests/db-s
 
 | Feature | Automated check | Suite |
 |---|---|---|
+| Removed cities and blocked areas | Knoxville and Asheville are unpublished and redirect to the cities page; one area rule (file, build, city-request robot, database trigger) with matching numbers; nothing inside a blocked area is published | static, database |
 | Homepage | Headline, every city in the grid, logo, "Ask for your city" link, favicon | e2e |
 | Cities page | Grid, search (incl. no-match message) | e2e |
 | City search | 16px box (no iPhone zoom), states by name ("Florida"), nicknames (NYC, Philly), Saint/St., typos ("Ashville"), ranked suggestions with Enter and a clear button, ask for a city from the list, quick picks (near you, recently viewed, states); `/api/near` returns only a rounded position and is never cached | e2e + static |
 | Request a city | Search finds Tulsa, tapping "Ask for it" sends the request and flips to "Asked" | e2e |
-| City feed | Hero photo loads, lead question = first active question, options, four tabs (Takes · Eat · When to go · Guide) with one panel shown and the hash deep-linking a tab, section chips only at 10+ takes, Add-your-take bar (Nashville, Knoxville, Miami) | e2e |
+| City feed | Hero photo loads, lead question = first active question, options, four tabs (Takes · Eat · When to go · Guide) with one panel shown and the hash deep-linking a tab, section chips only at 10+ takes, Add-your-take bar (Nashville, Fort Lauderdale, Miami) | e2e |
 | One-tap voting on questions | Vote link records the vote, results and "Why?" box show | e2e |
 | Posting a take (anonymous) | Kind, starter, place (typed, no pin), month, tenure, preview, posted page, 1080×1920 share card | e2e |
 | Add page = the city's questions | Every active question as a card with its options; one tap records the answer (`question_votes`) and opens an optional "Say why" box; a sentence posts a take tied to the question (`question_id`, title = answer + sentence) and the card then shows it; "Just the answer is fine" closes the box; optional place search in the why box; progress counter; `?kind=` from a topic page orders matching questions first; "Something we didn't ask about?" sends a suggested question for review (pending take with a topic); anonymous visitors get a quiet sign-in nudge. No free-text composer on the page — it survives only for admin reply links (`/add/?text=`) | e2e |

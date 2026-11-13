@@ -18,7 +18,7 @@ og:image at its card; functions/t/[id].js does the same for shared takes.
 
 Run after adding a city, a question or a photo, then commit assets/og/:
     python3 scripts/og_cards.py              # everything
-    python3 scripts/og_cards.py knoxville    # one city's cards (+ home and cities)
+    python3 scripts/og_cards.py nashville    # one city's cards (+ home and cities)
 """
 import io, json, os, sys, textwrap, urllib.request
 from PIL import Image, ImageDraw, ImageFont

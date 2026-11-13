@@ -84,6 +84,21 @@ def photo_exists(slug):
         return False
 
 
+def blocked_area(state, lng, path=None):
+    """True when a city is inside an area the site does not cover (data/blocked-areas.json)."""
+    path = path or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "blocked-areas.json")
+    with open(path) as f:
+        areas = json.load(f).get("areas", [])
+    for a in areas:
+        if a["state"] != str(state or "").upper():
+            continue
+        if a.get("lng_east_of") is not None and float(lng) > a["lng_east_of"]:
+            return True
+        if a.get("lng_west_of") is not None and float(lng) < a["lng_west_of"]:
+            return True
+    return False
+
+
 def open_city():
     num = os.environ["ISSUE_NUMBER"]
     issue = json.loads(gh("issue", "view", num, "--json", "body,labels,state"))
@@ -103,6 +118,12 @@ def open_city():
         if not c:
             print("unknown slug", slug); sys.exit(1)
         name, state, lat, lng = c
+        if blocked_area(state, lng):
+            # data/blocked-areas.json: the site does not cover this area (the database refuses it too).
+            gh("issue", "comment", num, "--body",
+               f"@{OWNER} **{name}, {state}** is inside an area TripVibz does not cover, so it was not opened.")
+            gh("issue", "edit", num, "--remove-label", "approved")
+            sys.exit(0)
         city_id = conn.execute("select id from cities where slug = %s", (slug,)).fetchone()
         if not city_id:
             sort = conn.execute("select coalesce(max(sort), 0) + 1 from cities").fetchone()[0]

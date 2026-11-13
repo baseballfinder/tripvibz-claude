@@ -1,0 +1,15 @@
+{
+  "_note": "Areas TripVibz does not cover (James, 2026-11-13): no city page and no city request from here. A city is inside an area when its state matches and its longitude is on the stated side of the line; the lines are drawn generously on purpose. The database enforces the same numbers (trigger function public.tv_block_area, migration 20261113150000); tests/static.mjs fails if the two drift apart. The site itself never names these areas.",
+  "areas": [
+    {
+      "name": "East Tennessee and the Great Smoky Mountains",
+      "state": "TN",
+      "lng_east_of": -85.7
+    },
+    {
+      "name": "Western North Carolina and the Great Smoky Mountains",
+      "state": "NC",
+      "lng_west_of": -81.0
+    }
+  ]
+}

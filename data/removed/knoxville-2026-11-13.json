@@ -1,0 +1,494 @@
+{
+ "_note": "Knoxville was removed from TripVibz on 2026-11-13 (migration 20261113150000_remove_knoxville_asheville_block_area.sql). Rows kept here so the city could be restored. People's question votes and local checks are not kept.",
+ "city": {
+  "id": "42a5df3e-3251-4594-b658-a303df0f839f",
+  "name": "Knoxville",
+  "state": "TN",
+  "slug": "knoxville",
+  "lat": 35.9606,
+  "lng": -83.9207,
+  "blurb": "Big Orange Saturdays, Market Square, and the Smokies just down the road.",
+  "sort": 43,
+  "created_at": "2026-10-17T20:30:25.242026+00:00",
+  "photo": null
+ },
+ "editorial_intro": null,
+ "og_card": {
+  "prompt": "Neyland Stadium on game day: come for it, or stay away?"
+ },
+ "posts": [
+  {
+   "id": "67a0178a-8eab-4bfe-af30-34ab54ccff59",
+   "author_id": "4f73f813-6a47-4040-8a36-19da74d77267",
+   "title": "Neyland Stadium on game day: only if you have tickets. The history the Vol Navy and tailgates are like nothing else in the country. The best thing to do in\u2026",
+   "body": null,
+   "type": "take",
+   "place_id": "6647828c-70ce-4454-8450-076863838b29",
+   "ups": 0,
+   "downs": 0,
+   "score": 0,
+   "comment_count": 0,
+   "created_at": "2026-10-19T08:26:02.194684+00:00",
+   "city_id": "42a5df3e-3251-4594-b658-a303df0f839f",
+   "submitted_city": "Key West",
+   "submitted_region": "Florida",
+   "submitted_country": "US",
+   "city_match": false,
+   "status": "approved",
+   "moderated_at": null,
+   "moderated_by": null,
+   "moderation_note": null,
+   "months": null,
+   "place_label": "Neyland Stadium",
+   "author_verified": true,
+   "topic": null,
+   "question_id": "591798f3-c670-477d-b24e-5ef600d8cadf"
+  },
+  {
+   "id": "e07f9002-d53c-43a8-8cf6-598eb0a8f771",
+   "author_id": "4f73f813-6a47-4040-8a36-19da74d77267",
+   "title": "Market Square on a Saturday: worth it. Wonderful place to get dinner and drinks any time",
+   "body": null,
+   "type": "hidden_gem",
+   "place_id": "4636bffe-234c-48cf-8a77-8312477b9fb7",
+   "ups": 0,
+   "downs": 0,
+   "score": 0,
+   "comment_count": 0,
+   "created_at": "2026-10-17T22:08:41.099296+00:00",
+   "city_id": "42a5df3e-3251-4594-b658-a303df0f839f",
+   "submitted_city": "Key West",
+   "submitted_region": "Florida",
+   "submitted_country": "US",
+   "city_match": false,
+   "status": "approved",
+   "moderated_at": null,
+   "moderated_by": null,
+   "moderation_note": null,
+   "months": null,
+   "place_label": "Market Square",
+   "author_verified": true,
+   "topic": null,
+   "question_id": "7357db8b-107d-4f01-a671-203fc3e9fe5a"
+  },
+  {
+   "id": "02ca37da-6576-4efd-b574-d0bb6a8b8aeb",
+   "author_id": "4f73f813-6a47-4040-8a36-19da74d77267",
+   "title": "Old City at night: depends on the night. There are some good bars but it can get rowdy",
+   "body": null,
+   "type": "take",
+   "place_id": "39e3e7cf-64b0-4cd0-aba4-7d4c184a8c51",
+   "ups": 0,
+   "downs": 0,
+   "score": 0,
+   "comment_count": 0,
+   "created_at": "2026-10-17T22:09:10.99999+00:00",
+   "city_id": "42a5df3e-3251-4594-b658-a303df0f839f",
+   "submitted_city": "Key West",
+   "submitted_region": "Florida",
+   "submitted_country": "US",
+   "city_match": false,
+   "status": "approved",
+   "moderated_at": null,
+   "moderated_by": null,
+   "moderation_note": null,
+   "months": null,
+   "place_label": "Old City",
+   "author_verified": true,
+   "topic": null,
+   "question_id": "a7769bcc-79af-4f60-bb05-ac8f126d9660"
+  },
+  {
+   "id": "f7898aa2-7efa-4c6b-ab73-85dadf6544a7",
+   "author_id": "4f73f813-6a47-4040-8a36-19da74d77267",
+   "title": "UT home game weekend: only if you have tickets. Hotel rates get expensive",
+   "body": null,
+   "type": "take",
+   "place_id": null,
+   "ups": 0,
+   "downs": 0,
+   "score": 0,
+   "comment_count": 0,
+   "created_at": "2026-10-17T22:07:14.157949+00:00",
+   "city_id": "42a5df3e-3251-4594-b658-a303df0f839f",
+   "submitted_city": "Key West",
+   "submitted_region": "Florida",
+   "submitted_country": "US",
+   "city_match": false,
+   "status": "approved",
+   "moderated_at": null,
+   "moderated_by": null,
+   "moderation_note": null,
+   "months": null,
+   "place_label": "Whole city",
+   "author_verified": true,
+   "topic": null,
+   "question_id": "591798f3-c670-477d-b24e-5ef600d8cadf"
+  },
+  {
+   "id": "8ef3adb6-5691-4bce-8c67-93935d1fe69c",
+   "author_id": "4f73f813-6a47-4040-8a36-19da74d77267",
+   "title": "Visiting the Smokies: Gatlinburg or Pigeon Forge. Much easier to get to Cades Cove as traffic is usually pretty bad",
+   "body": null,
+   "type": "hidden_gem",
+   "place_id": null,
+   "ups": 0,
+   "downs": 0,
+   "score": 0,
+   "comment_count": 0,
+   "created_at": "2026-10-17T22:08:10.955838+00:00",
+   "city_id": "42a5df3e-3251-4594-b658-a303df0f839f",
+   "submitted_city": "Key West",
+   "submitted_region": "Florida",
+   "submitted_country": "US",
+   "city_match": false,
+   "status": "approved",
+   "moderated_at": null,
+   "moderated_by": null,
+   "moderation_note": null,
+   "months": null,
+   "place_label": "Getting to the Smokies",
+   "author_verified": true,
+   "topic": null,
+   "question_id": "19fd2eea-4822-47ad-a51a-371028feef56"
+  }
+ ],
+ "questions": [
+  {
+   "id": "591798f3-c670-477d-b24e-5ef600d8cadf",
+   "city_id": "42a5df3e-3251-4594-b658-a303df0f839f",
+   "prompt": "Neyland Stadium on game day: come for it, or stay away?",
+   "options": [
+    {
+     "id": "come",
+     "label": "Come for it"
+    },
+    {
+     "id": "away",
+     "label": "Stay away"
+    },
+    {
+     "id": "tickets",
+     "label": "Only if you have tickets"
+    }
+   ],
+   "place_label": "Neyland Stadium",
+   "sort": 1,
+   "active": true,
+   "created_at": "2026-10-17T20:30:25.242026+00:00"
+  },
+  {
+   "id": "19fd2eea-4822-47ad-a51a-371028feef56",
+   "city_id": "42a5df3e-3251-4594-b658-a303df0f839f",
+   "prompt": "Visiting the Smokies: stay in Knoxville, or closer to the park?",
+   "options": [
+    {
+     "id": "knox",
+     "label": "Knoxville"
+    },
+    {
+     "id": "gat",
+     "label": "Gatlinburg or Pigeon Forge"
+    },
+    {
+     "id": "town",
+     "label": "Townsend side"
+    }
+   ],
+   "place_label": "Getting to the Smokies",
+   "sort": 2,
+   "active": true,
+   "created_at": "2026-10-17T20:30:25.242026+00:00"
+  },
+  {
+   "id": "7357db8b-107d-4f01-a671-203fc3e9fe5a",
+   "city_id": "42a5df3e-3251-4594-b658-a303df0f839f",
+   "prompt": "Market Square on a Saturday: worth it, or skip it?",
+   "options": [
+    {
+     "id": "worth",
+     "label": "Worth it"
+    },
+    {
+     "id": "skip",
+     "label": "Skip it"
+    },
+    {
+     "id": "market",
+     "label": "Only for the farmers market"
+    }
+   ],
+   "place_label": "Market Square",
+   "sort": 3,
+   "active": true,
+   "created_at": "2026-10-17T20:30:25.242026+00:00"
+  },
+  {
+   "id": "a7769bcc-79af-4f60-bb05-ac8f126d9660",
+   "city_id": "42a5df3e-3251-4594-b658-a303df0f839f",
+   "prompt": "Old City at night: worth the trip downtown?",
+   "options": [
+    {
+     "id": "yes",
+     "label": "Worth it"
+    },
+    {
+     "id": "no",
+     "label": "Not worth it"
+    },
+    {
+     "id": "depends",
+     "label": "Depends on the night"
+    }
+   ],
+   "place_label": "Old City",
+   "sort": 4,
+   "active": true,
+   "created_at": "2026-10-17T20:30:25.242026+00:00"
+  },
+  {
+   "id": "c46a5fcf-2591-4c2f-bd7c-a9075389c335",
+   "city_id": "42a5df3e-3251-4594-b658-a303df0f839f",
+   "prompt": "Best time to visit Knoxville?",
+   "options": [
+    {
+     "id": "spring",
+     "label": "Spring"
+    },
+    {
+     "id": "summer",
+     "label": "Summer"
+    },
+    {
+     "id": "fall",
+     "label": "Fall"
+    },
+    {
+     "id": "winter",
+     "label": "Winter"
+    }
+   ],
+   "place_label": "Whole city",
+   "sort": 5,
+   "active": true,
+   "created_at": "2026-10-18T17:05:49.59732+00:00"
+  }
+ ],
+ "city_events": [
+  {
+   "id": "30b70648-3698-41c4-b74f-baa1f5d5cae8",
+   "city_id": "42a5df3e-3251-4594-b658-a303df0f839f",
+   "name": "UT home football Saturdays",
+   "blurb": "Neyland Stadium seats 101,915, and campus and downtown fill with tailgaters on home Saturdays from September to November. Plan parking and arrival times ahead.",
+   "kind": "sports",
+   "severity": "busy",
+   "start_month": 9,
+   "end_month": 11,
+   "author_id": null,
+   "ups": 0,
+   "created_at": "2026-10-21T06:31:36.092963+00:00",
+   "status": "approved",
+   "source": "https://www.visitknoxville.com/blog/post/guide-to-gameday",
+   "verified_at": "2026-10-22T18:50:38.89236+00:00",
+   "check_note": null
+  },
+  {
+   "id": "991a5399-1428-44ce-96b7-e8341567b7ca",
+   "city_id": "42a5df3e-3251-4594-b658-a303df0f839f",
+   "name": "Big Ears Festival",
+   "blurb": "Late March or early April. A four-day music festival spread across about two dozen downtown venues.",
+   "kind": "festival",
+   "severity": "busy",
+   "start_month": 3,
+   "end_month": 4,
+   "author_id": null,
+   "ups": 0,
+   "created_at": "2026-10-21T06:31:36.092963+00:00",
+   "status": "approved",
+   "source": "https://www.jambase.com/article/big-ears-festival-2027-lineup",
+   "verified_at": "2026-10-22T18:50:38.89236+00:00",
+   "check_note": null
+  },
+  {
+   "id": "bba6dafa-a012-44c3-9a79-7516efa7a8fb",
+   "city_id": "42a5df3e-3251-4594-b658-a303df0f839f",
+   "name": "Dogwood Arts",
+   "blurb": "April, when the dogwoods bloom along the city's marked dogwood trails. The Dogwood Arts Festival at World's Fair Park is usually late in the month.",
+   "kind": "festival",
+   "severity": "good",
+   "start_month": 4,
+   "end_month": 4,
+   "author_id": null,
+   "ups": 0,
+   "created_at": "2026-10-21T06:31:36.092963+00:00",
+   "status": "approved",
+   "source": "https://cityviewmag.com/new-trail-old-favorites-included-in-aprils-dogwood-arts-events/",
+   "verified_at": "2026-10-22T18:50:38.89236+00:00",
+   "check_note": null
+  },
+  {
+   "id": "d5a11771-a65b-4550-851f-aac04f4226fc",
+   "city_id": "42a5df3e-3251-4594-b658-a303df0f839f",
+   "name": "Fall color downtown",
+   "blurb": "Crisp weather and changing leaves around Krutch Park and Volunteer Landing. Pick a weekend without a home football game for an easier visit.",
+   "kind": "season",
+   "severity": "good",
+   "start_month": 10,
+   "end_month": 10,
+   "author_id": null,
+   "ups": 0,
+   "created_at": "2026-10-21T06:31:36.092963+00:00",
+   "status": "approved",
+   "source": "https://www.downtownknoxville.org/fall/",
+   "verified_at": "2026-10-22T18:50:38.89236+00:00",
+   "check_note": null
+  },
+  {
+   "id": "18cba361-ea7b-48e3-9b06-caf18568417f",
+   "city_id": "42a5df3e-3251-4594-b658-a303df0f839f",
+   "name": "Holidays on Ice",
+   "blurb": "The Market Square skating rink runs from late November to early January, closed Christmas Day.",
+   "kind": "holiday",
+   "severity": "good",
+   "start_month": 11,
+   "end_month": 1,
+   "author_id": null,
+   "ups": 0,
+   "created_at": "2026-10-21T06:31:36.092963+00:00",
+   "status": "approved",
+   "source": "https://knoxvilletn.gov/government/city_departments_offices/special_events/knoxvilles_holidays_on_ice",
+   "verified_at": "2026-10-22T18:50:38.89236+00:00",
+   "check_note": null
+  }
+ ],
+ "places": [
+  {
+   "id": "4636bffe-234c-48cf-8a77-8312477b9fb7",
+   "name": "Market Square",
+   "category": "plaza",
+   "neighborhood": "Downtown Knoxville",
+   "lat": 35.96561,
+   "lng": -83.91984,
+   "avg_rating": 0,
+   "review_count": 0,
+   "stay22_code": null,
+   "created_at": "2026-11-07T21:52:50.558121+00:00",
+   "city": null,
+   "city_id": "42a5df3e-3251-4594-b658-a303df0f839f",
+   "geom": "0101000020E61000005E6397A8DEFA54C06458C51B99FB4140",
+   "source": "tripvibz",
+   "catalog_id": null,
+   "address": null
+  },
+  {
+   "id": "6647828c-70ce-4454-8450-076863838b29",
+   "name": "Neyland Stadium",
+   "category": "stadium",
+   "neighborhood": "University of Tennessee",
+   "lat": 35.95499,
+   "lng": -83.92513,
+   "avg_rating": 0,
+   "review_count": 0,
+   "stay22_code": null,
+   "created_at": "2026-11-07T21:52:50.558121+00:00",
+   "city": null,
+   "city_id": "42a5df3e-3251-4594-b658-a303df0f839f",
+   "geom": "0101000020E61000001AA3755435FB54C0E700C11C3DFA4140",
+   "source": "tripvibz",
+   "catalog_id": null,
+   "address": null
+  },
+  {
+   "id": "39e3e7cf-64b0-4cd0-aba4-7d4c184a8c51",
+   "name": "Old City",
+   "category": "neighborhood",
+   "neighborhood": "Downtown Knoxville",
+   "lat": 35.97049,
+   "lng": -83.91847,
+   "avg_rating": 0,
+   "review_count": 0,
+   "stay22_code": null,
+   "created_at": "2026-11-07T21:52:50.558121+00:00",
+   "city": null,
+   "city_id": "42a5df3e-3251-4594-b658-a303df0f839f",
+   "geom": "0101000020E6100000DB166536C8FA54C02A8C2D0439FC4140",
+   "source": "tripvibz",
+   "catalog_id": null,
+   "address": null
+  }
+ ],
+ "restaurants": [
+  {
+   "id": "a0f346cf-edfe-4985-ad9f-14881c0d65aa",
+   "city_id": "42a5df3e-3251-4594-b658-a303df0f839f",
+   "name": "A Dopo Sourdough Pizza",
+   "name_key": "a dopo sourdough pizza",
+   "neighborhood": "Knoxville",
+   "created_by": "4f73f813-6a47-4040-8a36-19da74d77267",
+   "created_at": "2026-11-05T23:40:17.738171+00:00",
+   "hidden": false,
+   "merged_into": null,
+   "place_id": "f4f79abc-5da8-42e3-ade8-a03dc55d782c",
+   "address": "516 Williams St",
+   "phone": "+18653211297",
+   "website": "http://www.adopopizza.com/",
+   "lat": 35.9723104319417,
+   "lng": -83.9220553636551,
+   "source": "overture"
+  },
+  {
+   "id": "d5d77e1c-30f3-4e2e-a043-0b0b7ef70049",
+   "city_id": "42a5df3e-3251-4594-b658-a303df0f839f",
+   "name": "Stock & Barrel",
+   "name_key": "stock barrel",
+   "neighborhood": "Knoxville",
+   "created_by": "4f73f813-6a47-4040-8a36-19da74d77267",
+   "created_at": "2026-11-05T23:40:17.889586+00:00",
+   "hidden": false,
+   "merged_into": null,
+   "place_id": "b4ad9fef-119d-4992-8c60-96e4b1e76e9d",
+   "address": "35 Market Square",
+   "phone": "+18657662075",
+   "website": "http://www.thestockandbarrel.com",
+   "lat": 35.96570013,
+   "lng": -83.92015955,
+   "source": "overture"
+  },
+  {
+   "id": "b26ba026-f90d-4597-a5f6-5dcf7b1ee4a6",
+   "city_id": "42a5df3e-3251-4594-b658-a303df0f839f",
+   "name": "Soccer Taco",
+   "name_key": "soccer taco",
+   "neighborhood": "Knoxville",
+   "created_by": "4f73f813-6a47-4040-8a36-19da74d77267",
+   "created_at": "2026-11-05T23:40:17.984491+00:00",
+   "hidden": false,
+   "merged_into": null,
+   "place_id": "8c71814d-9177-4f13-842d-17fab2c93e6d",
+   "address": "9 Market Sq",
+   "phone": "+18655444471",
+   "website": "http://www.soccertaco.com/",
+   "lat": 35.96489344,
+   "lng": -83.91950077,
+   "source": "overture"
+  }
+ ],
+ "top3_picks": [
+  {
+   "restaurant_id": "a0f346cf-edfe-4985-ad9f-14881c0d65aa",
+   "rank": 1,
+   "why": "Fantastic Pizza"
+  },
+  {
+   "restaurant_id": "d5d77e1c-30f3-4e2e-a043-0b0b7ef70049",
+   "rank": 2,
+   "why": "Legendary Burgers, one of the best in the country"
+  },
+  {
+   "restaurant_id": "b26ba026-f90d-4597-a5f6-5dcf7b1ee4a6",
+   "rank": 3,
+   "why": "Just a Knoxville classic"
+  }
+ ],
+ "places_catalog_rows": 2961
+}
