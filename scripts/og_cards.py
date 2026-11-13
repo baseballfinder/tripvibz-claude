@@ -11,6 +11,8 @@ og:image at its card; functions/t/[id].js does the same for shared takes.
   <slug>-what-locals-do.jpg
   <slug>-add.jpg                   "A friend is visiting. Where do you take them?" (the post page)
   <slug>-take.jpg                  a shared take: "A <City> local says…" True / Nope
+  <slug>-email.jpg                 the lead question with no answer pills, for the top of a city email
+                                   (the email puts real answer buttons under it)
   home.jpg                         homepage
   cities.jpg                       the Cities page
 
@@ -145,6 +147,15 @@ def card_question(city, q, pb):
     return base
 
 
+def card_email(city, q, pb):
+    """The question card for the top of a city email. No answer pills: an email image is one link,
+    so pills drawn on it can't be tapped, and the email's own buttons sit right under the picture."""
+    base = photo_base(pb); d = ImageDraw.Draw(base)
+    kicker(d, f"SETTLE THIS FOR {city['name'].upper()}"); brand(base, d)
+    headline(d, q["prompt"], PAD + 100, sizes=(84, 78, 72, 66, 60, 54, 48))
+    return base
+
+
 def card_theme(city, slug, pb):
     title, sub = THEMES[slug]
     base = photo_base(pb); d = ImageDraw.Draw(base)
@@ -248,12 +259,13 @@ def main(only):
         mine = [q for q in qs if q["city_id"] == c["id"]]
         if mine:
             save(card_question(c, mine[0], pb), f"{c['slug']}.jpg")
+            save(card_email(c, mine[0], pb), f"{c['slug']}-email.jpg")
             meta[c["slug"]] = {"prompt": mine[0]["prompt"]}
         for t in THEMES:
             save(card_theme(c, t, pb), f"{c['slug']}-{t}.jpg")
         save(card_add(c, pb), f"{c['slug']}-add.jpg")
         save(card_take(c, pb), f"{c['slug']}-take.jpg")
-        print(f"  {c['slug']}: 6 cards")
+        print(f"  {c['slug']}: 7 cards")
     leads = [next((q["prompt"] for q in qs if q["city_id"] == c["id"]), None) for c in cities if c["slug"] in ("chicago", "seattle")]
     save(card_home(cities, photos, [l for l in leads if l]), "home.jpg")
     save(card_cities(cities, photos), "cities.jpg")

@@ -84,6 +84,24 @@ await test("Share cards: each city with questions has a 1200x630 card and og tag
   }
 });
 
+await test("Email cards: each city with questions has a 1200x630 card for the top of its email, and the card script draws no answer pills on it", async () => {
+  const withQ = new Set(qs.map(q => q.city_id));
+  for (const c of cities.filter(c => withQ.has(c.id))) {
+    const f = join("dist", "assets", "og", `${c.slug}-email.jpg`);
+    assert(await exists(f), `${c.slug}: email card missing (run python3 scripts/og_cards.py ${c.slug} and commit assets/og/)`);
+    const buf = await readFile(f);
+    let i = 2, w = 0, hgt = 0;
+    while (i < buf.length) { if (buf[i] !== 0xff) break; const mk = buf[i + 1], len = buf.readUInt16BE(i + 2);
+      if (mk >= 0xc0 && mk <= 0xc3) { hgt = buf.readUInt16BE(i + 5); w = buf.readUInt16BE(i + 7); break; } i += 2 + len; }
+    assert(w === 1200 && hgt === 630, `${c.slug}: email card is ${w}x${hgt}`);
+  }
+  // An email image is one link: pills drawn on it can't be tapped, so the email card must not have them.
+  const src = await readFile("scripts/og_cards.py", "utf8");
+  const fn = (src.match(/def card_email\([\s\S]*?\n\n\n/) || [""])[0];
+  assert(fn && /headline\(/.test(fn) && !/chips\(/.test(fn), "card_email should draw the question and no answer pills");
+  assert(/save\(card_email\(/.test(src), "the card script no longer writes <slug>-email.jpg");
+});
+
 await test("Share cards for every page type exist and are wired up", async () => {
   const want = [["index.html", "home.jpg"], ["cities/index.html", "cities.jpg"]];
   for (const c of cities) {
