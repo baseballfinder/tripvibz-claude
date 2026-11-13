@@ -25,17 +25,6 @@ def best_time(city, searches=None, tags=None, options=SEASONS):
 
 
 CITIES = {
-"asheville": [
-    q("Biltmore Estate: worth the ticket price?", ["Worth it", "Overpriced", "Only at Christmas"], "Biltmore Estate",
-      ["biltmore estate", "biltmore tickets"], ["biltmore", "biltmoreestate"]),
-    q("Blue Ridge Parkway in the fall: worth the traffic?", ["Worth it", "Go on a weekday", "Skip it"], "Blue Ridge Parkway",
-      ["blue ridge parkway", "blue ridge parkway fall colors"], ["blueridgeparkway"]),
-    q("River Arts District or downtown: where should visitors spend the afternoon?", ["River Arts District", "Downtown", "West Asheville"], "Whole city",
-      ["river arts district asheville", "downtown asheville"], ["riverartsdistrict", "downtownasheville"]),
-    q("Asheville breweries: do the South Slope crawl, or pick one good spot?", ["Do the crawl", "Pick one good spot", "Head out of town"], "South Slope",
-      ["asheville breweries", "best breweries in asheville"], ["ashevillebeer", "ashevillebreweries"]),
-    best_time("Asheville", tags=["asheville", "visitasheville"]),
-],
 "austin": [
     q("SXSW 2027: come for it, or stay away?", ["Come for it", "Stay away", "Only the free shows"], "Whole city",
       ["sxsw 2027", "sxsw"], ["sxsw", "sxsw2027"]),
@@ -135,17 +124,6 @@ CITIES = {
     q("Mallory Square sunset: worth the crowd?", ["Worth it", "Skip it", "Watch from a quieter spot"], "Mallory Square",
       ["mallory square", "mallory square sunset"], ["mallorysquare"]),
     best_time("Key West", tags=["keywest", "keywestflorida"]),
-],
-"knoxville": [
-    q("Neyland Stadium on game day: come for it, or stay away?", ["Come for it", "Stay away", "Only if you have tickets"], "Neyland Stadium",
-      ["neyland stadium", "tennessee football game day"], ["neylandstadium", "vols"]),
-    q("Visiting the Smokies: stay in Knoxville, or closer to the park?", ["Knoxville", "Gatlinburg or Pigeon Forge", "Townsend side"], "Getting to the Smokies",
-      ["knoxville to gatlinburg", "where to stay smoky mountains"], ["smokymountains", "gatlinburg"]),
-    q("Market Square on a Saturday: worth it, or skip it?", ["Worth it", "Skip it", "Only for the farmers market"], "Market Square",
-      ["market square knoxville"], ["marketsquareknoxville"]),
-    q("Old City at night: worth the trip downtown?", ["Worth it", "Not worth it", "Depends on the night"], "Old City",
-      ["old city knoxville"], ["oldcityknoxville"]),
-    best_time("Knoxville", tags=["knoxville", "visitknoxville"]),
 ],
 "las-vegas": [
     q("Red Rock Canyon: worth leaving the Strip for?", ["Worth it", "Skip it", "Only in cooler months"], "Red Rock Canyon",

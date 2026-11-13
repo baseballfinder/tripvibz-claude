@@ -24,6 +24,7 @@ import { join, extname, dirname } from "node:path";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
+import { blockedArea } from "./lib/blocked-areas.mjs";
 
 // Dynamic so a missing dependency produces an instruction rather than a
 // module-resolution stack trace.
@@ -1129,9 +1130,16 @@ const content = await loadContent();
 // the redirects so old links and search results land somewhere useful.
 let REMOVED = {};
 try { REMOVED = Object.fromEntries(Object.entries(JSON.parse(await readFile("data/removed-cities.json", "utf8"))).filter(([k]) => !k.startsWith("_"))); } catch {}
+// Areas the site does not cover (data/blocked-areas.json). The database refuses
+// a city there; this keeps one from being published even if a row slips in.
+let BLOCKED_AREAS = [];
+try { BLOCKED_AREAS = JSON.parse(await readFile("data/blocked-areas.json", "utf8")).areas || []; } catch {}
+const offSite = c => REMOVED[c.slug] || blockedArea(c, BLOCKED_AREAS);
+const blockedCount = content.cities.filter(c => !REMOVED[c.slug] && blockedArea(c, BLOCKED_AREAS)).length;
+if (blockedCount) console.log(`  (${blockedCount} ${blockedCount === 1 ? "city" : "cities"} inside an area the site does not cover left out)`);
 const removedCount = content.cities.filter(c => REMOVED[c.slug]).length;
-const cities = content.cities.filter(c => !REMOVED[c.slug]);
-const removedIds = new Set(content.cities.filter(c => REMOVED[c.slug]).map(c => c.id));
+const cities = content.cities.filter(c => !offSite(c));
+const removedIds = new Set(content.cities.filter(offSite).map(c => c.id));
 const posts = content.posts.filter(p => !removedIds.has(p.city_id)), events = content.events.filter(e => !removedIds.has(e.city_id));
 const { eats = [], picks = [], localChecks = [], pickers = [], postVibes = [], restVibes = [], places = [] } = content;
 if (removedCount) console.log(`  (${removedCount} removed ${removedCount === 1 ? "city" : "cities"} left out: ${Object.keys(REMOVED).join(", ")})`);

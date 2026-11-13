@@ -1,7 +1,4 @@
 {
-  "asheville": {
-    "prompt": "Biltmore Estate: worth the ticket price?"
-  },
   "austin": {
     "prompt": "SXSW 2027: come for it, or stay away?"
   },
@@ -28,9 +25,6 @@
   },
   "key-west": {
     "prompt": "Fantasy Fest 2026: come for it, or stay away?"
-  },
-  "knoxville": {
-    "prompt": "Neyland Stadium on game day: come for it, or stay away?"
   },
   "las-vegas": {
     "prompt": "Red Rock Canyon: worth leaving the Strip for?"

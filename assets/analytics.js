@@ -68,7 +68,7 @@
   // touches, scrolls or types, or WAIT_MS after the page has loaded, whichever
   // comes first. Loaded straight after "load" (Oct 2026) they still ran on a
   // phone while the page was settling: two Google tag tasks of 190 + 273 ms
-  // and an 82 ms Clarity task (PageSpeed, /knoxville/, Nov 12 2026), which was
+  // and an 82 ms Clarity task (PageSpeed, a city page, Nov 12 2026), which was
   // nearly all of the page's blocking time. Clarity follows the Google tag by
   // GAP_MS so the two never run back to back.
   // Trade-off: a visit that ends within WAIT_MS of loading with no touch,

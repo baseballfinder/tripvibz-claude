@@ -1,6 +1,6 @@
 /**
  * GET /api/near: the visitor's rough position, so the Cities page can offer
- * "Near you: Knoxville" without asking for location permission.
+ * "Near you: Nashville" without asking for location permission.
  *
  * Cloudflare already attaches a rough location to every request (the city
  * the visitor's internet provider routes through). This returns it rounded

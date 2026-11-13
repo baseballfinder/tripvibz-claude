@@ -643,16 +643,16 @@ await test("City search (assets/search.js): states by name, nicknames, Saint/For
     { slug: "miami", name: "Miami", state: "FL", take_count: 4, lat: 25.76, lng: -80.19 },
     { slug: "miami-beach", name: "Miami Beach", state: "FL", take_count: 0 },
     { slug: "st-augustine", name: "St. Augustine", state: "FL", take_count: 0 },
-    { slug: "asheville", name: "Asheville", state: "NC", take_count: 0, lat: 35.6, lng: -82.55 },
+    { slug: "charleston", name: "Charleston", state: "SC", take_count: 0, lat: 32.78, lng: -79.93 },
     { slug: "nashville", name: "Nashville", state: "TN", take_count: 0, lat: 36.16, lng: -86.78 },
-    { slug: "knoxville", name: "Knoxville", state: "TN", take_count: 5, lat: 35.96, lng: -83.92 },
+    { slug: "memphis", name: "Memphis", state: "TN", take_count: 5, lat: 35.15, lng: -90.05 },
     { slug: "new-york", name: "New York", state: "NY", take_count: 0 },
-    { slug: "savannah", name: "Savannah", state: "GA", take_count: 0 }
+    { slug: "savannah", name: "Savannah", state: "GA", take_count: 0, lat: 32.08, lng: -81.09 }
   ];
   const R = [{ slug: "philadelphia", name: "Philadelphia", state: "PA" }, { slug: "tulsa", name: "Tulsa", state: "OK" }];
   const first = q => { const r = S.search(q, C, R).results[0]; return r && r.item.slug; };
   for (const [q, want] of [["florida", "fort-lauderdale"], ["FL", "fort-lauderdale"], ["saint augustine", "st-augustine"], ["st augustine", "st-augustine"],
-      ["St. Augustine", "st-augustine"], ["ft lauderdale", "fort-lauderdale"], ["nyc", "new-york"], ["ashville", "asheville"], ["savanah", "savannah"],
+      ["St. Augustine", "st-augustine"], ["ft lauderdale", "fort-lauderdale"], ["nyc", "new-york"], ["charlston", "charleston"], ["savanah", "savannah"],
       ["nashvile", "nashville"], ["philly", "philadelphia"], ["tuls", "tulsa"], ["miami", "miami"]])
     assert(first(q) === want, `"${q}" -> ${first(q)}, want ${want}`);
   const fl = S.search("Florida", C, R);
@@ -660,12 +660,12 @@ await test("City search (assets/search.js): states by name, nicknames, Saint/For
   assert(fl.results[0].item.slug === "fort-lauderdale" && fl.results[1].item.slug === "miami", "within a state, most takes first");
   assert(S.search("miami", C, R).results.map(r => r.item.slug).join() === "miami,miami-beach", "exact name before longer names");
   const tn = S.search("Tennessee", C, R).results.map(r => r.item.slug).join();
-  assert(tn === "knoxville,nashville", `state results by takes: ${tn}`);
+  assert(tn === "memphis,nashville", `state results by takes: ${tn}`);
   assert(!S.search("xyzzy", C, R).results.length && !S.search("", C, R).results.length, "no match and empty query return nothing");
   assert(S.search("ny", C, R).results.length <= 2, "two letters: no typo guessing");
   assert(S.search("phil", C, R).results.every(r => r.kind === "request"), "cities not open yet come back as requests");
-  const near = S.nearest(36.0, -83.9, C, 150, 2).map(x => x.item.slug);
-  assert(near[0] === "knoxville" && near[1] === "asheville", `nearest: ${near}`);
+  const near = S.nearest(32.1, -81.1, C, 150, 2).map(x => x.item.slug);
+  assert(near[0] === "savannah" && near[1] === "charleston", `nearest: ${near}`);
   assert(S.stateCounts(C)[0].code === "FL" && S.stateCounts(C)[0].count === 4, "state quick picks: most cities first");
   // /api/near: rounded, per visitor, nothing else.
   const near_ = await import("../functions/api/near.js");
@@ -714,8 +714,8 @@ await test("Guide tab (assets/guide.js): take spots grouped and ranked, top 3 re
   assert(top.length === 3 && top.map(e => e.row.restaurant_id).join() === "r1,r2,r3", "the top 3, in the Eat tab's order");
   assert(top[0].people === 3 && top[0].verifiedPeople === 1 && top[1].people === 2 && top[2].people === 1, "people counted once each, verified counted");
   assert(top[0].reviews.length === 2 && top[0].reviews[0].by === "Cy L." && top[0].reviews[0].verified, "blank reasons skipped, verified locals' reviews first");
-  const html = G.html({ name: "Knoxville", slug: "knoxville" }, sp, top, { pickers: 3, hotelsNear: n => "https://www.stay22.com/allez/roam?x=" + encodeURIComponent(n), stayHtml: '<section class="s22">hotels</section>' });
-  for (const want of ["Guide to Knoxville", "Picked by 3 people · 1 verified ✓", "Picked by 2 people", "Picked by 1 person", "“Best crust in town”", "Spots in the takes", "2 takes", "data-guide-map", "OpenStreetMap", '<section class="s22">hotels</section>', 'href="/t/t2"', "Hotels near", "No reviews yet"])
+  const html = G.html({ name: "Nashville", slug: "nashville" }, sp, top, { pickers: 3, hotelsNear: n => "https://www.stay22.com/allez/roam?x=" + encodeURIComponent(n), stayHtml: '<section class="s22">hotels</section>' });
+  for (const want of ["Guide to Nashville", "Picked by 3 people · 1 verified ✓", "Picked by 2 people", "Picked by 1 person", "“Best crust in town”", "Spots in the takes", "2 takes", "data-guide-map", "OpenStreetMap", '<section class="s22">hotels</section>', 'href="/t/t2"', "Hotels near", "No reviews yet"])
     assert(html.includes(want), `Guide markup is missing ${want}`);
   assert(!html.toLowerCase().includes("<script") && !html.includes("<b>at night") && html.includes("&lt;script&gt;"), "names, reviews and titles are escaped");
   assert(html.indexOf("Top restaurants") < html.indexOf("Spots in the takes") && html.indexOf("Spots in the takes") < html.indexOf('class="s22"'), "order: map, restaurants, spots, hotels");
@@ -728,7 +728,7 @@ await test("Guide tab (assets/guide.js): take spots grouped and ranked, top 3 re
   assert(/^\d+\.\d+\.\d+$/.test(pkg.dependencies.leaflet) && G.MAP_JS === `/assets/leaflet-${pkg.dependencies.leaflet}.js`, "Leaflet is pinned to an exact version and guide.js loads that one");
   await stat(join("dist", G.MAP_JS)); await stat(join("dist", G.MAP_CSS));
   assert(!/sourceMappingURL/.test(await readFile(join("dist", G.MAP_JS), "utf8")), "the emitted map script points at no source map");
-  const city = await readFile("dist/knoxville/index.html", "utf8");
+  const city = await readFile("dist/fort-lauderdale/index.html", "utf8");
   assert(!city.includes(G.MAP_JS) && !city.includes(G.MAP_CSS) && city.includes('id="tab-guide"') && !city.includes('id="tab-stay"') && city.includes('id="tv-guide"'), "city pages: Guide tab pre-rendered, no Stay tab, map library not loaded with the page");
   assert(/data-guide-src="\/assets\/guide\.js\?v=[0-9a-f]{10}"/.test(city) && !/<script[^>]*src="\/assets\/guide\.js/.test(city), "guide.js loads on demand, from a versioned address (a changed file must reach returning visitors)");
   const cityJs = await readFile("assets/city.js", "utf8");
@@ -829,6 +829,48 @@ await test("Python tools compile; workflows parse", async () => {
 });
 
 for (const r of results) console.log(r.join("  "));
+await test("Removed cities and blocked areas: Knoxville and Asheville are gone and redirect, no city inside a blocked area is published, and the database, build and robot share one rule", async () => {
+  const { blockedArea } = await import("../lib/blocked-areas.mjs");
+  const areas = JSON.parse(await readFile("data/blocked-areas.json", "utf8")).areas;
+  const B = (state, lng) => !!blockedArea({ state, lng }, areas);
+  // Inside: Knoxville, Chattanooga, Johnson City, Gatlinburg; Asheville, Boone, Cherokee. Outside: Nashville, Memphis, Cookeville's neighbours to the west, Charlotte, Raleigh.
+  for (const [st, lng] of [["TN", -83.92], ["TN", -85.31], ["TN", -82.35], ["TN", -83.51], ["NC", -82.55], ["NC", -81.67], ["NC", -83.31], ["tn", -83.92]])
+    assert(B(st, lng), `${st} ${lng} should be blocked`);
+  for (const [st, lng] of [["TN", -86.78], ["TN", -90.05], ["NC", -80.84], ["NC", -78.64], ["GA", -83.9], ["SC", -82.4], ["VA", -82.2]])
+    assert(!B(st, lng), `${st} ${lng} should be allowed`);
+  assert(blockedArea({ state: "TN" }, areas) === null, "a city without coordinates is not guessed at");
+  // The database trigger uses the same lines as the file.
+  const mig = await readFile("supabase/migrations/20261113150000_remove_knoxville_asheville_block_area.sql", "utf8");
+  const tn = areas.find(a => a.state === "TN"), nc = areas.find(a => a.state === "NC");
+  assert(mig.includes(`upper(new.state) = 'TN' and new.lng > ${tn.lng_east_of}`) && mig.includes(`upper(new.state) = 'NC' and new.lng < ${nc.lng_west_of.toFixed(1)}`), "the trigger and data/blocked-areas.json disagree");
+  assert(/create trigger trg_cities_block_area before insert or update[^;]*on public\.cities/.test(mig) && /create trigger trg_city_candidates_block_area before insert or update[^;]*on public\.city_candidates/.test(mig), "both tables need the trigger");
+  assert(/revoke execute on function public\.tv_block_area\(\) from public, anon, authenticated/.test(mig), "the trigger function must not be callable through the API");
+  // The robot reads the same file.
+  const bot = await readFile("scripts/city_requests_bot.py", "utf8");
+  assert(/blocked-areas\.json/.test(bot) && /if blocked_area\(state, lng\):/.test(bot), "the city-request robot must refuse a blocked area before opening a city");
+  const py = execFileSync("python3", ["-c", "import sys, importlib.util as u\nsys.modules['psycopg'] = type(sys)('psycopg')\ns = u.spec_from_file_location('b', 'scripts/city_requests_bot.py'); m = u.module_from_spec(s); s.loader.exec_module(m)\nprint(m.blocked_area('TN', -83.92), m.blocked_area('NC', -82.55), m.blocked_area('TN', -86.78), m.blocked_area('NC', -80.84))"], { encoding: "utf8" }).trim();
+  assert(py === "True True False False", `robot rule: ${py}`);
+  // The built site: both cities gone, their old addresses redirect, nothing published or offered from the area.
+  const removed = JSON.parse(await readFile("data/removed-cities.json", "utf8"));
+  const redirects = await readFile("dist/_redirects", "utf8"), sitemap = await readFile("dist/sitemap.xml", "utf8");
+  for (const slug of ["knoxville", "asheville"]) {
+    assert(removed[slug] === "/cities/", `${slug} should be on the removed list`);
+    assert(!(await exists(`dist/${slug}`)), `${slug} is still published`);
+    assert(redirects.includes(`/${slug}  /cities/  301`) && redirects.includes(`/${slug}/*  /cities/  301`), `${slug} has no redirect`);
+    assert(!sitemap.includes(`/${slug}/`), `${slug} is still in the sitemap`);
+    assert(!(await exists(`assets/og/${slug}.jpg`)), `${slug} share image should be deleted`);
+    assert(await exists(`data/removed/${slug}-2026-11-13.json`), `${slug} backup missing`);
+  }
+  const live = await api("cities?select=slug,state,lng");
+  for (const c of live.filter(c => blockedArea(c, areas))) assert(!(await exists(`dist/${c.slug}`)), `${c.slug} is inside a blocked area and was published`);
+  const home = await readFile("dist/index.html", "utf8"), list = await readFile("dist/cities/index.html", "utf8");
+  for (const [name, html] of [["home", home], ["cities", list]]) assert(!/Knoxville|Asheville/.test(html), `${name} page still names a removed city`);
+  for (const f of ["assets/search.js", "scripts/questions/spec.py", "scripts/questions/intent.py", "data/climate/normals.json", "data/editorial/intros.json", "assets/og/cards.json"])
+    assert(!/knoxville|asheville/i.test(await readFile(f, "utf8")), `${f} still lists a removed city`);
+  const cand = await api("city_request_counts?select=slug,state&state=in.(TN,NC)");
+  assert(Array.isArray(cand), "could not read the request list");
+});
+
 const failed = results.filter(r => r[0] === "FAIL");
 console.log(`\n${results.length - failed.length}/${results.length} passed`);
 process.exit(failed.length ? 1 : 0);

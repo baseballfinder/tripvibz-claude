@@ -188,15 +188,15 @@ await test("Cities page: grid, search, request-a-city", async () => {
 });
 
 await test("Cities page search: 16px box, states and nicknames, typos, suggestions with Enter, ask from the list, quick picks (near you, recent, states)", async () => {
-  // "Near you" reads functions/api/near.js; the local server has no Functions, so answer it here (Knoxville).
-  await page.route("**/api/near", r => r.fulfill({ json: { lat: 36.0, lng: -83.9 } }));
+  // "Near you" reads functions/api/near.js; the local server has no Functions, so answer it here (Nashville).
+  await page.route("**/api/near", r => r.fulfill({ json: { lat: 36.1, lng: -86.8 } }));
   await page.addInitScript(() => { try { if (!sessionStorage.getItem("seeded")) { sessionStorage.setItem("seeded", "1"); localStorage.setItem("tv_recent_cities", JSON.stringify(["miami"])); } } catch (e) {} });
   await go("/cities/");
   await page.waitForTimeout(600);
   assert(await page.$eval("#search", e => parseFloat(getComputedStyle(e).fontSize)) >= 16, "search text under 16px makes iPhones zoom in");
   assert(await page.getAttribute("#search", "role") === "combobox" && await page.getAttribute("#search", "enterkeyhint") === "go", "search box should be a combobox with a Go key");
   const chips = (await page.textContent("#quick")).replace(/\s+/g, " ");
-  assert(/Near you: Knoxville/.test(chips) && /Miami/.test(chips) && /Florida \d+/.test(chips), `quick picks: ${chips}`);
+  assert(/Near you: Nashville/.test(chips) && /Miami/.test(chips) && /Florida \d+/.test(chips), `quick picks: ${chips}`);
   // Every quick pick fits inside the row (they wrap instead of running off the edge), on a phone and on a laptop.
   for (const width of [390, 1100]) {
     await page.setViewportSize({ width, height: 900 }); await page.waitForTimeout(150);
@@ -212,7 +212,7 @@ await test("Cities page search: 16px box, states and nicknames, typos, suggestio
   assert(await page.locator("#live-grid .city-card, #soon-grid .city-card").count() === fl, "grid should show only Florida cities");
   assert(await page.getAttribute('#quick [data-state="Florida"]', "aria-pressed") === "true", "Florida chip should show as on");
   // Nicknames, Saint/St. and typos.
-  for (const [q, name] of [["nyc", "New York"], ["saint augustine", "St. Augustine"], ["ashville", "Asheville"], ["savanah", "Savannah"]]) {
+  for (const [q, name] of [["nyc", "New York"], ["saint augustine", "St. Augustine"], ["charlston", "Charleston"], ["savanah", "Savannah"]]) {
     await page.fill("#search", q); await page.waitForTimeout(250);
     assert((await page.textContent("#sugg li:first-child")).includes(name), `"${q}" should suggest ${name} first, got: ${await page.textContent("#sugg li:first-child")}`);
   }
@@ -224,18 +224,18 @@ await test("Cities page search: 16px box, states and nicknames, typos, suggestio
   assert(writes.some(w => w.table === "city_requests" && w.body.city_slug === "philadelphia"), "asking from the list did not send a request");
   assert(await page.locator('#sugg [data-ask="philadelphia"][disabled]').count() === 1, "the list should switch to Asked");
   // Enter opens the top suggestion; the clear button empties the box.
-  await page.fill("#search", "ashville"); await page.waitForTimeout(250);
+  await page.fill("#search", "charlston"); await page.waitForTimeout(250);
   await page.click("#sclear"); assert((await page.inputValue("#search")) === "" && await page.locator("#sugg[hidden]").count() === 1, "clear button");
-  await page.fill("#search", "ashville"); await page.waitForTimeout(250);
-  await Promise.all([page.waitForURL(/\/asheville\/$/, { timeout: 8000 }), page.keyboard.press("Enter")]);
+  await page.fill("#search", "charlston"); await page.waitForTimeout(250);
+  await Promise.all([page.waitForURL(/\/charleston\/$/, { timeout: 8000 }), page.keyboard.press("Enter")]);
   // Opening a city page remembers it for the quick picks.
-  await page.waitForFunction(() => (localStorage.getItem("tv_recent_cities") || "").includes("asheville"), null, { timeout: 8000 }).catch(() => {});
+  await page.waitForFunction(() => (localStorage.getItem("tv_recent_cities") || "").includes("charleston"), null, { timeout: 8000 }).catch(() => {});
   const rec = await page.evaluate(() => JSON.parse(localStorage.getItem("tv_recent_cities") || "[]"));
-  assert(rec[0] === "asheville", `recently viewed not recorded: ${JSON.stringify(rec)}`);
+  assert(rec[0] === "charleston", `recently viewed not recorded: ${JSON.stringify(rec)}`);
   await page.unroute("**/api/near");
 });
 
-for (const slug of ["nashville", "knoxville", "miami"]) {
+for (const slug of ["nashville", "fort-lauderdale", "miami"]) {
   await test(`City feed (${slug}): hero photo, lead question, sections, no old add button`, async () => {
     await go(`/${slug}/`);
     assert(/^Know .+\?$/.test((await page.textContent("h1")).trim()), "headline should read \"Know <City>?\"");
@@ -414,7 +414,7 @@ await test("Add page: ?kind= from a topic page puts matching questions first; su
 });
 
 await test("Vibes: a custom take (admin reply link) offers up to two vibes (none on warnings), saved with the take; a take card takes a vibe in one tap", async () => {
-  await go("/knoxville/add/?kind=hidden_gem&text=" + encodeURIComponent("TEST take your parents to the Sunsphere at golden hour, then dinner in Market Square"));
+  await go("/fort-lauderdale/add/?kind=hidden_gem&text=" + encodeURIComponent("TEST take your parents to the Riverwalk at golden hour, then dinner on Las Olas"));
   assert(await page.locator('[data-kind="hidden_gem"][aria-pressed="true"]').count() === 1, "'Do this' should be the default kind");
   assert(await page.locator("#vibe-sect").count() === 1, "vibe picker missing on a 'Do this' take");
   await page.click('[data-pick-vibe="t:date-night"]');
@@ -435,7 +435,7 @@ await test("Vibes: a custom take (admin reply link) offers up to two vibes (none
   const rows = Array.isArray(vt.body) ? vt.body : [vt.body];
   assert(rows.length === 2 && rows.every(r => r.post_id && !r.restaurant_id && !r.city_id) && rows.map(r => r.vibe).sort().join() === "date-night,the-parents", "wrong vibe rows: " + JSON.stringify(rows));
 
-  await go("/knoxville/");
+  await go("/fort-lauderdale/");
   const card = page.locator('.take:has([data-vibe-more])').first();
   assert(await card.count() === 1, "no vibe button on a 'Do this' take card");
   assert(await page.locator('.take:has(.tk-kind.k-dont) [data-vibe-more]').count() === 0, "a 'Don't do this' card offered a vibe");
@@ -487,11 +487,11 @@ await test("City page: When-to-go strip links to the month-by-month calendar", a
 
 await test("Where is this? (custom take via an admin reply link): search spots and restaurants, pick one, and the take is pinned to it (catalogue spots copied in server-side)", async () => {
   await page.route("**/rest/v1/rpc/search_take_places", r => r.fulfill({ json: [
-    { ref: "p:a0000000-0000-0000-0000-000000000001", name: "Market Square", kind: "spot", category: "plaza", detail: "Downtown Knoxville", lat: 35.9656, lng: -83.9198, takes: 1 },
-    { ref: "c:ov-msfm", name: "Market Square Farmers Market", kind: "spot", category: "farmers_market", detail: "60 Market Sq", lat: 35.965, lng: -83.9195, takes: 0 },
-    { ref: "c:ov-mkt", name: "Market House Restaurant", kind: "eat", category: "restaurant", detail: "33 Market Sq", lat: 35.9658, lng: -83.9195, takes: 0 }
+    { ref: "p:a0000000-0000-0000-0000-000000000001", name: "Market Square", kind: "spot", category: "plaza", detail: "Downtown Fort Lauderdale", lat: 26.1193, lng: -80.1325, takes: 1 },
+    { ref: "c:ov-msfm", name: "Market Square Farmers Market", kind: "spot", category: "farmers_market", detail: "60 Market Sq", lat: 26.1190, lng: -80.1320, takes: 0 },
+    { ref: "c:ov-mkt", name: "Market House Restaurant", kind: "eat", category: "restaurant", detail: "33 Market Sq", lat: 26.1195, lng: -80.1322, takes: 0 }
   ] }));
-  await go("/knoxville/add/?kind=hidden_gem&text=" + encodeURIComponent("TEST the farmers market on Saturday mornings is the best hour in town"));
+  await go("/fort-lauderdale/add/?kind=hidden_gem&text=" + encodeURIComponent("TEST the farmers market on Saturday mornings is the best hour in town"));
   assert(await page.locator("#take").count() === 1 && await page.locator("#qlist").count() === 0, "a reply link opens the composer, not the questions");
   assert(await page.$eval("#place-q", e => parseFloat(getComputedStyle(e).fontSize)) >= 16, "place search under 16px makes iPhones zoom in");
   await page.fill("#place-q", "market"); await page.waitForTimeout(500);
@@ -507,7 +507,7 @@ await test("Where is this? (custom take via an admin reply link): search spots a
   assert(copy && copy.body.p_place === "ov-msfm", `the catalogue spot should be copied in server-side: ${JSON.stringify(mine)}`);
   assert(take && take.body.place_id === FAKE_SPOT_ID && take.body.place_label === "Market Square Farmers Market", `take not pinned: ${JSON.stringify(take && take.body)}`);
   // A spot TripVibz already has needs no copy: its id goes straight on the take; "Change" clears it.
-  await go("/knoxville/add/?kind=hidden_gem&text=" + encodeURIComponent("TEST Market Square at lunch on a weekday is calm and easy"));
+  await go("/fort-lauderdale/add/?kind=hidden_gem&text=" + encodeURIComponent("TEST Market Square at lunch on a weekday is calm and easy"));
   await page.fill("#place-q", "market"); await page.waitForTimeout(500);
   await page.click('#pl-sugg [data-sugg="0"]');
   await page.click("#pl-change");
@@ -523,7 +523,7 @@ await test("Where is this? (custom take via an admin reply link): search spots a
 
 await test("Guide tab (replaces Stay): map of take spots and top restaurants loads only when opened, top 3 with how many people picked each and their reviews, spots with their takes, hotels last; old #stay links land on it; the lists stand if the map fails", async () => {
   // The pins (posts.place_id) arrive with migration 20261107170000; answer as a migrated database would, and keep map tiles local.
-  const SPOTS = { "Market Square": ["a0000000-0000-0000-0000-000000000001", 35.96561, -83.91984], "Neyland Stadium": ["a0000000-0000-0000-0000-000000000002", 35.95499, -83.92513], "Old City": ["a0000000-0000-0000-0000-000000000003", 35.97049, -83.91847] };
+  const SPOTS = { "Beaches": ["a0000000-0000-0000-0000-000000000001", 26.14064, -80.10198], "Las Olas Boulevard": ["a0000000-0000-0000-0000-000000000002", 26.11938, -80.13250] };
   const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=", "base64");
   let tiles = 0, mapJs = 0;
   await page.route("**/rest/v1/posts?*", async r => {
@@ -536,7 +536,7 @@ await test("Guide tab (replaces Stay): map of take spots and top restaurants loa
   const countMap = q => { if (q.url().includes("/assets/leaflet-")) mapJs++; if (q.url().includes("/assets/guide.js")) guideJs++; };
   page.on("request", countMap);
   try {
-  await go("/knoxville/");
+  await go("/fort-lauderdale/");
   assert(await page.locator('.tabs [data-tab="guide"]').count() === 1 && await page.locator('[data-tab="stay"]').count() === 0, "Guide tab should replace Stay");
   assert(mapJs === 0 && tiles === 0 && guideJs === 0, "the Guide script, map library and tiles must not load until the Guide is opened");
   await page.click('[data-tab="guide"]'); await page.waitForTimeout(1500);
@@ -544,15 +544,15 @@ await test("Guide tab (replaces Stay): map of take spots and top restaurants loa
   assert(mapJs > 0 && tiles > 0 && await page.locator("#tv-guide .leaflet-container").count() === 1, `map didn't load (script ${mapJs}, tiles ${tiles})`);
   const pins = { eat: await page.locator("#tv-guide .g-pin.eat").count(), spot: await page.locator("#tv-guide .g-pin.spot").count() };
   const eats = await page.locator("#tv-guide .g-eat").count();
-  assert(pins.spot === 3 && pins.eat === eats && eats <= 3, `pins: ${JSON.stringify(pins)}, restaurants listed: ${eats}`);
+  assert(pins.spot === 2 && pins.eat === eats && eats <= 3, `pins: ${JSON.stringify(pins)}, restaurants listed: ${eats}`);
   if (eats) {
     assert(/Picked by \d+ (person|people)/.test(await page.textContent("#tv-guide .g-eat .g-count")), "each restaurant should say how many people picked it");
     const reviews = await page.locator("#tv-guide .g-eat .g-reviews li").count();
-    const why = await api(`top3_picks?select=why&city_id=eq.${cities.find(c => c.slug === "knoxville").id}&why=not.is.null`);
+    const why = await api(`top3_picks?select=why&city_id=eq.${cities.find(c => c.slug === "fort-lauderdale").id}&why=not.is.null`);
     assert(reviews >= Math.min(1, why.length), "people's reviews should show under each restaurant");
   }
   const spotNames = await page.locator("#tv-guide .g-spot .g-name").allTextContents();
-  assert(spotNames.length === 3 && spotNames.includes("Neyland Stadium") && await page.locator('#tv-guide .g-spot .g-takes a[href^="/t/"]').count() >= 3, `spots: ${spotNames}`);
+  assert(spotNames.length === 2 && spotNames.includes("Las Olas Boulevard") && await page.locator('#tv-guide .g-spot .g-takes a[href^="/t/"]').count() >= 2, `spots: ${spotNames}`);
   assert(await page.locator("#tv-guide .s22").count() === 1, "hotels (Stay22) should close the Guide");
   await page.locator("#tv-guide .g-pin.spot").first().click({ force: true }); await page.waitForTimeout(400);
   assert(await page.locator(".leaflet-popup-content b").count() === 1, "tapping a pin should open its card");
@@ -560,10 +560,10 @@ await test("Guide tab (replaces Stay): map of take spots and top restaurants loa
   // Old #stay links land on the Guide; if the map can't load, the lists still say it all.
   await page.route("**/assets/leaflet-*.js", r => r.abort());
   await page.goto("about:blank");   // a fresh page, so the map library isn't already in memory
-  await page.goto(BASE + "/knoxville/#stay", { waitUntil: "networkidle" }); await page.waitForTimeout(1500);
+  await page.goto(BASE + "/fort-lauderdale/#stay", { waitUntil: "networkidle" }); await page.waitForTimeout(1500);
   assert((await page.getAttribute('[data-tab="guide"]', "aria-selected")) === "true" && await page.isVisible("#tv-guide"), "#stay should open the Guide");
   const gm = await page.textContent("#tv-guide .g-map");
-  assert(/didn't load/.test(gm) && await page.locator("#tv-guide .g-spot").count() === 3, `a failed map should leave a note and the lists (map says: ${gm.slice(0, 80)}; spots ${await page.locator("#tv-guide .g-spot").count()})`);
+  assert(/didn't load/.test(gm) && await page.locator("#tv-guide .g-spot").count() === 2, `a failed map should leave a note and the lists (map says: ${gm.slice(0, 80)}; spots ${await page.locator("#tv-guide .g-spot").count()})`);
   } finally {
     page.off("request", countMap);
     for (const u of ["**/assets/leaflet-*.js", "https://tile.openstreetmap.org/**", "**/rest/v1/places?*", "**/rest/v1/posts?*"]) await page.unroute(u);
@@ -628,7 +628,8 @@ await test("Sign-in options: Facebook and TikTok buttons (preview), TikTok goes 
 });
 
 await test("Feed voting: True/Nope toggles", async () => {
-  const posts = await api("posts?select=id,city_id&type=in.(what_not_to_do,worst_times,hidden_gem)&limit=1");
+  // A take in a city that is on the site (a removed city's rows linger until its migration runs).
+  const posts = (await api("posts?select=id,city_id&type=in.(what_not_to_do,worst_times,hidden_gem)")).filter(p => cities.some(x => x.id === p.city_id));
   if (!posts.length) return;   // nothing to vote on yet
   const c = cities.find(x => x.id === posts[0].city_id);
   await go(`/${c.slug}/`);
@@ -639,7 +640,7 @@ await test("Feed voting: True/Nope toggles", async () => {
 });
 
 await test("Share a take: button on every card opens the share menu with the take's link", async () => {
-  const posts = await api("posts?select=id,city_id&type=in.(what_not_to_do,worst_times,hidden_gem)&limit=1");
+  const posts = (await api("posts?select=id,city_id&type=in.(what_not_to_do,worst_times,hidden_gem)")).filter(p => cities.some(x => x.id === p.city_id));
   if (!posts.length) return;
   const c = cities.find(x => x.id === posts[0].city_id);
   await go(`/${c.slug}/`);
@@ -787,11 +788,11 @@ await test("Installable (PWA): the service worker registers and saves the shell,
     await ctx3.setOffline(true);
     await p3.goto(BASE + "/miami/", { waitUntil: "domcontentloaded" }); await p3.waitForTimeout(500);
     assert(/Know Miami\?/.test(await p3.textContent("h1")), "visited city page should open from the cache when offline");
-    await p3.goto(BASE + "/asheville/", { waitUntil: "domcontentloaded" }); await p3.waitForTimeout(500);
+    await p3.goto(BASE + "/charleston/", { waitUntil: "domcontentloaded" }); await p3.waitForTimeout(500);
     assert(/You're offline/.test(await p3.textContent("h1")), "an unvisited page should show the offline page");
     await ctx3.setOffline(false);
-    await p3.goto(BASE + "/asheville/", { waitUntil: "domcontentloaded" }); await p3.waitForTimeout(500);
-    assert(/Know Asheville\?/.test(await p3.textContent("h1")), "back online, the live page should load");
+    await p3.goto(BASE + "/charleston/", { waitUntil: "domcontentloaded" }); await p3.waitForTimeout(500);
+    assert(/Know Charleston\?/.test(await p3.textContent("h1")), "back online, the live page should load");
     // Standalone (opened from the home screen): no offer, ever.
     const p4 = await ctx3.newPage();
     await p4.addInitScript(() => { Object.defineProperty(navigator, "standalone", { get: () => true }); });

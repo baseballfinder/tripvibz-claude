@@ -39,8 +39,8 @@
     "lauderdale": "fort-lauderdale", "ftl": "fort-lauderdale", "fll": "fort-lauderdale",
     "waikiki": "honolulu", "oahu": "honolulu", "hnl": "honolulu",
     "disney": "orlando", "disney world": "orlando", "mco": "orlando",
-    "daytona": "daytona-beach", "siesta key": "sarasota", "avl": "asheville", "mile high": "denver", "the mile high city": "denver",
-    "rocky top": "knoxville", "the conch republic": "key-west", "conch republic": "key-west", "the holy city": "charleston", "chs": "charleston",
+    "daytona": "daytona-beach", "siesta key": "sarasota", "mile high": "denver", "the mile high city": "denver",
+    "the conch republic": "key-west", "conch republic": "key-west", "the holy city": "charleston", "chs": "charleston",
     // Cities people can ask for (city_candidates).
     "la": "los-angeles", "lax": "los-angeles", "philly": "philadelphia", "dc": "washington-dc", "washington dc": "washington-dc",
     "atl": "atlanta", "hotlanta": "atlanta", "beantown": "boston", "big d": "dallas", "htown": "houston", "h town": "houston",
