@@ -5,24 +5,24 @@
     "note": "Event question about the whole city."
   },
   "charleston": {
-    "photo": "needed",
+    "photo": "place",
     "prompt": "Folly Beach or Sullivan's Island?",
-    "note": "Needs Folly Beach or Sullivan's Island; city photo is a downtown street."
+    "note": "Folly Beach shoreline. Envato Elements, ocean-waves-on-beach-with-cloudy-skies (PB95422)."
   },
   "chicago": {
-    "photo": "needed",
+    "photo": "place",
     "prompt": "Navy Pier: worth it, or skip it?",
-    "note": "Needs Navy Pier; city photo is the skyline."
+    "note": "Navy Pier from above at twilight. Envato Elements, top-view-of-navy-pier-at-twilight-time (ACMH8YH)."
   },
   "daytona-beach": {
-    "photo": "needed",
+    "photo": "place",
     "prompt": "Daytona 500 2027: worth going without race tickets?",
-    "note": "Needs Daytona International Speedway; city photo is the beach."
+    "note": "Daytona International Speedway. Envato Elements, the-empty-track-of-the-daytona-speedway (Z8HPEU5)."
   },
   "denver": {
-    "photo": "needed",
+    "photo": "place",
     "prompt": "Red Rocks Amphitheatre: worth it without a concert?",
-    "note": "Needs Red Rocks Amphitheatre; city photo is the skyline."
+    "note": "Red Rocks Park sandstone formations (the park around the amphitheatre, not the seating). Envato Elements, colorado-front-range-red-rocks-formation (VT2KG26)."
   },
   "fort-lauderdale": {
     "photo": "city",
@@ -30,14 +30,14 @@
     "note": "City photo is Fort Lauderdale Beach."
   },
   "fort-myers": {
-    "photo": "needed",
+    "photo": "place",
     "prompt": "Sanibel Island for a beach day: worth the drive?",
-    "note": "Needs Sanibel Island; city photo is a pier."
+    "note": "Sanibel Island beach and dunes. Envato Elements, coastal-beach-scene-with-native-plants-and-ocean (7R764DR)."
   },
   "honolulu": {
-    "photo": "needed",
+    "photo": "place",
     "prompt": "Waikiki Beach: worth staying there, or base yourself elsewhere?",
-    "note": "Needs Waikiki Beach itself; city photo is an aerial of high-rises (confirm)."
+    "note": "Waikiki Beach from above. Envato Elements, sunrise-above-famous-waikiki-beach-in-honolulu (BMDE5Y8)."
   },
   "key-west": {
     "photo": "city",
@@ -45,9 +45,9 @@
     "note": "Event question about the whole island."
   },
   "las-vegas": {
-    "photo": "needed",
+    "photo": "place",
     "prompt": "Red Rock Canyon: worth leaving the Strip for?",
-    "note": "Needs Red Rock Canyon; city photo is the Strip."
+    "note": "Red Rock Canyon. Envato Elements, red-rock-landscape-with-desert-path-and-sky."
   },
   "miami": {
     "photo": "place",
@@ -75,9 +75,9 @@
     "note": "Event question about the whole city."
   },
   "new-york": {
-    "photo": "needed",
+    "photo": "place",
     "prompt": "Times Square: worth seeing, or avoid it?",
-    "note": "Needs Times Square; city photo is Lower Manhattan from the water."
+    "note": "Times Square at street level. Envato Elements, low-angle-shot-of-times-square-in-new-york-usa (6UMZCF9)."
   },
   "orlando": {
     "photo": "needed",
@@ -90,9 +90,9 @@
     "note": "Event question; city photo is the downtown waterfront."
   },
   "san-francisco": {
-    "photo": "needed",
+    "photo": "place",
     "prompt": "Alcatraz: worth booking?",
-    "note": "Needs Alcatraz; city photo is the skyline."
+    "note": "Alcatraz Island. Envato Elements, scenic-image-of-alcatraz-prison-in-san-francisco (4NUBZ4P)."
   },
   "sarasota": {
     "photo": "needed",
@@ -105,9 +105,9 @@
     "note": "Needs Tybee Island; city photo is the riverfront."
   },
   "seattle": {
-    "photo": "needed",
+    "photo": "place",
     "prompt": "Space Needle: worth the ticket?",
-    "note": "Needs the Space Needle; city photo is the skyline and stadium."
+    "note": "Space Needle. Envato Elements, the-space-needle-in-seattle-washington (BTQXKVY)."
   },
   "st-augustine": {
     "photo": "city",
