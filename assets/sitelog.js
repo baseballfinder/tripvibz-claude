@@ -14,6 +14,7 @@
   var DEVICE_LABEL = { phone: "Phone", tablet: "Tablet", desktop: "Computer", bot: "Bot" };
   var ACTIVE_MS = 5 * 60 * 1000;   // a visit with something in the last 5 minutes counts as "on the site now"
   var POLL_MS = 5000;
+  var CLARITY_PLAYER = "https://clarity.microsoft.com/player/";
   var RANGES = [["1h", "Last hour", 3600e3], ["24h", "Last 24 hours", 86400e3], ["7d", "Last 7 days", 7 * 86400e3], ["30d", "Last 30 days", 30 * 86400e3]];
 
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -43,11 +44,64 @@
       if (!v.seen) v.seen = r.path;   // for a visit whose opening rows are older than the period on screen
       if (r.place && !v.place) v.place = r.place;
       if (r.device && !v.device) v.device = r.device;
-      if (r.kind === "visit") { v.complete = true; v.source = r.source || "Direct"; v.landing = r.path; }
+      if (r.kind === "visit") {
+        v.complete = true; v.source = r.source || "Direct"; v.landing = r.path;
+        // Visits from before the log existed were loaded from Microsoft Clarity (Nov 17 2026);
+        // each carries the address of its Clarity recording.
+        if (r.message === "Imported from Clarity") v.imported = true;
+      }
+      // A recording address arrives on the visit row (imported visits) or on a leave row (live visits).
+      if ((r.kind === "visit" || r.kind === "leave") && typeof r.detail === "string" && r.detail.indexOf(CLARITY_PLAYER) === 0) v.recording = r.detail;
       if (r.kind === "visit" || r.kind === "page") { if (v.pages[v.pages.length - 1] !== r.path) v.pages.push(r.path); if (!v.landing) v.landing = r.path; }
       if (ERROR_KINDS.indexOf(r.kind) >= 0 && r.kind !== "slow") v.errors++;
     });
     return Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return b.last - a.last; });
+  }
+
+  /** "Tampa, FL, US" -> { city, region, country }. Cloudflare leaves out what it doesn't know. */
+  function parsePlace(place) {
+    var p = String(place || "").split(",").map(function (x) { return x.trim(); }).filter(Boolean);
+    var out = { city: "", region: "", country: "" };
+    if (!p.length) return out;
+    out.country = p.pop();
+    if (p.length === 2) { out.city = p[0]; out.region = p[1]; }
+    else if (p.length === 1) { if (/^[A-Z0-9]{1,3}$/.test(p[0])) out.region = p[0]; else out.city = p[0]; }
+    else if (p.length > 2) { out.region = p.pop(); out.city = p.join(", "); }
+    return out;
+  }
+
+  /** 'Bing · searched "miami in july"' and "Google (kit / tv-miami)" -> "Bing", "Google": one name per source. */
+  function sourceBase(source) {
+    var s = String(source || "");
+    if (!s) return "";
+    return s.replace(/ · searched ".*$/, "").replace(/ \(.*\)$/, "") || s;
+  }
+
+  /** Does a visit, or a single error row, pass the filters? Empty filter = anything. Works on both: each has place and device. */
+  function passes(item, f, source) {
+    var pl = parsePlace(item.place);
+    if (f.device && (item.device || "unknown") !== f.device) return false;
+    if (f.country && pl.country !== f.country) return false;
+    if (f.region && pl.region !== f.region) return false;
+    if (f.city && pl.city !== f.city) return false;
+    if (f.source && sourceBase(source) !== f.source) return false;
+    if (f.recording && !item.recording) return false;
+    return true;
+  }
+  function filterVisits(visits, f) { return visits.filter(function (v) { return passes(v, f, v.complete ? v.source : ""); }); }
+
+  /** What each filter can offer, from the visits on hand: value and how many visits have it, most first. */
+  function facets(visits) {
+    var out = { device: {}, source: {}, country: {}, region: {}, city: {} };
+    visits.forEach(function (v) {
+      var pl = parsePlace(v.place), add = function (k, val) { if (val) out[k][val] = (out[k][val] || 0) + 1; };
+      add("device", v.device || "unknown"); add("source", v.complete ? sourceBase(v.source) : "");
+      add("country", pl.country); add("region", pl.region); add("city", pl.city);
+    });
+    Object.keys(out).forEach(function (k) {
+      out[k] = Object.keys(out[k]).map(function (val) { return [val, out[k][val]]; }).sort(function (a, b) { return b[1] - a[1] || (a[0] < b[0] ? -1 : 1); });
+    });
+    return out;
   }
 
   /** The numbers on top: on the site now, visits and errors in the rows on hand. */
@@ -75,10 +129,12 @@
       (live ? '<span class="lg-pill live">On the site now</span>' : "") +
       '<span class="lg-pill">' + esc(DEVICE_LABEL[v.device] || "Unknown device") + "</span>" +
       (v.place ? '<span class="lg-where">' + esc(v.place) + "</span>" : "") +
+      (v.imported ? '<span class="lg-pill">From Clarity</span>' : "") +
       (v.errors ? '<span class="lg-pill err">' + v.errors + (v.errors === 1 ? " error" : " errors") + "</span>" : "") + "</div>" +
       '<div class="lg-main">' + (v.complete ? "From <b>" + esc(v.source) + "</b>" : "Started before this list begins") + "</div>" +
       '<div class="lg-trail">' + (v.pages.length ? v.pages : [v.seen]).map(function (p) { return '<a href="' + esc(p) + '" target="_blank" rel="noopener">' + esc(p) + "</a>"; }).join(" → ") + "</div>" +
-      '<div class="lg-meta">' + (v.pages.length ? v.pages.length + (v.pages.length === 1 ? " page" : " pages") + " · " : "") + (len < 1000 ? "less than a second so far" : duration(len) + " on the site") + "</div></div>";
+      '<div class="lg-meta">' + (v.pages.length ? v.pages.length + (v.pages.length === 1 ? " page" : " pages") + " · " : "") + (len < 1000 ? "less than a second so far" : duration(len) + " on the site") +
+      (v.recording ?  ' · <a href="' + esc(v.recording) + '" target="_blank" rel="noopener">Watch the Clarity recording</a>' : "") + "</div></div>";
   }
 
   function errorHtml(r) {
@@ -99,13 +155,28 @@
   /** Draw the panel into `el` and keep it current. sb = the signed-in admin's Supabase client. */
   function mount(el, sb) {
     var rows = [], seen = {}, newest = 0, view = "visits", range = "24h", paused = false, failing = "", timer = null, bots = false;
+    var F = { device: "", source: "", country: "", region: "", city: "", recording: false };
+    var FILTERS = [["source", "Any source"], ["device", "Any device"], ["country", "Any country"], ["region", "Any state or region"], ["city", "Any city"]];
+    function select(key, label, options) {
+      // Keep a chosen value in the list even when the period on screen no longer has it, so it can be cleared.
+      if (F[key] && !options.some(function (o) { return o[0] === F[key]; })) options = options.concat([[F[key], 0]]);
+      return '<select data-lgf="' + key + '" aria-label="' + label + '"><option value="">' + label + "</option>" + options.map(function (o) {
+        var name = key === "device" ? (DEVICE_LABEL[o[0]] || "Unknown device") : o[0];
+        return '<option value="' + esc(o[0]) + '"' + (o[0] === F[key] ? " selected" : "") + ">" + esc(name) + " (" + o[1] + ")</option>";
+      }).join("") + "</select>";
+    }
 
     function since() { var r = RANGES.filter(function (x) { return x[0] === range; })[0]; return new Date(Date.now() - r[2]).toISOString(); }
 
     function draw() {
       var now = Date.now(), shown = bots ? rows : rows.filter(function (r) { return r.device !== "bot"; });
-      var s = summary(shown, now), visits = groupVisits(shown);
-      var errs = shown.filter(function (r) { return ERROR_KINDS.indexOf(r.kind) >= 0; }).sort(function (a, b) { return b.id - a.id; });
+      var all = groupVisits(shown), fc = facets(all), visits = filterVisits(all, F);
+      var active = FILTERS.some(function (x) { return F[x[0]]; }) || F.recording;
+      // The numbers follow the filters: only rows that belong to a visit still showing, or pass on their own.
+      var keep = {}; visits.forEach(function (v) { keep[v.id] = 1; });
+      var inView = !active ? shown : shown.filter(function (r) { return r.session_id ? keep[r.session_id] : (!F.source && !F.recording && passes(r, F, "")); });
+      var s = summary(inView, now);
+      var errs = inView.filter(function (r) { return ERROR_KINDS.indexOf(r.kind) >= 0; }).sort(function (a, b) { return b.id - a.id; });
       var list = view === "visits" ? visits.map(function (v) { return visitHtml(v, now); }) : errs.map(errorHtml);
       var off = false; try { off = localStorage.getItem("tv_nolog") === "1"; } catch (e) { /* storage blocked */ }
       el.innerHTML =
@@ -118,7 +189,10 @@
         '<select data-lg="range" aria-label="How far back">' + RANGES.map(function (r) { return '<option value="' + r[0] + '"' + (r[0] === range ? " selected" : "") + ">" + r[1] + "</option>"; }).join("") + "</select>" +
         '<label><input type="checkbox" data-lg="bots"' + (bots ? " checked" : "") + "> Show bots</label>" +
         '<label><input type="checkbox" data-lg="nolog"' + (off ? " checked" : "") + "> Leave out this browser's visits</label></div>" +
-        '<div class="lg-list">' + (list.length ? list.slice(0, 200).join("") : '<div class="lg-empty">' + (view === "visits" ? "No visits in this period yet. A visit shows here within a few seconds of someone opening a page." : "No errors or missing pages in this period.") + "</div>") + "</div>" +
+        '<div class="lg-tools lg-filters">' + FILTERS.map(function (x) { return select(x[0], x[1], fc[x[0]]); }).join("") +
+        '<label><input type="checkbox" data-lgf="recording"' + (F.recording ? " checked" : "") + "> Has a Clarity recording</label>" +
+        (active ? '<button data-lg="clear">Clear filters</button>' : "") + "</div>" +
+        '<div class="lg-list">' + (list.length ? list.slice(0, 200).join("") : '<div class="lg-empty">' + (active ? "Nothing in this period matches these filters." : view === "visits" ? "No visits in this period yet. A visit shows here within a few seconds of someone opening a page." : "No errors or missing pages in this period.") + "</div>") + "</div>" +
         (list.length > 200 ? '<div class="lg-empty">Showing the newest 200 of ' + list.length + ".</div>" : "") +
         (rows.length >= 2000 ? '<div class="lg-empty">This period holds more than the 2,000 newest entries loaded here; pick a shorter period to see all of it.</div>' : "");
     }
@@ -141,9 +215,12 @@
       var b = e.target.closest("button[data-lg]"); if (!b) return;
       var a = b.getAttribute("data-lg");
       if (a === "pause") { paused = !paused; draw(); if (!paused) load(false); }
+      else if (a === "clear") { F = { device: "", source: "", country: "", region: "", city: "", recording: false }; draw(); }
       else { view = a; draw(); }
     });
     el.addEventListener("change", function (e) {
+      var fk = e.target.getAttribute("data-lgf");
+      if (fk) { F[fk] = fk === "recording" ? e.target.checked : e.target.value; draw(); return; }
       var a = e.target.getAttribute("data-lg");
       if (a === "range") { range = e.target.value; load(true); }
       else if (a === "bots") { bots = e.target.checked; draw(); }
@@ -155,5 +232,5 @@
     return { stop: function () { clearInterval(timer); }, refresh: function () { return load(false); } };
   }
 
-  window.TVLog = { groupVisits: groupVisits, summary: summary, duration: duration, visitHtml: visitHtml, errorHtml: errorHtml, mount: mount, ERROR_KINDS: ERROR_KINDS, ACTIVE_MS: ACTIVE_MS };
+  window.TVLog = { parsePlace: parsePlace, sourceBase: sourceBase, filterVisits: filterVisits, facets: facets, groupVisits: groupVisits, summary: summary, duration: duration, visitHtml: visitHtml, errorHtml: errorHtml, mount: mount, ERROR_KINDS: ERROR_KINDS, ACTIVE_MS: ACTIVE_MS };
 })();

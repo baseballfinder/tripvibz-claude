@@ -2,7 +2,7 @@
  * POST /api/log — what a visitor's browser reports (assets/analytics.js):
  *
  *   { k: "page",  sid, path, first, ref, tag }     a page opened; first = the visit's first page
- *   { k: "leave", sid, path, ms }                  left the page after ms
+ *   { k: "leave", sid, path, ms, rec }             left the page after ms; rec = the visit's Clarity recording ids
  *   { k: "error", sid, path, msg, src, stack }     a script error
  *   { k: "request_failed", sid, path, target, status, msg }   a save or request was refused or unanswered
  *
@@ -19,6 +19,8 @@ import { record } from "./_notify.js";
 
 const OWN = /(^|\/\/)(www\.)?tripvibz\.com\/|tripvibz\.pages\.dev\/|\/assets\//;
 const done = () => new Response(null, { status: 204 });
+// Where a visit's Clarity recording plays (xpi9uwoqof = TripVibz's Clarity project, the id assets/analytics.js loads).
+export const CLARITY_PLAYER = "https://clarity.microsoft.com/player/xpi9uwoqof/";
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -40,7 +42,9 @@ export async function onRequestPost(context) {
   if (d.k === "page") {
     entry = d.first ? { ...base, kind: "visit", source: sourceOf(d.ref, d.tag, self.hostname) } : { ...base, kind: "page" };
   } else if (d.k === "leave") {
-    entry = { ...base, kind: "leave", ms: d.ms };
+    // rec = "<Clarity visitor id>/<Clarity session id>" from Clarity's own cookies: the visit's recording.
+    const rec = typeof d.rec === "string" && /^[a-z0-9]{3,16}\/[a-z0-9]{3,16}$/.test(d.rec) ? CLARITY_PLAYER + d.rec : null;
+    entry = { ...base, kind: "leave", ms: d.ms, detail: rec };
   } else if (d.k === "error") {
     const message = String(d.msg || "").slice(0, 300), stack = String(d.stack || "").slice(0, 600), src = String(d.src || "").slice(0, 200);
     // Browser extensions, injected ads and other sites' scripts throw too; only ours count.

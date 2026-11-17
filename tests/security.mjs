@@ -265,7 +265,11 @@ await test("/api/log: bots, other sites' pages, foreign scripts' errors and malf
   const page = await post({ k: "page", sid, path: "/miami/add/", ref: "https://x.example/", tag: "t" });
   assert(page.row.kind === "page" && page.row.source === null && !page.pushed, "a later page is stored without a source and without a push");
   const leave = await post({ k: "leave", sid, path: "/miami/", ms: 41234.6 });
-  assert(leave.row.kind === "leave" && leave.row.ms === 41235 && !leave.pushed, "a leave stores the time on the page");
+  assert(leave.row.kind === "leave" && leave.row.ms === 41235 && leave.row.detail === null && !leave.pushed, "a leave stores the time on the page");
+  const rec = await post({ k: "leave", sid, path: "/miami/", ms: 1000, rec: "yc5trg/7a3hd8" });
+  assert(rec.row.detail === "https://clarity.microsoft.com/player/xpi9uwoqof/yc5trg/7a3hd8", "a leave with Clarity ids stores the recording's address on TripVibz's Clarity project");
+  for (const bad of ["../../evil", "yc5trg/7a3hd8/extra", "https://evil.example/x", "a/b", "YC5TRG/7A3HD8", "yc5trg/7a3hd8?x=1", 42])
+    assert((await post({ k: "leave", sid, path: "/miami/", ms: 1000, rec: bad })).row.detail === null, `a malformed recording id (${bad}) must not be stored`);
   const own = await post({ k: "error", sid, path: "/miami/", msg: "TypeError: boom " + "x".repeat(900), src: "https://www.tripvibz.com/assets/tv.js?v=abc:12", stack: "TypeError: boom\n at https://www.tripvibz.com/assets/tv.js?v=abc:12:3" });
   assert(own.row.kind === "error" && own.row.message.length === 300 && own.row.detail.length <= 800 && own.pushed, "our own script's error is stored, cut to size, and pushed");
   const fail = await post({ k: "request_failed", sid, path: "/miami/add/", target: "POST question_votes", status: 403, msg: "new row violates row-level security policy" });
