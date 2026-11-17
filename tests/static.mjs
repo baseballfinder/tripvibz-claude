@@ -394,6 +394,13 @@ await test("Site log, browser side: one visit per tab, page trail, time on page,
   assert(a.source === "Google" && a.pages.join(" > ") === "/miami/ > /miami/add/" && a.errors === 1 && a.last - a.start === 95000 && a.place === "Tampa, FL, US", JSON.stringify(a));
   const sum = L.summary(rows, t0 + 398 * 1000);   // 303 s after the first visit's last row, 298 s after the second's
   assert(sum.visits === 2 && sum.errors === 1 && sum.missing === 1 && sum.now === 1, `summary (bots left out; "now" = active in the last 5 minutes): ${JSON.stringify(sum)}`);
+  // A visit loaded from Clarity says so and links its recording; any other address in that field is not turned into a link.
+  const clar = L.groupVisits([{ id: 1, at: at(0), kind: "visit", session_id: "clabc12345", path: "/miami/", source: "Google", message: "Imported from Clarity", detail: "https://clarity.microsoft.com/player/xpi9uwoqof/abc/def" }])[0];
+  const clarHtml = L.visitHtml(clar, t0 + 86400000);
+  assert(clar.recording && /From Clarity/.test(clarHtml) && clarHtml.includes('href="https://clarity.microsoft.com/player/xpi9uwoqof/abc/def"') && /Watch the recording/.test(clarHtml), "a Clarity visit should be labeled and link its recording");
+  const notClar = L.groupVisits([{ id: 1, at: at(0), kind: "visit", session_id: "aaaaaaaa", path: "/", detail: "https://evil.example/clarity.microsoft.com/player/" }])[0];
+  assert(!notClar.recording && !/From Clarity|evil\.example/i.test(L.visitHtml(notClar, t0)), "only a Clarity player address becomes a recording link");
+  assert(!/From Clarity|Watch the recording/.test(L.visitHtml(a, t0)), "a live visit carries no Clarity label");
   assert(L.duration(45000) === "45 s" && L.duration(180000) === "3 min" && L.duration(4320000) === "1 h 12 min", "durations in words");
   const html = L.visitHtml({ ...a, source: '<img src=x onerror=alert(1)>', pages: ['/"><script>'] }, t0) + L.errorHtml({ id: 9, at: at(0), kind: "error", path: "/x", message: "<b>boom</b>", detail: "<script>" });
   assert(!/<img|<script|<b>boom/i.test(html), "the panel must escape everything it shows");

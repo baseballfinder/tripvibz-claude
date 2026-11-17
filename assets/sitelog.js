@@ -14,6 +14,7 @@
   var DEVICE_LABEL = { phone: "Phone", tablet: "Tablet", desktop: "Computer", bot: "Bot" };
   var ACTIVE_MS = 5 * 60 * 1000;   // a visit with something in the last 5 minutes counts as "on the site now"
   var POLL_MS = 5000;
+  var CLARITY_PLAYER = "https://clarity.microsoft.com/player/";
   var RANGES = [["1h", "Last hour", 3600e3], ["24h", "Last 24 hours", 86400e3], ["7d", "Last 7 days", 7 * 86400e3], ["30d", "Last 30 days", 30 * 86400e3]];
 
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -43,7 +44,12 @@
       if (!v.seen) v.seen = r.path;   // for a visit whose opening rows are older than the period on screen
       if (r.place && !v.place) v.place = r.place;
       if (r.device && !v.device) v.device = r.device;
-      if (r.kind === "visit") { v.complete = true; v.source = r.source || "Direct"; v.landing = r.path; }
+      if (r.kind === "visit") {
+        v.complete = true; v.source = r.source || "Direct"; v.landing = r.path;
+        // Visits from before the log existed were loaded from Microsoft Clarity (Nov 17 2026);
+        // each carries the address of its Clarity recording.
+        if (typeof r.detail === "string" && r.detail.indexOf(CLARITY_PLAYER) === 0) v.recording = r.detail;
+      }
       if (r.kind === "visit" || r.kind === "page") { if (v.pages[v.pages.length - 1] !== r.path) v.pages.push(r.path); if (!v.landing) v.landing = r.path; }
       if (ERROR_KINDS.indexOf(r.kind) >= 0 && r.kind !== "slow") v.errors++;
     });
@@ -75,10 +81,12 @@
       (live ? '<span class="lg-pill live">On the site now</span>' : "") +
       '<span class="lg-pill">' + esc(DEVICE_LABEL[v.device] || "Unknown device") + "</span>" +
       (v.place ? '<span class="lg-where">' + esc(v.place) + "</span>" : "") +
+      (v.recording ? '<span class="lg-pill">From Clarity</span>' : "") +
       (v.errors ? '<span class="lg-pill err">' + v.errors + (v.errors === 1 ? " error" : " errors") + "</span>" : "") + "</div>" +
       '<div class="lg-main">' + (v.complete ? "From <b>" + esc(v.source) + "</b>" : "Started before this list begins") + "</div>" +
       '<div class="lg-trail">' + (v.pages.length ? v.pages : [v.seen]).map(function (p) { return '<a href="' + esc(p) + '" target="_blank" rel="noopener">' + esc(p) + "</a>"; }).join(" → ") + "</div>" +
-      '<div class="lg-meta">' + (v.pages.length ? v.pages.length + (v.pages.length === 1 ? " page" : " pages") + " · " : "") + (len < 1000 ? "less than a second so far" : duration(len) + " on the site") + "</div></div>";
+      '<div class="lg-meta">' + (v.pages.length ? v.pages.length + (v.pages.length === 1 ? " page" : " pages") + " · " : "") + (len < 1000 ? "less than a second so far" : duration(len) + " on the site") +
+      (v.recording ? ' · <a href="' + esc(v.recording) + '" target="_blank" rel="noopener">Watch the recording</a>' : "") + "</div></div>";
   }
 
   function errorHtml(r) {
