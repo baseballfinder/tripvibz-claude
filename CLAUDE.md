@@ -79,14 +79,19 @@ it in the same pull request:
 
 - **About** (`about/index.html`): how it works, one line per main feature.
 - **Privacy** (`privacy/index.html`): anything new that's stored, shown publicly,
-  or sent to an outside service; update its "Last updated" date.
+  or sent to an outside service; update its "Last updated" date. Say what an
+  outside service does ("a hotel booking partner"), not which company it is:
+  the systems the site runs on are not named on any public page. Only Google
+  sign-in, Google Analytics and Microsoft Clarity are named. Map and place
+  credits on the Guide stay, because their licenses require them.
 - **Terms**, **How we verify locals**, and the copy inside the pages (empty
   states, sign-in prompts, share images from `scripts/og_cards.py`).
 - **Retired wording** goes everywhere at once, including share images and the
   structured data in `build.mjs`.
 
 `tests/static.mjs` ("Info pages follow the features") enforces the parts it
-can: Privacy must name every outside service the site loads or calls and
+can: Privacy must cover every outside service the site loads or calls (by what
+it does, with the site's own systems unnamed) and
 every table that stores what people enter; retired wording fails the build;
 About must list the main features (add yours to its list).
 
