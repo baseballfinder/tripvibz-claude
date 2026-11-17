@@ -406,6 +406,8 @@ await test("Site log, browser side: one visit per tab, page trail, time on page,
   assert(clar.recording && clar.imported && /From Clarity/.test(clarHtml) && clarHtml.includes(`href="${PLAYER}abc/def"`) && /Watch the Clarity recording/.test(clarHtml), "a Clarity visit should be labeled and link its recording");
   const liveRec = L.groupVisits([{ id: 1, at: at(0), kind: "visit", session_id: "aaaaaaaa", path: "/", source: "Direct" }, { id: 2, at: at(30), kind: "leave", session_id: "aaaaaaaa", path: "/", ms: 30000, detail: PLAYER + "u1/s1" }])[0];
   assert(liveRec.recording === PLAYER + "u1/s1" && !liveRec.imported && /Watch the Clarity recording/.test(L.visitHtml(liveRec, t0)) && !/From Clarity/.test(L.visitHtml(liveRec, t0)), "a live visit links its recording without the imported label");
+  assert(/still preparing/.test(L.visitHtml(liveRec, t0 + 60000)) && !/still preparing/.test(L.visitHtml(liveRec, t0 + 3 * 3600 * 1000)), "a recording from the last two hours says Clarity may still be preparing it");
+  assert(/data-k="vaaaaaaaa"/.test(L.visitHtml(liveRec, t0)) && /data-k="e9"/.test(L.errorHtml({ id: 9, at: at(0), kind: "error", path: "/x", message: "m" })), "each row carries a key, so an update can keep its opened boxes");
   const notClar = L.groupVisits([{ id: 1, at: at(0), kind: "visit", session_id: "aaaaaaaa", path: "/", detail: "https://evil.example/clarity.microsoft.com/player/" },
     { id: 2, at: at(1), kind: "error", session_id: "aaaaaaaa", path: "/", message: "x", detail: PLAYER + "in/astack" }])[0];
   assert(!notClar.recording && !/evil\.example|Clarity recording/i.test(L.visitHtml(notClar, t0)), "only a Clarity player address on a visit or leave row becomes a recording link");
