@@ -55,3 +55,10 @@ jobs:
         if: env.SUPABASE_DB_URL != ''
         run: |
           psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -q -c "with gone as (delete from public.claims where expires_at < now() returning 1) select 'expired claims removed: ' || count(*) from gone;" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # The site log (visits and errors shown live on the admin page) is kept
+      # for 30 days; the Privacy page says so.
+      - name: Remove site log entries older than 30 days
+        if: env.SUPABASE_DB_URL != ''
+        run: |
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -q -c "with gone as (delete from public.site_log where at < now() - interval '30 days' returning 1) select 'site log entries removed: ' || count(*) from gone;" | tee -a "$GITHUB_STEP_SUMMARY"

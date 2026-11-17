@@ -34,9 +34,9 @@ const gz = async p => gzipSync(await readFile(p)).length;
 const BUDGET = {
   pageHtml: 72 * KB,          // largest pages ~61 KB raw with the stylesheets inlined (city pages ~50 KB since their script moved to /assets/city.js); the compressed budget below is the one that matters
   pageHtmlGz: 20 * KB,        // 8-15 KB with the stylesheets inlined
-  siteJs: 60 * KB,            // tv.js 15 KB, v2.js 23 KB, analytics.js 2 KB
+  siteJs: 60 * KB,            // tv.js 15 KB, v2.js 23 KB, analytics.js 4 KB
   vendorJs: 140 * KB,         // PostgREST + Auth client (lib/supabase-client.mjs): 120 KB (30 KB gz)
-  jsTotalGz: 60 * KB,         // the most any one page loads (city pages): ~52 KB gz
+  jsTotalGz: 61 * KB,         // the most any one page loads (city pages): ~60.3 KB gz. Raised from 60 KB (Nov 17 2026) for the site log's reporter in analytics.js (+0.6 KB)
   mapJs: 150 * KB,            // Leaflet 1.9.4 for the Guide map: 144 KB (42 KB gz), loaded only when the Guide opens
   mapJsGz: 45 * KB,
   css: 25 * KB,               // v2.css 18 KB, site.css 9 KB

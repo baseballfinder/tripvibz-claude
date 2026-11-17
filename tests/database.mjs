@@ -20,6 +20,7 @@
 // at the start so the built pages find the same ids they were built with.
 import { chromium } from "playwright";
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import { serveDist } from "./_serve.mjs";
 import { startTestDatabase } from "./db/start.mjs";
 import { visitorFlows, SB, KEY, OWNER_COLUMN, READ_ONLY_RPCS } from "./_flows.mjs";
@@ -226,6 +227,52 @@ if (flows) {
     const rest = one(`select id from public.restaurants where city_id = ${lit(nash.id)} limit 1`) || one(`select id from public.restaurants limit 1`);
     r = await send("top3_picks", anon.token, { user_id: anon.id, city_id: nash.id, rank: 1, restaurant_id: rest.id });
     assert(!r.ok && count(`select count(*) from public.top3_picks where user_id = ${lit(anon.id)};`) === 0, `an anonymous session saved a top 3 pick (HTTP ${r.status})`);
+  });
+
+  await test("Site log: only the server writes it and only an admin reads it; the table takes what the logger sends and refuses what it shouldn't hold", async () => {
+    const count = () => Number(db.sql("select count(*) from public.site_log;"));
+    const hdr = token => ({ "content-type": "application/json", prefer: "return=minimal", ...(token ? { authorization: `Bearer ${token}` } : {}) });
+    const entry = { kind: "visit", session_id: "abcdefgh12345678", path: "/miami/", source: "Google", place: "Tampa, FL, US", device: "phone" };
+    // Visitors (signed out, anonymous session, signed in): no write, no read, no call.
+    for (const [who, token] of [["a signed-out visitor", null], ["an anonymous session", anon.token], ["a signed-in person", local.token]]) {
+      let r = await nativeFetch(`${db.rest}/site_log`, { method: "POST", headers: hdr(token), body: JSON.stringify(entry) });
+      assert(!r.ok && count() === 0, `${who} wrote to the site log (HTTP ${r.status})`);
+      r = await nativeFetch(`${db.rest}/site_log?select=id`, { headers: hdr(token) });
+      assert(!r.ok, `${who} could read the site log (HTTP ${r.status})`);
+    }
+    // The server (service key) writes exactly the rows functions/api/_log.js builds.
+    const { clean, KINDS } = await import("../functions/api/_log.js");
+    const service = db.token({ role: "service_role" });
+    for (const kind of KINDS) {
+      const row = clean({ ...entry, kind, message: "m".repeat(900), detail: "d".repeat(2000), status: 503, ms: 4200 });
+      const r = await nativeFetch(`${db.rest}/site_log`, { method: "POST", headers: hdr(service), body: JSON.stringify(row) });
+      assert(r.ok, `the server could not store a "${kind}" entry: HTTP ${r.status} ${await r.text()}`);
+    }
+    assert(count() === KINDS.length, "every kind the logger knows should be stored");
+    const bad = await nativeFetch(`${db.rest}/site_log`, { method: "POST", headers: hdr(service), body: JSON.stringify({ ...entry, kind: "keystroke" }) });
+    assert(!bad.ok, "a kind the table doesn't know must be refused");
+    // The admin page's read: nothing for a signed-in non-admin, the rows for an admin, newest first, only newer than p_after.
+    const ask = async (token, args = {}) => { const r = await nativeFetch(`${db.rest}/rpc/admin_site_log`, { method: "POST", headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(args) }); return { ok: r.ok, status: r.status, rows: r.ok ? await r.json() : [] }; };
+    const out = await ask(null);
+    assert(!out.ok, `a signed-out visitor could call admin_site_log (HTTP ${out.status})`);
+    const person = await ask(local.token);
+    assert(person.rows.length === 0, `a signed-in person who is not an admin read ${person.rows.length} log entries`);
+    db.sql(`set session_replication_role = replica;\nupdate public.profiles set is_admin = true where id = ${lit(local.id)};`);
+    try {
+      const all = await ask(local.token);
+      assert(all.ok && all.rows.length === KINDS.length && all.rows[0].id > all.rows[all.rows.length - 1].id, `an admin should read every entry, newest first (HTTP ${all.status}, ${all.rows.length} rows)`);
+      const newer = await ask(local.token, { p_after: all.rows[1].id });
+      assert(newer.rows.length === 1 && newer.rows[0].id === all.rows[0].id, "p_after should return only the entries newer than the one given");
+      const cols = Object.keys(all.rows[0]);
+      assert(!cols.some(c => /ip|user|email|agent/.test(c)), `a log entry carries something personal: ${cols}`);
+      // The nightly cleanup's statement (maintenance.yml) removes entries past 30 days and nothing newer.
+      db.sql(`update public.site_log set at = now() - interval '31 days' where id = ${Number(all.rows[0].id)};`);
+      const maint = await readFile(".github/workflows/maintenance.yml", "utf8");
+      const del = (maint.match(/delete from public\.site_log where at < now\(\) - interval '30 days'/) || [])[0];
+      assert(del, "the nightly cleanup statement is missing from maintenance.yml");
+      db.sql(del + ";");
+      assert(count() === KINDS.length - 1, "the cleanup should remove exactly the entry older than 30 days");
+    } finally { db.sql(`set session_replication_role = replica;\nupdate public.profiles set is_admin = false where id = ${lit(local.id)};`); }
   });
 
   await test("Trigger functions are not on the API: none can be called by a visitor or a signed-in person, and every trigger is still attached", async () => {

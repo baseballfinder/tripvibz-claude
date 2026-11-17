@@ -96,9 +96,14 @@ piece moves to its own long-running service (see section 1).
 **Observability.** What to know before visitors notice:
 - *Is it up?* `/api/health` checks the site and the database. An uptime
   monitor must watch it and alert (not yet set up).
-- *Is it erroring?* Browser and Function errors go to your phone through
-  `/api/error`. Log errors as one JSON line with what, where, and the request
-  path, never personal data.
+- *Is it erroring?* Browser errors, failed saves, Function failures, slow
+  Function responses and missing pages go to the site log (`public.site_log`,
+  written by `functions/api/_log.js`, kept 30 days) and the important ones to
+  your phone. The browser reports through `/api/log`; `functions/_middleware.js`
+  watches every server response. The admin page shows the log live. An entry
+  says what, where, and the request path, never personal data.
+- *Who is here?* The same log holds each visit: first page, where it came
+  from, rough city, device, pages in order. Live on the admin page.
 - *Is it slow?* Speed budgets run on every PR (Lighthouse). Watch Function
   response times in Cloudflare's dashboard; the numbers that matter are
   P50 (the typical request) and P99 (the slowest 1 in 100). Add your own
@@ -110,8 +115,9 @@ piece moves to its own long-running service (see section 1).
 
 1. **No uptime monitor** watches `/api/health` yet.
 2. **Outside calls without a time limit:** `build.mjs` (`fetchTable`),
-   `functions/api/take.js`, `locate.js`, `event.js`, `hit.js` and `_notify.js`.
+   `functions/api/take.js`, `locate.js`, `event.js` and `_notify.js`.
    (`_middleware.js` and `health.js` already have one.)
 3. **Copied config:** the Supabase address and public key appear in about
-   eight server files plus `build.mjs` and `assets/tv.js`; they should come
-   from one module.
+   eight server files plus `build.mjs` and `assets/tv.js`. Server code now has
+   `functions/_config.js` (used by the middleware and the site log); move the
+   other copies there when touching them.

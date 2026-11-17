@@ -80,6 +80,18 @@ begin
      and p.prorettype <> 'trigger'::regtype;
   if v_rows is not null then v_fail := v_fail || E'\n  SECURITY DEFINER callable by anon but not in the allow-list: ' || v_rows; end if;
 
+  -- 3c. The site log (visits and errors) is for the server and admins only:
+  --     no policy, and no table privilege for visitors or signed-in people.
+  --     (Skipped until migration 20261117190000 has created it.)
+  if to_regclass('public.site_log') is not null then
+    select string_agg(policyname, ', ') into v_rows from pg_policies where schemaname = 'public' and tablename = 'site_log';
+    if v_rows is not null then v_fail := v_fail || E'\n  site_log must have no policy (found: ' || v_rows || ')'; end if;
+    select string_agg(distinct grantee || ':' || privilege_type, ', ') into v_rows
+      from information_schema.role_table_grants
+     where table_schema = 'public' and table_name = 'site_log' and grantee in ('anon', 'authenticated', 'PUBLIC', 'tripvibz_bot');
+    if v_rows is not null then v_fail := v_fail || E'\n  site_log is reachable by: ' || v_rows; end if;
+  end if;
+
   -- 4. Self-promotion to admin is blocked by the profile update policy
   if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'profiles'
                    and cmd = 'UPDATE' and with_check ilike '%is_admin%') then

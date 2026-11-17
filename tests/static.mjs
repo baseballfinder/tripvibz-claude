@@ -196,15 +196,209 @@ await test("Sign-in: privacy + terms pages, TikTok bridge, providers off until s
   assert(cb.includes('cookie(request, "tt_state")'), "TikTok callback must check state");
 });
 
-await test("Phone notifications: search-visit and new-take notifiers present, never sent from local", async () => {
-  for (const f of ["functions/api/hit.js", "functions/api/_notify.js"]) {
+await test("Phone notifications: visit, error and new-take notifiers present, never sent from local", async () => {
+  for (const f of ["functions/api/log.js", "functions/api/_log.js", "functions/api/_notify.js", "functions/_config.js"]) {
     const src = await readFile(f, "utf8");
     await import("esbuild").then(e => e.transform(src, { loader: "js", format: "esm" }));
   }
   const take = await readFile("functions/api/take.js", "utf8");
   assert(take.includes("notify(context.env"), "take function no longer notifies");
   const a = await readFile("assets/analytics.js", "utf8");
-  assert(a.indexOf("/api/hit") > a.indexOf("if (isLocal)"), "search-visit beacon must sit after the localhost skip");
+  assert(a.indexOf("/api/log") > a.indexOf("if (isLocal)"), "the site-log beacon must sit after the localhost skip");
+});
+
+await test("Site log, server side: what each kind stores and pushes; bots, scanners and the log's own address stay out; nothing personal in a row", async () => {
+  const { build } = await import("esbuild");
+  const load = async entry => {
+    const out = await build({ entryPoints: [entry], bundle: true, write: false, format: "esm", platform: "neutral" });
+    return import("data:text/javascript;base64," + Buffer.from(out.outputFiles[0].text).toString("base64"));
+  };
+  const log = await load("functions/api/_log.js"), note = await load("functions/api/_notify.js"), mw = await load("functions/_middleware.js");
+
+  // device and source, in words
+  const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1";
+  const MAC = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/141.0 Safari/537.36";
+  assert(log.device(IPHONE) === "phone" && log.device(MAC) === "desktop" && log.device("Mozilla/5.0 (iPad; CPU OS 18_0)") === "tablet"
+    && log.device("Mozilla/5.0 (Linux; Android 15; SM-X710) Safari/537.36") === "tablet" && log.device("Mozilla/5.0 (Linux; Android 15; Pixel 9) Mobile Safari/537.36") === "phone"
+    && log.device("Googlebot/2.1") === "bot" && log.device("") === "bot", "device() mislabels a browser");
+  const src = (ref, tag) => log.sourceOf(ref, tag, "www.tripvibz.com");
+  assert(src("https://www.google.com/", "") === "Google", src("https://www.google.com/", ""));
+  assert(src("https://www.bing.com/search?q=worst+time+to+visit+miami", "") === 'Bing · searched "worst time to visit miami"', "search words missing");
+  assert(src("https://l.facebook.com/l.php?u=x", "") === "Facebook" && src("", "") === "Direct" && src("https://www.tripvibz.com/miami/", "") === "Direct", "source names wrong");
+  assert(src("", "kit / tv-miami-pilot") === "kit / tv-miami-pilot" && src("https://blog.example.org/post", "") === "blog.example.org", "tags or plain sites wrong");
+  assert(src("https://www.google.com/", "<script>") === "Google (script)" && src("not a url", "").length <= 120, "tags are not cleaned");
+
+  // one row, cut to the table's limits, with only the table's columns (no IP, no account)
+  const row = log.clean({ kind: "error", session_id: "abc123def4567890", path: "/miami/", message: "x".repeat(900), detail: "y".repeat(2000), place: "Tampa, FL, US", device: "phone", ip: "1.2.3.4", user_id: "u", status: 99999, ms: -5 });
+  assert(row && row.message.length === 300 && row.detail.length === 800 && row.status === 999 && row.ms === null, "clean() does not cut to the limits");
+  const mig = await readFile("supabase/migrations/20261117190000_site_log.sql", "utf8");
+  const cols = [...mig.match(/create table if not exists public\.site_log \(([\s\S]*?)\n\);/)[1].matchAll(/^\s+(\w+)\s/gm)].map(m => m[1]);
+  assert(Object.keys(row).every(k => cols.includes(k)), `clean() returns a field the table lacks: ${Object.keys(row).filter(k => !cols.includes(k))}`);
+  assert(!cols.some(c => /ip|user|email|name|agent/.test(c)), `site_log must hold nothing personal; columns: ${cols}`);
+  for (const k of log.KINDS) assert(mig.includes(`'${k}'`), `kind ${k} is not allowed by the table`);
+  assert(log.clean({ kind: "nonsense", path: "/" }) === null && log.clean({ kind: "page", path: "javascript:alert(1)" }) === null, "a made-up kind or a non-path must be dropped");
+  assert(log.clean({ kind: "page", path: "/", session_id: "DROP TABLE" }).session_id === null, "a malformed session id must be dropped");
+
+  // store(): secret key on the apikey header, no key = nothing sent, a dead database = false, never a throw
+  const calls = [];
+  const ok = await log.store({ SUPABASE_SERVICE_ROLE_KEY: "sb_secret_x" }, { kind: "page", path: "/miami/" }, async (url, init) => { calls.push({ url, init }); return new Response(null, { status: 201 }); });
+  assert(ok && calls.length === 1 && calls[0].url.endsWith("/rest/v1/site_log") && calls[0].init.headers.apikey === "sb_secret_x" && calls[0].init.signal, "store() should post one row with the secret key and a time limit");
+  assert(await log.store({}, { kind: "page", path: "/" }, async () => { throw new Error("must not be called"); }) === false, "no key: nothing is sent");
+  assert(await log.store({ SUPABASE_SERVICE_ROLE_KEY: "k" }, { kind: "page", path: "/" }, async () => { throw new Error("down"); }) === false, "a dead database must not throw");
+
+  // which kinds buzz the phone
+  const push = e => note.pushFor({ path: "/miami/", device: "phone", place: "Tampa, FL, US", ...e });
+  assert(push({ kind: "visit", source: "Google" }).title === "New visit: /miami/" && /From Google\nPhone near Tampa/.test(push({ kind: "visit", source: "Google" }).message), "visit push wording");
+  assert(push({ kind: "visit", device: "bot" }) === null && push({ kind: "page" }) === null && push({ kind: "leave" }) === null && push({ kind: "slow" }) === null, "bots, page views, leaves and slow answers are stored, not pushed");
+  assert(push({ kind: "error", message: "boom" }) && push({ kind: "function_error", message: "boom" }) && push({ kind: "request_failed", detail: "POST votes", status: 403 }), "errors must push");
+  assert(/POST votes answered 403/.test(push({ kind: "request_failed", detail: "POST votes", status: 403 }).message) && /got no answer/.test(push({ kind: "request_failed", detail: "POST votes", status: 0 }).message), "failed-save wording");
+  assert(push({ kind: "not_found", source: "/miami/" }) && push({ kind: "not_found", source: "evil.example" }) === null && push({ kind: "not_found", source: null }) === null, "only a broken link on TripVibz itself pushes");
+
+  // the middleware's verdict on a response
+  const req = (path, { method = "GET", accept = "text/html", ua = MAC, referer } = {}) => new Request("https://www.tripvibz.com" + path, { method, headers: { accept, "user-agent": ua, ...(referer ? { referer } : {}) } });
+  const verdict = (r, status, ms = 20) => mw.logEntryFor(r, new Response(null, { status }), ms);
+  assert(verdict(req("/miami/"), 200) === null && verdict(req("/api/near", { accept: "application/json" }), 200) === null, "a normal answer is not logged");
+  let v = verdict(req("/old-page/", { referer: "https://www.tripvibz.com/miami/" }), 404);
+  assert(v && v.kind === "not_found" && v.source === "/miami/" && v.path === "/old-page/", "a missing page should log with the TripVibz page that linked it");
+  v = verdict(req("/old-page/", { referer: "https://www.google.com/search?q=secret" }), 404);
+  assert(v.source === "www.google.com", "another site's link is logged by site name only, never its full address");
+  for (const p of ["/wp-login.php", "/.env", "/.git/config", "/wp-admin/setup-config.php", "/backup.zip", "/xmlrpc.php"]) assert(verdict(req(p), 404) === null, `scanner address ${p} should not be logged`);
+  assert(verdict(req("/assets/missing.js", { accept: "*/*" }), 404) === null && verdict(req("/x", { method: "POST" }), 404) === null, "only page loads count as missing pages");
+  assert(verdict(req("/api/take", { method: "POST" }), 500).kind === "function_error" && verdict(req("/t/abc"), 502).kind === "function_error", "a Function answering 5xx is an error");
+  assert(verdict(req("/api/take", { method: "POST" }), 200, 4200).kind === "slow" && verdict(req("/api/take", { method: "POST" }), 200, 2900) === null, "slow means 3 s or more");
+  assert(verdict(req("/api/log", { method: "POST" }), 500, 9000) === null, "the log must never log itself");
+  assert(verdict(req("/missing/", { ua: "Googlebot/2.1" }), 404).device === "bot", "a crawler's missing page is kept, marked as a bot");
+
+  // a Function that throws: logged once, and the error still surfaces
+  const sent = [];
+  const realFetch = globalThis.fetch; globalThis.fetch = async (url, init) => { sent.push({ url: String(url), init }); return new Response(null, { status: 201 }); };
+  try {
+    const waits = [];
+    let threw = false;
+    try { await mw.onRequest({ request: req("/api/take", { method: "POST", accept: "application/json" }), env: { SUPABASE_SERVICE_ROLE_KEY: "k", NTFY_TOPIC: "t" }, next: async () => { throw new Error("kaboom"); }, waitUntil: p => waits.push(p) }); }
+    catch (e) { threw = e.message === "kaboom"; }
+    await Promise.all(waits);
+    assert(threw, "the middleware swallowed a Function's error");
+    const saved = sent.filter(c => c.url.includes("/rest/v1/site_log")).map(c => JSON.parse(c.init.body));
+    assert(saved.length === 1 && saved[0].kind === "function_error" && /kaboom/.test(saved[0].message), `a thrown error should be stored once: ${JSON.stringify(saved)}`);
+    assert(sent.some(c => c.url.includes("ntfy.sh")), "a thrown error should reach the phone");
+  } finally { globalThis.fetch = realFetch; }
+
+  // 30 days, as the Privacy page says
+  const maint = await readFile(".github/workflows/maintenance.yml", "utf8");
+  assert(/delete from public\.site_log where at < now\(\) - interval '30 days'/.test(maint), "the nightly job must delete site log entries after 30 days");
+  const privacy = (await readFile("privacy/index.html", "utf8")).replace(/<[^>]+>/g, " ");
+  assert(/visit and error log/.test(privacy) && /deleted after 30 days/.test(privacy) && /no IP address/.test(privacy), "Privacy must describe the site log and its 30 days");
+  assert(/enable row level security/.test(mig) && !/create policy/i.test(mig) && /revoke all on public\.site_log from public, anon, authenticated/.test(mig) && !/grant[^;]*on public\.site_log[^;]*to[^;]*(anon|authenticated)/i.test(mig.replace(/--.*$/gm, "")),
+    "site_log: no policy and no grant for visitors or signed-in people");
+  assert(/where public\.is_admin\(\)/.test(mig) && /revoke execute on function public\.admin_site_log\(bigint, timestamptz, integer\) from public, anon/.test(mig), "admin_site_log must be admins only");
+});
+
+await test("Site log, browser side: one visit per tab, page trail, time on page, own errors, failed saves (not failed reads); the admin switch turns it off", async () => {
+  const vm = await import("node:vm");
+  const src = await readFile("assets/analytics.js", "utf8");
+  function open({ path = "/miami/", search = "", referrer = "", session = new Map(), local = new Map(), respond } = {}) {
+    const beacons = [], listeners = {};
+    const store = m => ({ getItem: k => (m.has(k) ? m.get(k) : null), setItem: (k, v) => { m.set(k, String(v)); }, removeItem: k => { m.delete(k); } });
+    const document = { readyState: "complete", referrer, visibilityState: "visible", createElement: () => ({}), head: { appendChild() {} }, getElementsByTagName: () => [{ parentNode: { insertBefore() {} } }] };
+    const window = {
+      document, console, URL, URLSearchParams, JSON, Math, Date, Promise, String,
+      location: { hostname: "www.tripvibz.com", protocol: "https:", pathname: path, search, href: "https://www.tripvibz.com" + path + search },
+      navigator: { sendBeacon: (url, blob) => { beacons.push({ url, ...JSON.parse(blob.parts[0]) }); return true; } },
+      Blob: class { constructor(parts) { this.parts = parts; } },
+      sessionStorage: store(session), localStorage: store(local),
+      fetch: async (url, init) => respond(String(url), init),
+      setTimeout: () => {}, addEventListener: (t, fn) => { (listeners[t] = listeners[t] || []).push(fn); }, removeEventListener() {},
+    };
+    window.window = window;
+    vm.runInNewContext(src, window);
+    return { beacons, window, session, local, fire: (t, e = {}) => (listeners[t] || []).slice().forEach(fn => fn({ type: t, ...e })) };
+  }
+  const settle = () => new Promise(r => setTimeout(r, 20));
+
+  // first page of a visit, then a second page in the same tab
+  let p = open({ search: "?utm_source=kit&utm_campaign=tv-miami-pilot", referrer: "https://www.google.com/" });
+  assert(p.beacons.length === 1 && p.beacons[0].url === "/api/log", "one beacon to /api/log on page open");
+  const first = p.beacons[0];
+  assert(first.k === "page" && first.first === true && first.path === "/miami/" && first.ref === "https://www.google.com/" && first.tag === "kit / tv-miami-pilot" && /^[a-z0-9]{16}$/.test(first.sid), `first page beacon: ${JSON.stringify(first)}`);
+  const p2 = open({ path: "/miami/add/", session: p.session, referrer: "https://www.tripvibz.com/miami/" });
+  assert(p2.beacons[0].sid === first.sid && !p2.beacons[0].first && !("ref" in p2.beacons[0]), "the next page in the tab belongs to the same visit and is not a new one");
+  // leaving: time on page, once
+  p2.fire("pagehide"); p2.fire("pagehide");
+  const leaves = p2.beacons.filter(b => b.k === "leave");
+  assert(leaves.length === 1 && typeof leaves[0].ms === "number" && leaves[0].ms >= 0, "one leave beacon with the time on the page");
+
+  // errors: each message once, three at most
+  p = open();
+  for (const m of ["a", "a", "b", "c", "d"]) p.fire("error", { message: m, filename: "https://www.tripvibz.com/assets/tv.js", lineno: 3, error: { stack: "at https://www.tripvibz.com/assets/tv.js:3" } });
+  p.fire("unhandledrejection", { reason: { message: "e" } });
+  const errs = p.beacons.filter(b => b.k === "error");
+  assert(errs.length === 3 && errs.map(e => e.msg).join() === "a,b,c" && errs[0].src.endsWith("tv.js:3"), `errors: ${JSON.stringify(errs)}`);
+
+  // failed saves and requests
+  const SB = "https://nkxorlktzbgwqnfwmuus.supabase.co";
+  const answers = {
+    [`${SB}/rest/v1/question_votes`]: () => new Response(JSON.stringify({ code: "42501", message: "new row violates row-level security policy" }), { status: 403 }),
+    [`${SB}/rest/v1/posts?select=id&id=eq.x`]: () => new Response("{}", { status: 406 }),
+    [`${SB}/rest/v1/cities?select=id`]: () => new Response("{}", { status: 503 }),
+    [`${SB}/rest/v1/rpc/search_places`]: () => new Response("[]", { status: 200 }),
+    "/api/take": () => { throw new TypeError("Failed to fetch"); },
+    "/api/log": () => new Response(null, { status: 500 }),
+    "https://www.google-analytics.com/g/collect": () => new Response(null, { status: 500 }),
+  };
+  p = open({ respond: async url => answers[url]() });
+  const f = p.window.fetch;
+  const res = await f(`${SB}/rest/v1/question_votes`, { method: "POST", body: JSON.stringify({ option_id: "secret answer" }) });
+  assert(res.status === 403 && (await res.json()).code === "42501", "the page must still get the untouched response");
+  await f(`${SB}/rest/v1/posts?select=id&id=eq.x`);                       // a read that finds nothing: normal
+  await f(`${SB}/rest/v1/cities?select=id`);                              // a read the server failed: logged
+  await f(`${SB}/rest/v1/rpc/search_places`, { method: "POST" });         // fine
+  let rejected = false; try { await f("/api/take", { method: "POST" }); } catch { rejected = true; }
+  assert(rejected, "a request that never got an answer must still reject for the page");
+  await f("/api/log", { method: "POST" }); await f("https://www.google-analytics.com/g/collect", { method: "POST" });
+  await settle();
+  const fails = p.beacons.filter(b => b.k === "request_failed");
+  assert(fails.length === 3, `expected 3 failed requests, got ${JSON.stringify(fails)}`);
+  const of = t => fails.find(x => x.target === t) || {};
+  assert(of("POST question_votes").status === 403 && /row-level security/.test(of("POST question_votes").msg), JSON.stringify(fails));
+  assert(of("GET cities").status === 503 && of("POST /api/take").status === 0, JSON.stringify(fails));
+  assert(!JSON.stringify(p.beacons).includes("secret answer") && !JSON.stringify(p.beacons).includes("eq.x"), "what was being saved, and the filters of a read, never go into the log");
+  // five per page, and nothing once the visitor is leaving
+  p = open({ respond: async () => new Response("{}", { status: 500 }) });
+  for (let i = 0; i < 8; i++) await p.window.fetch(`${SB}/rest/v1/votes`, { method: "POST" });
+  await settle();
+  assert(p.beacons.filter(b => b.k === "request_failed").length === 5, "at most five failed requests per page view");
+
+  // the admin page's switch
+  p = open({ local: new Map([["tv_nolog", "1"]]), respond: async () => new Response("{}", { status: 500 }) });
+  p.fire("error", { message: "x", filename: "https://www.tripvibz.com/assets/tv.js" });
+  await p.window.fetch(`${SB}/rest/v1/votes`, { method: "POST" }); await settle();
+  assert(p.beacons.length === 0, "with 'Leave out this browser's visits' on, nothing is sent");
+
+  // the admin page's reading of the rows
+  const ctx = { window: {}, document: {}, console, Date, JSON, Math, Object, String, setInterval() {}, clearInterval() {} };
+  vm.runInNewContext(await readFile("assets/sitelog.js", "utf8"), ctx);
+  const L = ctx.window.TVLog, t0 = Date.parse("2026-11-17T15:00:00Z"), at = s => new Date(t0 + s * 1000).toISOString();
+  const rows = [
+    { id: 1, at: at(0), kind: "visit", session_id: "aaaaaaaa", path: "/miami/", source: "Google", place: "Tampa, FL, US", device: "phone" },
+    { id: 2, at: at(40), kind: "page", session_id: "aaaaaaaa", path: "/miami/add/", device: "phone" },
+    { id: 3, at: at(55), kind: "request_failed", session_id: "aaaaaaaa", path: "/miami/add/", detail: "POST question_votes", status: 403 },
+    { id: 4, at: at(95), kind: "leave", session_id: "aaaaaaaa", path: "/miami/add/", ms: 55000 },
+    { id: 5, at: at(100), kind: "visit", session_id: "bbbbbbbb", path: "/", source: "Direct", device: "desktop" },
+    { id: 6, at: at(110), kind: "not_found", session_id: null, path: "/boston/", source: "/cities/", device: "desktop" },
+    { id: 7, at: at(120), kind: "visit", session_id: "cccccccc", path: "/", source: "Direct", device: "bot" },
+  ];
+  const visits = L.groupVisits(rows.slice().reverse());
+  assert(visits.length === 3 && visits[0].id === "cccccccc" && visits[2].id === "aaaaaaaa", "visits come newest first, whatever order the rows arrive in");
+  const a = visits[2];
+  assert(a.source === "Google" && a.pages.join(" > ") === "/miami/ > /miami/add/" && a.errors === 1 && a.last - a.start === 95000 && a.place === "Tampa, FL, US", JSON.stringify(a));
+  const sum = L.summary(rows, t0 + 398 * 1000);   // 303 s after the first visit's last row, 298 s after the second's
+  assert(sum.visits === 2 && sum.errors === 1 && sum.missing === 1 && sum.now === 1, `summary (bots left out; "now" = active in the last 5 minutes): ${JSON.stringify(sum)}`);
+  assert(L.duration(45000) === "45 s" && L.duration(180000) === "3 min" && L.duration(4320000) === "1 h 12 min", "durations in words");
+  const html = L.visitHtml({ ...a, source: '<img src=x onerror=alert(1)>', pages: ['/"><script>'] }, t0) + L.errorHtml({ id: 9, at: at(0), kind: "error", path: "/x", message: "<b>boom</b>", detail: "<script>" });
+  assert(!/<img|<script|<b>boom/.test(html), "the panel must escape everything it shows");
+  const admin = await readFile("admin.html", "utf8");
+  assert(admin.includes('src="/assets/sitelog.js"') && admin.includes('id="sitelog"') && admin.indexOf("TVLog.mount") > admin.indexOf("amAdmin())){ gate(true)"), "the admin page mounts the log only after the admin check");
 });
 
 await test("New tables and views in migrations come with explicit grants (Supabase, from Oct 30 2026)", async () => {

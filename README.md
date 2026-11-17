@@ -52,8 +52,10 @@ add `?preview=signin` to any page to see the buttons. Both need the public
 business accounts managing their own posts). People with Instagram use the
 Facebook account it's linked to; the sign-in box says so.
 
-**Monitoring.** `GET /api/health` is for an uptime monitor (200 / 503). Browser errors from the site's
-own scripts and Function failures are pushed to the ntfy topic (`NTFY_TOPIC`) by `functions/api/error.js`;
+**Monitoring.** `GET /api/health` is for an uptime monitor (200 / 503). Visits and errors (browser errors from the site's
+own scripts, failed saves, Function failures and slow answers, missing pages) are kept for 30 days in `public.site_log` and shown live at the top of `admin.html`;
+the browser reports through `functions/api/log.js`, the server through `functions/_middleware.js`, and the important ones are pushed to the ntfy topic (`NTFY_TOPIC`) by `functions/api/_notify.js`.
+Storing needs `SUPABASE_SERVICE_ROLE_KEY` in Cloudflare (the same secret the Local badge check uses); without it the pushes still go out and nothing is stored;
 calendar suggestions by `functions/api/event.js`. Pending calendar entries are reviewed in `admin.html`.
 
 **Facebook** (built into Supabase):
@@ -72,6 +74,6 @@ TikTok accounts get a placeholder email (`tt-…@tiktok.users.tripvibz.com`, nev
 
 ## Phone notifications
 
-James gets a push notification (free ntfy app) when someone lands on a page from a search engine (Google, Bing, DuckDuckGo, Yahoo, Ecosia, Brave, Perplexity, ChatGPT; once per visit, bots skipped) and when anyone posts a take (new topics are flagged "needs review"). Code: `functions/api/_notify.js`, `functions/api/hit.js`, `functions/api/take.js`, and the beacon in `assets/analytics.js`.
+James gets a push notification (free ntfy app) when a visit starts (first page, where it came from, rough city, kind of device; once per browser tab, bots skipped), when a site error, failed save or broken link on TripVibz happens, and when anyone posts a take (new topics are flagged "needs review"). Code: `functions/api/_notify.js` (`pushFor` decides which log entries push), `functions/api/log.js`, `functions/api/take.js`, and the beacon in `assets/analytics.js`.
 
 Setup: install ntfy (App Store / Google Play), subscribe to the private topic, and set `NTFY_TOPIC` to that name in Cloudflare → Pages → tripvibz → Settings → Variables and Secrets (Production). Delete the variable to stop the notifications. Google hides the searched words from sites, so a Google notification shows the page but not the query; Bing and DuckDuckGo sometimes include it.
