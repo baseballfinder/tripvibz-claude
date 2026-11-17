@@ -792,15 +792,20 @@ print(json.dumps({"kept": sorted(r[0] for r in kept), "noise": [bool(pc.SPOT_NOI
    tie them to the code, so a change that adds an outside service, starts
    storing something new, or retires wording fails here until the pages
    catch up (CLAUDE.md, "Keep the info pages current"). */
-await test("Info pages follow the features: Privacy names every outside service and every kind of thing people store; no retired wording anywhere; About lists the main features", async () => {
+await test("Info pages follow the features: Privacy covers every outside service (without naming the site's own systems) and every kind of thing people store; no retired wording anywhere; About lists the main features", async () => {
   const privacy = (await readFile("privacy/index.html", "utf8")).replace(/<[^>]+>/g, " ");
   const about = (await readFile("about/index.html", "utf8")).replace(/<[^>]+>/g, " ");
-  // 1. Every outside host the browser may load (CSP) or the server calls (functions/) -> who it is.
-  //    A new host fails until it is named on the Privacy page and listed here.
+  // 1. Every outside host the browser may load (CSP) or the server calls (functions/) -> what Privacy says about it.
+  //    A new host fails until the Privacy page says what it does and it is listed here.
+  //    The companies behind the site's own systems are described by their job, not named (James, Nov 17 2026:
+  //    naming them makes the site easier to target). Google sign-in, Google Analytics and Microsoft Clarity
+  //    stay named: people see Google at sign-in, and both analytics tools' terms require the disclosure.
+  for (const name of [/supabase/i, /cloudflare/i, /ntfy/i, /\bKit\b/, /stay22/i, /openstreetmap/i, /overture/i, /improvmx/i, /github/i])
+    assert(!name.test(privacy), `Privacy page names a system the site runs on (${name}); describe what it does instead`);
   const SERVICES = [
-    [/(^|\.)supabase\.co$/, "Supabase"], [/(^|\.)(googletagmanager\.com|google-analytics\.com|analytics\.google\.com)$/, "Google Analytics"],
+    [/(^|\.)supabase\.co$/, "stores the database"], [/(^|\.)(googletagmanager\.com|google-analytics\.com|analytics\.google\.com)$/, "Google Analytics"],
     [/(^|\.)clarity\.ms$|^c\.bing\.com$/, "Microsoft Clarity"], [/^accounts\.google\.com$/, "Google handles sign-in"],
-    [/(^|\.)stay22\.com$/, "Stay22"], [/^ntfy\.sh$/, "ntfy"], [/(^|\.)(tiktok\.com|tiktokapis\.com)$/, "TikTok"],
+    [/(^|\.)stay22\.com$/, "hotel booking partner"], [/^ntfy\.sh$/, "notification service"], [/(^|\.)(tiktok\.com|tiktokapis\.com)$/, "TikTok"],
     [/^(www\.)?tripvibz\.com$|^schema\.org$/, null]   // the site itself; a vocabulary URL, not a service
   ];
   const sec = await readFile("functions/_security.js", "utf8");
@@ -809,7 +814,7 @@ await test("Info pages follow the features: Privacy names every outside service 
   for (const f of fnFiles) for (const m of (await readFile(f, "utf8")).matchAll(/https:\/\/([a-z0-9.-]+\.[a-z]{2,})/g)) hosts.add(m[1]);
   for (const h of hosts) {
     const hit = SERVICES.find(([re]) => re.test(h));
-    assert(hit, `outside service ${h}: name it on the Privacy page ("Who else handles it") and add it to SERVICES in tests/static.mjs`);
+    assert(hit, `outside service ${h}: say what it does on the Privacy page ("Who else handles it") and add it to SERVICES in tests/static.mjs`);
     if (hit[1]) assert(privacy.includes(hit[1]), `Privacy page doesn't mention ${hit[1]} (${h})`);
   }
   // 2. Every table that stores something a person entered -> where Privacy says so.
@@ -852,7 +857,7 @@ await test("Info pages follow the features: Privacy names every outside service 
     assert(about.includes(k), `About page doesn't describe: ${k}`);
   // 5. Outside services the page scripts load on their own (not in the CSP host list): the Guide's map tiles.
   const guideSrc = await readFile("assets/guide.js", "utf8");
-  if (guideSrc.includes('"https://tile.openstreetmap.org/')) assert(/OpenStreetMap/.test(privacy) && /Guide/.test(privacy), "the Guide loads OpenStreetMap tiles: the Privacy page must say so");
+  if (guideSrc.includes('"https://tile.openstreetmap.org/')) assert(/open map service/.test(privacy) && /Guide/.test(privacy), "the Guide loads map images from an outside map service: the Privacy page must say so");
 });
 
 await test("Contact page: its own page, linked from every footer, in the sitemap, with a prefilled email link per reason and the addresses readable on the page", async () => {
