@@ -297,10 +297,10 @@ await test("Site log, server side: what each kind stores and pushes; bots, scann
 await test("Site log, browser side: one visit per tab, page trail, time on page, own errors, failed saves (not failed reads); the admin switch turns it off", async () => {
   const vm = await import("node:vm");
   const src = await readFile("assets/analytics.js", "utf8");
-  function open({ path = "/miami/", search = "", referrer = "", session = new Map(), local = new Map(), respond } = {}) {
+  function open({ path = "/miami/", search = "", referrer = "", session = new Map(), local = new Map(), respond, cookie = "" } = {}) {
     const beacons = [], listeners = {};
     const store = m => ({ getItem: k => (m.has(k) ? m.get(k) : null), setItem: (k, v) => { m.set(k, String(v)); }, removeItem: k => { m.delete(k); } });
-    const document = { readyState: "complete", referrer, visibilityState: "visible", createElement: () => ({}), head: { appendChild() {} }, getElementsByTagName: () => [{ parentNode: { insertBefore() {} } }] };
+    const document = { readyState: "complete", referrer, visibilityState: "visible", cookie, createElement: () => ({}), head: { appendChild() {} }, getElementsByTagName: () => [{ parentNode: { insertBefore() {} } }] };
     const window = {
       document, console, URL, URLSearchParams, JSON, Math, Date, Promise, String,
       location: { hostname: "www.tripvibz.com", protocol: "https:", pathname: path, search, href: "https://www.tripvibz.com" + path + search },
@@ -326,7 +326,11 @@ await test("Site log, browser side: one visit per tab, page trail, time on page,
   // leaving: time on page, once
   p2.fire("pagehide"); p2.fire("pagehide");
   const leaves = p2.beacons.filter(b => b.k === "leave");
-  assert(leaves.length === 1 && typeof leaves[0].ms === "number" && leaves[0].ms >= 0, "one leave beacon with the time on the page");
+  assert(leaves.length === 1 && typeof leaves[0].ms === "number" && leaves[0].ms >= 0 && leaves[0].rec === "", "one leave beacon with the time on the page, and no recording when Clarity set no cookies");
+  // With Clarity's cookies present, the leave beacon carries the recording's ids (visitor/session), and nothing else from the cookies.
+  const p3 = open({ cookie: "_ga=GA1.1.123; _clck=yc5trg%7C2%7Cfx1%7C0%7C1700; _clsk=7a3hd8%7C1792283045000%7C3%7C1%7Ck.clarity.ms%2Fcollect; sb=secret" });
+  p3.fire("pagehide");
+  assert(p3.beacons.find(b => b.k === "leave").rec === "yc5trg/7a3hd8" && !JSON.stringify(p3.beacons).includes("secret") && !JSON.stringify(p3.beacons).includes("GA1"), "the leave beacon should carry only Clarity's visitor and session ids");
 
   // errors: each message once, three at most
   p = open();
@@ -394,13 +398,37 @@ await test("Site log, browser side: one visit per tab, page trail, time on page,
   assert(a.source === "Google" && a.pages.join(" > ") === "/miami/ > /miami/add/" && a.errors === 1 && a.last - a.start === 95000 && a.place === "Tampa, FL, US", JSON.stringify(a));
   const sum = L.summary(rows, t0 + 398 * 1000);   // 303 s after the first visit's last row, 298 s after the second's
   assert(sum.visits === 2 && sum.errors === 1 && sum.missing === 1 && sum.now === 1, `summary (bots left out; "now" = active in the last 5 minutes): ${JSON.stringify(sum)}`);
-  // A visit loaded from Clarity says so and links its recording; any other address in that field is not turned into a link.
-  const clar = L.groupVisits([{ id: 1, at: at(0), kind: "visit", session_id: "clabc12345", path: "/miami/", source: "Google", message: "Imported from Clarity", detail: "https://clarity.microsoft.com/player/xpi9uwoqof/abc/def" }])[0];
+  // A visit loaded from Clarity says so and links its recording; a live visit links the recording its leave row brought;
+  // any other address in that field is not turned into a link.
+  const PLAYER = "https://clarity.microsoft.com/player/xpi9uwoqof/";
+  const clar = L.groupVisits([{ id: 1, at: at(0), kind: "visit", session_id: "clabc12345", path: "/miami/", source: "Google", message: "Imported from Clarity", detail: PLAYER + "abc/def" }])[0];
   const clarHtml = L.visitHtml(clar, t0 + 86400000);
-  assert(clar.recording && /From Clarity/.test(clarHtml) && clarHtml.includes('href="https://clarity.microsoft.com/player/xpi9uwoqof/abc/def"') && /Watch the recording/.test(clarHtml), "a Clarity visit should be labeled and link its recording");
-  const notClar = L.groupVisits([{ id: 1, at: at(0), kind: "visit", session_id: "aaaaaaaa", path: "/", detail: "https://evil.example/clarity.microsoft.com/player/" }])[0];
-  assert(!notClar.recording && !/From Clarity|evil\.example/i.test(L.visitHtml(notClar, t0)), "only a Clarity player address becomes a recording link");
-  assert(!/From Clarity|Watch the recording/.test(L.visitHtml(a, t0)), "a live visit carries no Clarity label");
+  assert(clar.recording && clar.imported && /From Clarity/.test(clarHtml) && clarHtml.includes(`href="${PLAYER}abc/def"`) && /Watch the Clarity recording/.test(clarHtml), "a Clarity visit should be labeled and link its recording");
+  const liveRec = L.groupVisits([{ id: 1, at: at(0), kind: "visit", session_id: "aaaaaaaa", path: "/", source: "Direct" }, { id: 2, at: at(30), kind: "leave", session_id: "aaaaaaaa", path: "/", ms: 30000, detail: PLAYER + "u1/s1" }])[0];
+  assert(liveRec.recording === PLAYER + "u1/s1" && !liveRec.imported && /Watch the Clarity recording/.test(L.visitHtml(liveRec, t0)) && !/From Clarity/.test(L.visitHtml(liveRec, t0)), "a live visit links its recording without the imported label");
+  const notClar = L.groupVisits([{ id: 1, at: at(0), kind: "visit", session_id: "aaaaaaaa", path: "/", detail: "https://evil.example/clarity.microsoft.com/player/" },
+    { id: 2, at: at(1), kind: "error", session_id: "aaaaaaaa", path: "/", message: "x", detail: PLAYER + "in/astack" }])[0];
+  assert(!notClar.recording && !/evil\.example|Clarity recording/i.test(L.visitHtml(notClar, t0)), "only a Clarity player address on a visit or leave row becomes a recording link");
+  assert(!/From Clarity|Clarity recording/.test(L.visitHtml(a, t0)), "a visit without a recording carries no Clarity link");
+
+  // Filters: place in parts, one name per source, and the choices each filter offers.
+  const pp = x => JSON.stringify(L.parsePlace(x));
+  assert(pp("Tampa, FL, US") === '{"city":"Tampa","region":"FL","country":"US"}' && pp("FL, US") === '{"city":"","region":"FL","country":"US"}'
+    && pp("Dublin, IE") === '{"city":"Dublin","region":"","country":"IE"}' && pp("US") === '{"city":"","region":"","country":"US"}' && pp("") === '{"city":"","region":"","country":""}', "parsePlace splits city, region, country");
+  assert(L.sourceBase('Bing · searched "miami in july"') === "Bing" && L.sourceBase("Google (kit / tv-miami)") === "Google" && L.sourceBase("kit / tv-miami-pilot") === "kit / tv-miami-pilot" && L.sourceBase("Direct") === "Direct", "sourceBase gives one name per source");
+  const fv = L.groupVisits([
+    { id: 1, at: at(0), kind: "visit", session_id: "v1v1v1v1", path: "/", source: 'Google · searched "x"', place: "Tampa, FL, US", device: "phone" },
+    { id: 2, at: at(1), kind: "visit", session_id: "v2v2v2v2", path: "/", source: "Google (kit / a)", place: "Miami, FL, US", device: "desktop" },
+    { id: 3, at: at(2), kind: "visit", session_id: "v3v3v3v3", path: "/", source: "Facebook", place: "Austin, TX, US", device: "phone" },
+    { id: 4, at: at(3), kind: "visit", session_id: "v4v4v4v4", path: "/", source: "Direct", message: "Imported from Clarity", detail: PLAYER + "a/b" },
+  ]);
+  const ids = f => L.filterVisits(fv, { device: "", source: "", country: "", region: "", city: "", recording: false, ...f }).map(v => v.id).sort().join();
+  assert(ids({}) === "v1v1v1v1,v2v2v2v2,v3v3v3v3,v4v4v4v4" && ids({ source: "Google" }) === "v1v1v1v1,v2v2v2v2" && ids({ device: "phone" }) === "v1v1v1v1,v3v3v3v3"
+    && ids({ region: "FL" }) === "v1v1v1v1,v2v2v2v2" && ids({ city: "Austin" }) === "v3v3v3v3" && ids({ country: "US", device: "desktop" }) === "v2v2v2v2"
+    && ids({ device: "unknown" }) === "v4v4v4v4" && ids({ recording: true }) === "v4v4v4v4" && ids({ source: "Google", region: "TX" }) === "", "filters combine, and a visit with no device counts as unknown");
+  const fc = L.facets(fv);
+  assert(JSON.stringify(fc.source) === '[["Google",2],["Direct",1],["Facebook",1]]' && JSON.stringify(fc.device) === '[["phone",2],["desktop",1],["unknown",1]]'
+    && JSON.stringify(fc.region) === '[["FL",2],["TX",1]]' && JSON.stringify(fc.country) === '[["US",3]]' && fc.city.length === 3, `filter choices with counts, most first: ${JSON.stringify(fc)}`);
   assert(L.duration(45000) === "45 s" && L.duration(180000) === "3 min" && L.duration(4320000) === "1 h 12 min", "durations in words");
   const html = L.visitHtml({ ...a, source: '<img src=x onerror=alert(1)>', pages: ['/"><script>'] }, t0) + L.errorHtml({ id: 9, at: at(0), kind: "error", path: "/x", message: "<b>boom</b>", detail: "<script>" });
   assert(!/<img|<script|<b>boom/i.test(html), "the panel must escape everything it shows");
@@ -1013,7 +1041,7 @@ await test("Info pages follow the features: Privacy covers every outside service
     assert(!name.test(privacy), `Privacy page names a system the site runs on (${name}); describe what it does instead`);
   const SERVICES = [
     [/(^|\.)supabase\.co$/, "stores the database"], [/(^|\.)(googletagmanager\.com|google-analytics\.com|analytics\.google\.com)$/, "Google Analytics"],
-    [/(^|\.)clarity\.ms$|^c\.bing\.com$/, "Microsoft Clarity"], [/^accounts\.google\.com$/, "Google handles sign-in"],
+    [/(^|\.)clarity\.ms$|^c\.bing\.com$|^clarity\.microsoft\.com$/, "Microsoft Clarity"], [/^accounts\.google\.com$/, "Google handles sign-in"],
     [/(^|\.)stay22\.com$/, "hotel booking partner"], [/^ntfy\.sh$/, "notification service"], [/(^|\.)(tiktok\.com|tiktokapis\.com)$/, "TikTok"],
     [/^(www\.)?tripvibz\.com$|^schema\.org$/, null]   // the site itself; a vocabulary URL, not a service
   ];

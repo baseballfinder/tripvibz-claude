@@ -67,7 +67,14 @@
     window.addEventListener("pagehide", function () {
       if (leaving) return;
       leaving = true;
-      send({ k: "leave", ms: Date.now() - opened });
+      // Clarity keeps its visitor and session ids in two cookies; together they are the
+      // address of this visit's recording, so the admin log can link straight to it.
+      var rec = "";
+      try {
+        var u = /(?:^|;\s*)_clck=([a-z0-9]+)/.exec(document.cookie || ""), c = /(?:^|;\s*)_clsk=([a-z0-9]+)/.exec(document.cookie || "");
+        if (u && c) rec = u[1] + "/" + c[1];
+      } catch (e) { /* cookies blocked */ }
+      send({ k: "leave", ms: Date.now() - opened, rec: rec });
     });
 
     // Errors: each message once.

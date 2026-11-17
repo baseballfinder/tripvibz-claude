@@ -822,10 +822,11 @@ await test("Admin live site log: hidden until the admin check passes; visits wit
     { id: 1, at: ago(900), kind: "visit", session_id: "aaaaaaaa1111", path: "/miami/", source: 'Bing · searched "miami in july"', place: "Tampa, FL, US", device: "phone" },
     { id: 2, at: ago(860), kind: "page", session_id: "aaaaaaaa1111", path: "/miami/add/", device: "phone", place: "Tampa, FL, US" },
     { id: 3, at: ago(850), kind: "request_failed", session_id: "aaaaaaaa1111", path: "/miami/add/", detail: "POST question_votes", status: 403, message: "new row violates row-level security policy", device: "phone" },
+    { id: 40, at: ago(840), kind: "leave", session_id: "aaaaaaaa1111", path: "/miami/add/", ms: 20000, device: "phone", detail: "https://clarity.microsoft.com/player/xpi9uwoqof/u1abc/s1def" },
     { id: 4, at: ago(600), kind: "not_found", session_id: null, path: "/boston/", source: "/cities/", device: "desktop", status: 404 },
     { id: 5, at: ago(500), kind: "visit", session_id: "bot000000001", path: "/", source: "Direct", device: "bot" },
   ];
-  const LATER = { id: 6, at: ago(0), kind: "visit", session_id: "cccccccc3333", path: "/nashville/", source: "Facebook", place: "Cookeville, TN, US", device: "desktop" };
+  const LATER = { id: 41, at: ago(0), kind: "visit", session_id: "cccccccc3333", path: "/nashville/", source: "Facebook", place: "Cookeville, TN, US", device: "desktop" };
   async function openAdmin(who) {
     const c = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
     await c.addInitScript(([k, v]) => { try { localStorage.setItem(k, v); } catch {} }, ["sb-nkxorlktzbgwqnfwmuus-auth-token", JSON.stringify(who.session)]);
@@ -874,13 +875,29 @@ await test("Admin live site log: hidden until the admin check passes; visits wit
     await a.p.waitForFunction(() => document.querySelectorAll("#sitelog .lg-list .lg-row").length === 2, null, { timeout: 9000 });
     const top = await rows.first().textContent();
     assert(/Facebook/.test(top) && /On the site now/.test(top) && /\/nashville\//.test(top), `the new visit should be on top and marked live: ${top}`);
-    assert(a.asked.length >= 2 && a.asked[1].p_after === 5, `the second request should only ask for entries after the newest one held: ${JSON.stringify(a.asked.slice(0, 2))}`);
+    assert(a.asked.length >= 2 && a.asked[1].p_after === 40, `the second request should only ask for entries after the newest one held: ${JSON.stringify(a.asked.slice(0, 2))}`);
     // Errors and missing pages.
     await box.locator('button[data-lg="errors"]').click();
     const errRows = await box.locator(".lg-list").textContent();
     assert(/Save or request failed/.test(errRows) && /POST question_votes answered 403: new row violates/.test(errRows) && /Page not found/.test(errRows) && /Linked from \/cities\//.test(errRows), `errors list: ${errRows}`);
-    // Bots on request; pause stops the asking.
     await box.locator('button[data-lg="visits"]').click();
+    // Filters: by device, source and place, with the numbers following; a visit's Clarity recording is one tap away.
+    await box.locator('select[data-lgf="device"]').selectOption("phone");
+    assert(await rows.count() === 1 && /Tampa/.test(await rows.first().textContent()), "the device filter should leave the phone visit");
+    assert(/1visits/.test(await box.locator(".lg-nums").textContent()), "the numbers should follow the filter");
+    await box.locator('button[data-lg="clear"]').click();
+    assert(await rows.count() === 2, "Clear filters should bring every visit back");
+    await box.locator('select[data-lgf="source"]').selectOption("Facebook");
+    assert(await rows.count() === 1 && /Cookeville/.test(await rows.first().textContent()), "the source filter should leave the Facebook visit");
+    await box.locator('select[data-lgf="region"]').selectOption("FL");
+    assert(await rows.count() === 0 && /Nothing in this period matches these filters/.test(await box.textContent()), "filters combine; no match says so");
+    await box.locator('button[data-lg="clear"]').click();
+    await box.locator('select[data-lgf="city"]').selectOption("Tampa");
+    assert(await rows.count() === 1, "the city filter should leave the Tampa visit");
+    const link = rows.first().locator('a[href^="https://clarity.microsoft.com/player/xpi9uwoqof/"]');
+    assert(await link.count() === 1 && /Watch the Clarity recording/.test(await link.textContent()) && (await link.getAttribute("target")) === "_blank", "a visit with a recording should link to it in a new tab");
+    await box.locator('button[data-lg="clear"]').click();
+    // Bots on request; pause stops the asking.
     await box.locator('input[data-lg="bots"]').check();
     assert(await rows.count() === 3, "Show bots should add the bot's visit");
     await box.locator('button[data-lg="pause"]').click();
