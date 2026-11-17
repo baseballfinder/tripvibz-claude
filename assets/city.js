@@ -382,7 +382,6 @@
     const list = T2.sortPosts(POSTS.filter(p => (SECTION === "all" || p.type === SECTION) && (!VIBE || ((CTX.vibes[p.id] || {})[VIBE] || 0) >= T2.VIBE_SHOW_AT)), SORT);
     const topics = [["what_not_to_do","what-not-to-do","What not to do"],["hidden_gem","what-locals-do","What locals do"],["worst_times","worst-times-to-visit","Worst times to visit"]];
     return `${questionCard()}
-      ${POSTS.length < 3 ? EDITORS_HTML : ""}
       ${vibeFilter()}
       ${many ? `<nav class="chips" aria-label="Show">${SECTIONS.map(([id,l]) => `<button class="chip" data-sec="${id}" aria-pressed="${SECTION===id}">${l}</button>`).join("")}</nav>
       <div class="seg" role="group" aria-label="Sort" style="margin:2px 0 12px">${[["top","Top"],["hot","Hot"],["new","New"]].map(([id,l]) => `<button data-sort="${id}" aria-pressed="${SORT===id}">${l}</button>`).join("")}</div>` : ""}
@@ -390,6 +389,7 @@
         VIBE ? `<div class="empty2"><b>No ${esc(T2.VIBE_BY[VIBE].label.toLowerCase())} takes yet</b>Know a place for it? Add a “Do this” take and tag the vibe.</div>` :
         POSTS.length ? `<div class="empty2"><b>Nothing in this section yet</b>Try “Everything”, or add one below.</div>` :
         `<div class="empty2"><b>No takes yet</b>Know ${esc(CITY.name)}? Tap an answer in the question above, or start your own topic below. The first 10 verified locals to post become founding locals.</div>`}</div>
+      ${POSTS.length < 3 ? EDITORS_HTML : ""}
       ${topicBox()}
       ${POSTS.length ? `<div class="more-topics">By topic: ${topics.filter(t => POSTS.some(p => p.type === t[0])).map(t => `<a href="/${esc(CITY.slug)}/${t[1]}/">${t[2]}</a>`).join(" · ")}</div>` : ""}`;
   }

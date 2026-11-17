@@ -269,10 +269,13 @@ a.chip{display:inline-flex;align-items:center;text-decoration:none}
 .signup-fine a{color:inherit}
 .signup-done{font-size:14.5px}
 /* TripVibz editors' intro on empty city pages: visibly not a local take */
-.editors{margin:0 0 18px;padding:14px 16px;border-left:4px solid var(--ink,#1d1d1b);background:var(--sand,#efe9de);border-radius:4px 14px 14px 4px}
+.editors{margin:14px 0 18px;padding:16px 16px 14px;background:#fff;border:1px solid var(--line);border-radius:14px}
 .editors-k{font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
-.editors p{margin:6px 0 8px;font-size:15px;line-height:1.5;color:var(--ink)}
-.editors-note{font-size:13px;color:var(--muted)}
+.editors-h{font-family:"Archivo";font-weight:800;font-size:18px;line-height:1.25;margin:4px 0 10px;color:var(--ink)}
+.editors ul{list-style:none;margin:0 0 12px;padding:0;display:grid;gap:10px}
+.editors li{position:relative;padding-left:18px;font-size:15px;line-height:1.5;color:var(--ink)}
+.editors li::before{content:"";position:absolute;left:2px;top:.62em;width:7px;height:7px;border-radius:50%;background:var(--coral-btn,#d33f16)}
+.editors-note{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px}
 .editors-note a{font-weight:700}
 /* Nearby cities: internal links so no city page is a dead end */
 .nearby{margin:22px 0 8px}
