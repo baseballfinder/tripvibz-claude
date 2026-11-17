@@ -26,6 +26,20 @@ searches people type for it and the hashtags they post under.
    retired (`active = false`), new ones are inserted. Then
    `python3 scripts/og_cards.py` and commit `assets/og/`.
 
+## Picking the lead from the whole city
+
+The lead question is the city's share card, so it should be about the most
+searched place in the city that people will also argue about, not only the best
+of the five questions already written.
+
+1. Add places to `candidates.csv` (keyword the way people type it, city slug).
+2. Run **Question keywords** with `missing_only=1`: it pulls only what has no
+   numbers yet, candidates included.
+3. `python3 scripts/questions/research.py candidates` → `data/keywords/lead-candidates.csv`:
+   every place per city, most searched first, with the current lead marked.
+4. A new lead means a new question in `spec.py`, a photo of that place
+   (`data/card-photos/`), and James's go-ahead before the live questions change.
+
 ## Reading the numbers
 
 - **Bing searches/month**: how often Bing showed results for that exact search,

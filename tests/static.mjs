@@ -878,6 +878,23 @@ await test("Contact page: its own page, linked from every footer, in the sitemap
   }
 });
 
+await test("Lead-question candidates: every candidate place belongs to a city on the site, none twice, none in the blocked region, and the Bing pull includes them", async () => {
+  const out = execFileSync("python3", ["-c", `
+import sys, csv
+sys.path.insert(0, "scripts/questions")
+import research, spec
+allrows = list(csv.DictReader(open("scripts/questions/candidates.csv")))
+rows = research.candidate_rows()
+assert len(allrows) >= 100, "candidates.csv looks empty"
+assert len(rows) == len(allrows), "a candidate names a city that is not in spec.py"
+assert len(set(rows)) == len(rows), "a candidate place is listed twice for one city"
+print("\\n".join(k for k, _ in rows))
+`], { encoding: "utf8" });
+  assert(!/knoxville|asheville|smok(y|ies)|gatlinburg|pigeon forge|biltmore|blue ridge/i.test(out), "a candidate place is in the blocked region");
+  const src = await readFile("scripts/questions/research.py", "utf8");
+  assert(/for k, slug in candidate_rows\(\):[\s\S]{0,200}"candidate"/.test(src), "research.py seeds must add the candidate places to the Bing pull");
+});
+
 await test("Research data and scripts are not published", async () => {
   assert(!(await exists("dist/data")) && !(await exists("dist/scripts")), "dist/ contains data/ or scripts/");
   for (const f of ["README.md", "CLAUDE.md", "package.json", "docs"]) assert(!(await exists(`dist/${f}`)), `dist/ contains ${f}`);

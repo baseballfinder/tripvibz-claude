@@ -8,6 +8,9 @@ actually search (Bing) and post (Instagram hashtags)?
   python3 scripts/questions/research.py score BING_DIR TAGS_JSON
                                                          -> data/keywords/question-scores.csv + summary
   python3 scripts/questions/research.py sql              -> SQL that makes the live questions match spec.py
+  python3 scripts/questions/research.py candidates       -> data/keywords/lead-candidates.csv: every place we have
+                                                            numbers for, per city, most searched first (candidates.csv
+                                                            lists places not in a question yet; `seeds` pulls them too)
 
 Scoring (per question):
   search   = best Bing searches/month among its phrasings (window impressions / months in window)
@@ -32,6 +35,45 @@ def opt_id(label):
     return s[:24] or "opt"
 
 
+def candidate_rows():
+    """(keyword, city slug) for every candidate place whose city is still on the site."""
+    path = os.path.join(HERE, "candidates.csv")
+    if not os.path.exists(path): return []
+    return [(r["keyword"].strip().lower(), r["group"]) for r in csv.DictReader(open(path)) if r["group"] in spec.CITIES]
+
+
+def windows():
+    """Bing searches/month for every phrasing ever pulled (later runs win)."""
+    import glob
+    win = {}
+    for f in sorted(glob.glob(os.path.join(OUT, "*", "*", "keyword_window.csv"))):
+        mon = months_in(os.path.dirname(f))
+        for r in csv.DictReader(open(f)):
+            win[r["keyword"]] = int(r["impressions"] or 0) / mon
+    return win
+
+
+def candidates():
+    """Per city: every place we have search numbers for, most searched first, with
+    the current lead marked. -> data/keywords/lead-candidates.csv"""
+    win = windows()
+    rows = []
+    for slug, qs in spec.CITIES.items():
+        seen = {}
+        for i, q in enumerate(qs, 1):
+            for k in q["searches"]:
+                if k in win: seen[k] = (round(win[k]), f"question {i}" + (" (lead)" if i == 1 else ""), q["prompt"])
+        for k, g in candidate_rows():
+            if g == slug and k not in seen:
+                seen[k] = (round(win[k]) if k in win else "", "candidate", "")
+        for k, (v, kind, prompt) in sorted(seen.items(), key=lambda kv: -(kv[1][0] or -1)):
+            rows.append({"city": slug, "search": k, "Bing searches/month": v, "where": kind, "question": prompt})
+    path = os.path.join(OUT, "lead-candidates.csv")
+    with open(path, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(rows[0])); w.writeheader(); w.writerows(rows)
+    print(len(rows), "rows ->", path, "| not pulled yet:", sum(1 for r in rows if r["Bing searches/month"] == ""))
+
+
 def seeds(missing_only=False, related_missing=False):
     """missing_only: skip phrasings that already have Bing data in data/keywords/ (saves API quota).
     related_missing: only phrasings with no related-searches data yet (for search-intent work)."""
@@ -50,8 +92,17 @@ def seeds(missing_only=False, related_missing=False):
             for s in q["searches"]:
                 if (s, slug) not in seen and s not in have:
                     seen.add((s, slug)); rows.append((s, slug, f"q{i}"))
+    # Places a city could lead with that are not in a question yet (candidates.csv).
+    # They ride along on the same pull so a lead can be picked from the whole city,
+    # not only from the five questions already written.
+    n_cand = 0
+    if not related_missing:
+        for k, slug in candidate_rows():
+            if (k, slug) not in seen and k not in have:
+                seen.add((k, slug)); rows.append((k, slug, "candidate")); n_cand += 1
     with open(os.path.join(OUT, "seeds.csv"), "w", newline="") as f:
         w = csv.writer(f); w.writerow(["keyword", "group", "note"]); w.writerows(rows)
+    print(n_cand, "of them are candidate places")
     print(len(rows), "seeds ->", os.path.join(OUT, "seeds.csv"))
 
 
@@ -137,5 +188,6 @@ if __name__ == "__main__":
     if cmd == "seeds": seeds("--missing" in sys.argv, "--related-missing" in sys.argv)
     elif cmd == "tags": tags()
     elif cmd == "score": score(sys.argv[2], sys.argv[3])
+    elif cmd == "candidates": candidates()
     elif cmd == "sql": sql()
     else: print(__doc__)
