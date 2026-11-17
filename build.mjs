@@ -688,7 +688,7 @@ function eatsHtml(city, { eats, picks, localChecks, pickers, restVibes = [] }) {
       <div class="eat-main"><b class="eat-name">${esc(r.name)}</b>${r.address ? `<span class="eat-nb">${esc(r.address)}${r.neighborhood ? ", " + esc(r.neighborhood) : ""}</span>` : r.neighborhood ? `<span class="eat-nb">${esc(r.neighborhood)}</span>` : ""}
       <div class="eat-meta">${r.picks} pick${r.picks === 1 ? "" : "s"}${r.verified_picks ? ` · ${r.verified_picks} verified ✓` : ""}${r.firsts ? ` · #1 for ${r.firsts}` : ""}</div>
       ${V2.vibeTagsHtml(rvc[r.restaurant_id], [])}${whyFor(r.restaurant_id)}${links(r)}</div></li>`).join("")}</ol>
-<div class="eats-attrib">Addresses and phone numbers from <a href="https://overturemaps.org/" target="_blank" rel="noopener">Overture Maps</a> (open data); please <a href="/about/#contact">tell us</a> if one is wrong.</div>`
+<div class="eats-attrib">Addresses and phone numbers from <a href="https://overturemaps.org/" target="_blank" rel="noopener">Overture Maps</a> (open data); please <a href="/contact/">tell us</a> if one is wrong.</div>`
     : `<div class="empty2"><b>No picks yet</b>Know ${esc(city.name)}? Be the first to name the three places you'd take a friend.</div>`;
   return `<section class="eats" id="tv-eats" aria-labelledby="eats-h">
 <div class="eats-h"><h2 id="eats-h">Where they'd take a friend to eat</h2>${people ? `<span class="eats-n">${people} ${people === 1 ? "person" : "people"} picked</span>` : ""}</div>
@@ -1052,7 +1052,7 @@ const PWA_SCRIPT = `<script src="/assets/pwa.js" defer></script>`;
 // carried their own footer get this one instead; the admin page gets none.
 const SITE_FOOTER = `<footer class="site-foot"><div class="wrap">
 <div class="sf-brand"><b>TripVibz</b><span class="tagline">Ask someone who knows.</span></div>
-<nav class="sf-links" aria-label="Site"><a href="/cities/">Cities</a><a href="/about/">About</a><a href="/how-we-verify-locals/">Local badges</a><a href="/about/#contact">Contact</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a></nav>
+<nav class="sf-links" aria-label="Site"><a href="/cities/">Cities</a><a href="/about/">About</a><a href="/how-we-verify-locals/">Local badges</a><a href="/contact/">Contact</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a></nav>
 <div class="sf-note">© ${new Date().getFullYear()} TripVibz · A city guide written by the people who live there.</div>
 </div></footer>`;
 
@@ -1193,6 +1193,7 @@ await emit("index.html", await minifyHtml(render(indexTpl, {
 pages.push({ path: "/cities/", lastmod: newest(posts), priority: "0.8" });
 pages.push({ path: "/about/", lastmod: CONTENT_EPOCH, priority: "0.3" });
 pages.push({ path: "/how-we-verify-locals/", lastmod: "2026-10-30", priority: "0.3" });
+pages.push({ path: "/contact/", lastmod: "2026-11-17", priority: "0.3" });
 const lists = cityLists(cities, countsBySlug);
 await emit("cities/index.html", await minifyHtml(render(placesTpl, {
   title: "Every city on TripVibz — where people who know it would take you",

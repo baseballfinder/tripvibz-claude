@@ -208,7 +208,7 @@
       <div class="eat-main"><b class="eat-name">${esc(r.name)}</b>${r.address ? `<span class="eat-nb">${esc(r.address)}${r.neighborhood ? ", " + esc(r.neighborhood) : ""}</span>` : r.neighborhood ? `<span class="eat-nb">${esc(r.neighborhood)}</span>` : ""}
       <div class="eat-meta">${r.picks} pick${r.picks === 1 ? "" : "s"}${r.verified_picks ? ` · ${r.verified_picks} verified ✓` : ""}${r.firsts ? ` · #1 for ${r.firsts}` : ""}</div>
       ${T2.vibeTagsHtml(EATS.vibes.counts[r.restaurant_id], EATS.vibes.mine[r.restaurant_id])}${whyFor(r.restaurant_id)}${eatLinks(r)}</div></li>`).join("")}</ol>
-      <div class="eats-attrib">Addresses and phone numbers from <a href="https://overturemaps.org/" target="_blank" rel="noopener">Overture Maps</a> (open data); please <a href="/about/#contact">tell us</a> if one is wrong.</div>`
+      <div class="eats-attrib">Addresses and phone numbers from <a href="https://overturemaps.org/" target="_blank" rel="noopener">Overture Maps</a> (open data); please <a href="/contact/">tell us</a> if one is wrong.</div>`
       : VIBE ? `<div class="empty2"><b>No ${esc(T2.VIBE_BY[VIBE].label.toLowerCase())} picks yet</b>Pick your top 3 and tag the vibe.</div>`
       : `<div class="empty2"><b>No picks yet</b>Know ${esc(CITY.name)}? Be the first to name the three places you'd take a friend.</div>`;
     return `<section class="eats" id="tv-eats" aria-labelledby="eats-h">
