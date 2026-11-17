@@ -871,8 +871,34 @@ await test("Admin live site log: hidden until the admin check passes; visits wit
     assert(/Bing · searched "miami in july"/.test(t) && /Tampa, FL, US/.test(t) && /Phone/.test(t) && /\/miami\/ → \/miami\/add\//.test(t) && /2 pages/.test(t) && /1 error/.test(t), `visit row: ${t}`);
     const nums = await box.locator(".lg-nums").textContent();
     assert(/1visits/.test(nums) && /1errors/.test(nums) && /1pages not found/.test(nums) && /0on the site now/.test(nums), `numbers: ${nums}`);
+    // Updating in place. Before the next check: scroll down inside the list, open the device dropdown, and tag what is on screen.
+    await a.p.evaluate(() => {
+      const list = document.querySelector("#sitelog .lg-list");
+      list.style.maxHeight = "70px"; list.scrollTop = 40;
+      window.__before = { top: list.scrollTop, height: list.scrollHeight };
+      document.querySelector('#sitelog select[data-lgf="device"]').__mine = true;
+      document.querySelector('#sitelog select[data-lgf="device"]').focus();
+      document.querySelector("#sitelog .lg-head h2").__mine = true;
+    });
     // A new visit arrives on its own.
     await a.p.waitForFunction(() => document.querySelectorAll("#sitelog .lg-list .lg-row").length === 2, null, { timeout: 9000 });
+    const kept = await a.p.evaluate(() => {
+      const list = document.querySelector("#sitelog .lg-list"), sel = document.querySelector('#sitelog select[data-lgf="device"]');
+      return { top: list.scrollTop, grew: list.scrollHeight - window.__before.height, before: window.__before.top, sameSelect: sel.__mine === true, focused: document.activeElement === sel,
+        sameHead: document.querySelector("#sitelog .lg-head h2").__mine === true };
+    });
+    assert(kept.before > 0 && kept.grew > 0 && Math.abs(kept.top - (kept.before + kept.grew)) <= 2, `a new visit on top must not move what you were reading: scrolled to ${kept.top}, expected ${kept.before} + ${kept.grew}`);
+    assert(kept.sameSelect && kept.focused, "a dropdown you have open must not be replaced by an update");
+    assert(kept.sameHead, "parts of the panel that did not change must not be redrawn");
+    // Once the dropdown lets go, it catches up (the new visit's device is counted).
+    await a.p.evaluate(() => { document.activeElement.blur(); document.querySelector("#sitelog .lg-list").style.maxHeight = ""; });
+    await a.p.waitForFunction(() => /Computer \(1\)/.test(document.querySelector('#sitelog select[data-lgf="device"]').textContent), null, { timeout: 3000 });
+    // A check that brings nothing new touches nothing at all.
+    await a.p.evaluate(() => { document.querySelectorAll("#sitelog .lg-list .lg-row").forEach(r => { r.__mine = true; }); document.querySelector("#sitelog .lg-nums").firstChild.__mine = true; });
+    const checks = a.asked.length;
+    await a.p.waitForTimeout(5600);
+    assert(a.asked.length > checks, "the panel should have checked again");
+    assert(await a.p.evaluate(() => [...document.querySelectorAll("#sitelog .lg-list .lg-row")].every(r => r.__mine === true) && document.querySelector("#sitelog .lg-nums").firstChild.__mine === true), "a check with nothing new must leave the list and the numbers untouched");
     const top = await rows.first().textContent();
     assert(/Facebook/.test(top) && /On the site now/.test(top) && /\/nashville\//.test(top), `the new visit should be on top and marked live: ${top}`);
     assert(a.asked.length >= 2 && a.asked[1].p_after === 40, `the second request should only ask for entries after the newest one held: ${JSON.stringify(a.asked.slice(0, 2))}`);

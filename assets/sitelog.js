@@ -15,6 +15,7 @@
   var ACTIVE_MS = 5 * 60 * 1000;   // a visit with something in the last 5 minutes counts as "on the site now"
   var POLL_MS = 5000;
   var CLARITY_PLAYER = "https://clarity.microsoft.com/player/";
+  var RECORDING_READY_MS = 2 * 3600 * 1000;   // a recording can take up to about two hours to show up in Clarity
   var RANGES = [["1h", "Last hour", 3600e3], ["24h", "Last 24 hours", 86400e3], ["7d", "Last 7 days", 7 * 86400e3], ["30d", "Last 30 days", 30 * 86400e3]];
 
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -124,7 +125,7 @@
   function visitHtml(v, now) {
     var live = now - v.last <= ACTIVE_MS;
     var len = v.last - v.start;
-    return '<div class="lg-row' + (v.errors ? " has-err" : "") + '">' +
+    return '<div class="lg-row' + (v.errors ? " has-err" : "") + '" data-k="v' + esc(v.id) + '">' +
       '<div class="lg-top"><span class="lg-time">' + esc(clock(v.start)) + "</span>" +
       (live ? '<span class="lg-pill live">On the site now</span>' : "") +
       '<span class="lg-pill">' + esc(DEVICE_LABEL[v.device] || "Unknown device") + "</span>" +
@@ -134,7 +135,9 @@
       '<div class="lg-main">' + (v.complete ? "From <b>" + esc(v.source) + "</b>" : "Started before this list begins") + "</div>" +
       '<div class="lg-trail">' + (v.pages.length ? v.pages : [v.seen]).map(function (p) { return '<a href="' + esc(p) + '" target="_blank" rel="noopener">' + esc(p) + "</a>"; }).join(" → ") + "</div>" +
       '<div class="lg-meta">' + (v.pages.length ? v.pages.length + (v.pages.length === 1 ? " page" : " pages") + " · " : "") + (len < 1000 ? "less than a second so far" : duration(len) + " on the site") +
-      (v.recording ?  ' · <a href="' + esc(v.recording) + '" target="_blank" rel="noopener">Watch the Clarity recording</a>' : "") + "</div></div>";
+      (v.recording ? ' · <a href="' + esc(v.recording) + '" target="_blank" rel="noopener">Watch the Clarity recording</a>' +
+        // Clarity needs time to prepare a recording after the visit ends; until then its player shows nothing.
+        (now - v.last < RECORDING_READY_MS ? " (Clarity is still preparing it; try again in a while)" : "") : "") + "</div></div>";
   }
 
   function errorHtml(r) {
@@ -142,7 +145,7 @@
       : r.kind === "not_found" ? (r.source ? "Linked from " + r.source : "No linking page given (typed, bookmarked, or hidden by the other site)")
       : (r.message || "");
     var more = r.kind === "error" || r.kind === "function_error" ? r.detail : "";
-    return '<div class="lg-row is-' + r.kind + '">' +
+    return '<div class="lg-row is-' + r.kind + '" data-k="e' + esc(r.id) + '">' +
       '<div class="lg-top"><span class="lg-time">' + esc(clock(Date.parse(r.at))) + "</span>" +
       '<span class="lg-pill ' + (r.kind === "slow" || r.kind === "not_found" ? "warn" : "err") + '">' + esc(KIND_LABEL[r.kind] || r.kind) + "</span>" +
       (r.device ? '<span class="lg-pill">' + esc(DEVICE_LABEL[r.device] || r.device) + "</span>" : "") +
@@ -179,22 +182,54 @@
       var errs = inView.filter(function (r) { return ERROR_KINDS.indexOf(r.kind) >= 0; }).sort(function (a, b) { return b.id - a.id; });
       var list = view === "visits" ? visits.map(function (v) { return visitHtml(v, now); }) : errs.map(errorHtml);
       var off = false; try { off = localStorage.getItem("tv_nolog") === "1"; } catch (e) { /* storage blocked */ }
-      el.innerHTML =
-        '<div class="lg-head"><h2>Live site log</h2>' +
+      // Six parts, each replaced only when its own content changed. A check that brings nothing new
+      // therefore touches nothing: the scroll position, an open list, the pointer's hover all stay put.
+      patch("head", '<h2>Live site log</h2>' +
         '<span class="lg-state ' + (failing ? "bad" : paused ? "" : "on") + '">' + (failing ? "Can't reach the log: " + esc(failing) : paused ? "Paused" : "Live · checks every 5 seconds") + "</span>" +
-        '<button data-lg="pause">' + (paused ? "Resume" : "Pause") + "</button></div>" +
-        '<div class="lg-nums"><div><b>' + s.now + "</b>on the site now</div><div><b>" + s.visits + "</b>visits</div><div><b>" + s.errors + "</b>errors</div><div><b>" + s.missing + "</b>pages not found</div></div>" +
-        '<div class="lg-tools"><button data-lg="visits" aria-pressed="' + (view === "visits") + '">Visits (' + visits.length + ")</button>" +
+        '<button data-lg="pause">' + (paused ? "Resume" : "Pause") + "</button>");
+      patch("nums", "<div><b>" + s.now + "</b>on the site now</div><div><b>" + s.visits + "</b>visits</div><div><b>" + s.errors + "</b>errors</div><div><b>" + s.missing + "</b>pages not found</div>");
+      patch("tools", '<button data-lg="visits" aria-pressed="' + (view === "visits") + '">Visits (' + visits.length + ")</button>" +
         '<button data-lg="errors" aria-pressed="' + (view === "errors") + '">Errors and missing pages (' + errs.length + ")</button>" +
         '<select data-lg="range" aria-label="How far back">' + RANGES.map(function (r) { return '<option value="' + r[0] + '"' + (r[0] === range ? " selected" : "") + ">" + r[1] + "</option>"; }).join("") + "</select>" +
         '<label><input type="checkbox" data-lg="bots"' + (bots ? " checked" : "") + "> Show bots</label>" +
-        '<label><input type="checkbox" data-lg="nolog"' + (off ? " checked" : "") + "> Leave out this browser's visits</label></div>" +
-        '<div class="lg-tools lg-filters">' + FILTERS.map(function (x) { return select(x[0], x[1], fc[x[0]]); }).join("") +
+        '<label><input type="checkbox" data-lg="nolog"' + (off ? " checked" : "") + "> Leave out this browser's visits</label>");
+      patch("filters", FILTERS.map(function (x) { return select(x[0], x[1], fc[x[0]]); }).join("") +
         '<label><input type="checkbox" data-lgf="recording"' + (F.recording ? " checked" : "") + "> Has a Clarity recording</label>" +
-        (active ? '<button data-lg="clear">Clear filters</button>' : "") + "</div>" +
-        '<div class="lg-list">' + (list.length ? list.slice(0, 200).join("") : '<div class="lg-empty">' + (active ? "Nothing in this period matches these filters." : view === "visits" ? "No visits in this period yet. A visit shows here within a few seconds of someone opening a page." : "No errors or missing pages in this period.") + "</div>") + "</div>" +
-        (list.length > 200 ? '<div class="lg-empty">Showing the newest 200 of ' + list.length + ".</div>" : "") +
-        (rows.length >= 2000 ? '<div class="lg-empty">This period holds more than the 2,000 newest entries loaded here; pick a shorter period to see all of it.</div>' : "");
+        (active ? '<button data-lg="clear">Clear filters</button>' : ""));
+      patch("list", list.length ? list.slice(0, 200).join("") : '<div class="lg-empty">' + (active ? "Nothing in this period matches these filters." : view === "visits" ? "No visits in this period yet. A visit shows here within a few seconds of someone opening a page." : "No errors or missing pages in this period.") + "</div>",
+        view + "|" + range + "|" + bots + "|" + JSON.stringify(F));
+      patch("foot", (list.length > 200 ? '<div class="lg-empty">Showing the newest 200 of ' + list.length + ".</div>" : "") +
+        (rows.length >= 2000 ? '<div class="lg-empty">This period holds more than the 2,000 newest entries loaded here; pick a shorter period to see all of it.</div>' : ""));
+    }
+
+    // The panel's parts, made once. PART[name] = { node, html (what it holds), ctx }.
+    var PART = {};
+    [["head", "lg-head"], ["nums", "lg-nums"], ["tools", "lg-tools"], ["filters", "lg-tools lg-filters"], ["list", "lg-list"], ["foot", "lg-foot"]].forEach(function (x) {
+      var node = document.createElement("div"); node.className = x[1]; el.appendChild(node);
+      PART[x[0]] = { node: node, html: null, ctx: null };
+    });
+
+    /**
+     * Put `html` in a part, unless it already holds exactly that.
+     *  - A part with a dropdown the person has open or focused waits: replacing it would close the dropdown
+     *    under their pointer. It catches up on the next draw after they pick or move on.
+     *  - The list keeps its place: opened "Where in the code" boxes stay open, and when new entries arrive on
+     *    top while the person has scrolled down, the entries they were reading stay where they were.
+     *    ctx (view, period, filters) says whether it is still the same list; a different one starts at the top.
+     */
+    function patch(name, html, ctx) {
+      var p = PART[name], node = p.node;
+      if (p.html === html) return;
+      var focus = document.activeElement;
+      if (focus && focus.tagName === "SELECT" && node.contains(focus) && p.html !== null) return;
+      if (name !== "list") { node.innerHTML = html; p.html = html; return; }
+      var same = p.ctx === ctx, top = node.scrollTop, height = node.scrollHeight, open = {};
+      if (same) Array.prototype.forEach.call(node.querySelectorAll("[data-k] details[open]"), function (d) { open[d.closest("[data-k]").getAttribute("data-k")] = 1; });
+      node.innerHTML = html; p.html = html; p.ctx = ctx;
+      if (!same) { node.scrollTop = 0; return; }
+      Array.prototype.forEach.call(node.querySelectorAll("[data-k] details"), function (d) { if (open[d.closest("[data-k]").getAttribute("data-k")]) d.open = true; });
+      // Scrolled down: new entries were added above, so move down by as much as the list grew. At the top: stay at the top.
+      node.scrollTop = top > 0 ? Math.max(0, top + (node.scrollHeight - height)) : 0;
     }
 
     function take(data) {
@@ -226,6 +261,8 @@
       else if (a === "bots") { bots = e.target.checked; draw(); }
       else if (a === "nolog") { try { e.target.checked ? localStorage.setItem("tv_nolog", "1") : localStorage.removeItem("tv_nolog"); } catch (err) { /* storage blocked */ } }
     });
+    // A part that waited for an open dropdown catches up once the dropdown lets go.
+    el.addEventListener("focusout", function (e) { if (e.target && e.target.tagName === "SELECT") setTimeout(draw, 0); });
     draw();
     load(true);
     timer = setInterval(tick, POLL_MS);
