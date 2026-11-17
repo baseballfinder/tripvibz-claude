@@ -69,6 +69,39 @@
   .rlm-out{display:flex;gap:8px}
   .rlm-out input{flex:1;min-width:0;font-size:12.5px;color:var(--muted)}
   .rlm-note{font-size:12px;color:var(--muted);margin-top:6px}
+
+  .lg{margin:0 0 26px;padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}
+  .lg-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .lg-head h2{font-size:19px;font-weight:900;margin:0}
+  .lg-state{font-size:12.5px;font-weight:600;color:var(--muted)}
+  .lg-state.on::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#1a9b6c;margin-right:6px}
+  .lg-state.bad{color:#c0341a}
+  .lg button{font-family:"Archivo";font-weight:700;font-size:12.5px;border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:6px 13px;cursor:pointer;color:var(--ink)}
+  .lg button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .lg-nums{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+  .lg-nums div{background:var(--paper);border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--muted)}
+  .lg-nums b{display:block;font-family:"Archivo";font-size:24px;font-weight:900;color:var(--ink);line-height:1.1}
+  @media(max-width:600px){.lg-nums{grid-template-columns:repeat(2,1fr)}}
+  .lg-tools{display:flex;gap:8px 12px;flex-wrap:wrap;align-items:center;margin-bottom:12px;font-size:13px;color:var(--muted)}
+  .lg-tools select{border:1px solid var(--line);border-radius:9px;padding:6px 9px;font:inherit;font-size:13px;background:#fff}
+  .lg-tools label{display:flex;align-items:center;gap:5px}
+  .lg-list{max-height:560px;overflow:auto}
+  .lg-row{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;overflow-wrap:anywhere}
+  .lg-row.has-err,.lg-row.is-error,.lg-row.is-function_error,.lg-row.is-request_failed{border-color:#f0cfc4;background:#fff8f5}
+  .lg-top{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--muted);margin-bottom:4px}
+  .lg-time{font-weight:700;color:var(--ink)}
+  .lg-pill{font-family:"Archivo";font-weight:700;font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:var(--sand);color:#5b5448}
+  .lg-pill.live{background:#dff3ec;color:#0c6b5e}
+  .lg-pill.err{background:#ffe7e0;color:#c0341a}
+  .lg-pill.warn{background:#fff1cf;color:#7a5600}
+  .lg-main{font-size:14.5px;color:#2e2b25}
+  .lg-main a,.lg-trail a{color:var(--ocean);font-weight:600;text-decoration:none}
+  .lg-trail{font-size:13.5px;margin-top:3px;line-height:1.6}
+  .lg-meta,.lg-msg{font-size:12.5px;color:var(--muted);margin-top:4px}
+  .lg-msg{color:#57534a;font-size:13.5px}
+  .lg-row details{margin-top:6px;font-size:12.5px;color:var(--muted)}
+  .lg-row pre{white-space:pre-wrap;font-size:11.5px;background:var(--paper);border-radius:8px;padding:8px;margin:6px 0 0}
+  .lg-empty{font-size:13.5px;color:var(--muted);padding:14px 4px}
 </style>
 </head>
 <body>
@@ -82,7 +115,7 @@
 </header>
 
 <main>
-  <div class="wrap"><div id="root">
+  <div class="wrap"><section class="lg" id="sitelog" hidden></section><div id="root">
     <div class="state"><b>Checking access…</b>One second.</div>
   </div></div>
 </main>
@@ -91,6 +124,7 @@
 
 <script src="/assets/supabase.js"></script>
 <script src="/assets/tv.js"></script>
+<script src="/assets/sitelog.js"></script>
 <script>
 (function(){
   "use strict";
@@ -493,6 +527,8 @@
     await auth.ensure();
     if(!isSignedIn()){ gate(false); return; }
     if(!(await amAdmin())){ gate(true); return; }
+    // The live site log has its own box above the submissions, so their redraws never touch it.
+    try{ const box = $("#sitelog"); box.hidden = false; window.TVLog.mount(box, sb); }catch(e){ console.error(e); }
     try{
       await load();
       render();

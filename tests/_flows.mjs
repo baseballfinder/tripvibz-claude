@@ -36,13 +36,13 @@ export const NOTHING_TO_SHOW = {
   "rpc:search_places": "a read (restaurant search)",
   "rpc:popular_places": "a read (best-known restaurants)",
   "rpc:search_take_places": "a read (spot search)",
+  "rpc:admin_site_log": "a read (the admin page's live site log)",
   "rpc:ensure_restaurant_from_place": "server-side copy of a catalogue restaurant; the pick that uses it is checked (top3_picks)",
   "rpc:ensure_spot_from_place": "server-side copy of a catalogue spot; the take that uses it is checked (posts)",
   "rpc:create_claim": "sign-in handoff token, not something the person did on a page",
   "rpc:redeem_claim": "sign-in handoff: moves anonymous answers to the account (tests/e2e.mjs covers sign-in)",
   "rpc:email_signup": "email list signup has no account; there is nothing to show on return",
-  "/api/hit": "page-view counter",
-  "/api/error": "error beacon",
+  "/api/log": "the site log's beacon (visits and errors for the admin page); not something the person did",
   "/api/locate": "location check for the Local badge; the badge is earned over weeks, not shown on return",
   "/api/near": "a read (cities near you)",
   "/api/event": "calendar suggestion; goes to review and is not shown until approved"
@@ -253,7 +253,7 @@ export async function visitorFlows({ browser, BASE, backend, test, assert }) {
       const src = await readFile(f, "utf8");
       for (const m of src.matchAll(/\.from\(\s*["'`](\w+)["'`]\s*\)\s*\.\s*(?:insert|upsert|update|delete)\b/g)) note(m[1], f);
       for (const m of src.matchAll(/\.rpc\(\s*["'`](\w+)["'`]/g)) note("rpc:" + m[1], f);
-      for (const m of src.matchAll(/fetch\(\s*["'`](\/api\/\w+)/g)) note(m[1], f);
+      for (const m of src.matchAll(/(?:fetch|sendBeacon|realFetch\.call)\(\s*(?:window,\s*)?["'`](\/api\/\w+)/g)) note(m[1], f);
     }
     assert(found.size >= 15, `the scan for write paths found only ${found.size}; the pattern no longer matches how pages save`);
     const unlisted = [...found].filter(([t]) => !COMES_BACK.includes(t) && !(t in NOTHING_TO_SHOW));

@@ -809,6 +809,93 @@ await test("Installable (PWA): the service worker registers and saves the shell,
   } finally { await ctx3.close(); }
 });
 
+await test("Admin live site log: hidden until the admin check passes; visits with their page trail, errors, and a new visit appearing without a reload", async () => {
+  if (BASE.startsWith("https://")) return;   // needs a stand-in admin; a preview has real sign-in
+  const mk = (admin) => {
+    const id = randomUUID(), e = Math.floor(Date.now() / 1000) + 3600;
+    const jwt = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub: id, role: "authenticated", is_anonymous: false, exp: e, aud: "authenticated" })}.sig`;
+    const user = { id, aud: "authenticated", role: "authenticated", is_anonymous: false, app_metadata: { provider: "google" }, user_metadata: { full_name: admin ? "Test Admin" : "Test Person" }, created_at: new Date().toISOString() };
+    return { admin, user, session: { access_token: jwt, token_type: "bearer", expires_in: 3600, expires_at: e, refresh_token: "t", user } };
+  };
+  const ago = s => new Date(Date.now() - s * 1000).toISOString();
+  const LOG = [
+    { id: 1, at: ago(900), kind: "visit", session_id: "aaaaaaaa1111", path: "/miami/", source: 'Bing · searched "miami in july"', place: "Tampa, FL, US", device: "phone" },
+    { id: 2, at: ago(860), kind: "page", session_id: "aaaaaaaa1111", path: "/miami/add/", device: "phone", place: "Tampa, FL, US" },
+    { id: 3, at: ago(850), kind: "request_failed", session_id: "aaaaaaaa1111", path: "/miami/add/", detail: "POST question_votes", status: 403, message: "new row violates row-level security policy", device: "phone" },
+    { id: 4, at: ago(600), kind: "not_found", session_id: null, path: "/boston/", source: "/cities/", device: "desktop", status: 404 },
+    { id: 5, at: ago(500), kind: "visit", session_id: "bot000000001", path: "/", source: "Direct", device: "bot" },
+  ];
+  const LATER = { id: 6, at: ago(0), kind: "visit", session_id: "cccccccc3333", path: "/nashville/", source: "Facebook", place: "Cookeville, TN, US", device: "desktop" };
+  async function openAdmin(who) {
+    const c = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
+    await c.addInitScript(([k, v]) => { try { localStorage.setItem(k, v); } catch {} }, ["sb-nkxorlktzbgwqnfwmuus-auth-token", JSON.stringify(who.session)]);
+    await c.route(`${SB}/auth/v1/**`, r => r.fulfill({ json: r.request().url().includes("/user") ? who.user : who.session }));
+    const asked = [];
+    await c.route(`${SB}/rest/v1/**`, async r => {
+      const req = r.request(), url = req.url();
+      const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "*" };
+      if (req.method() === "OPTIONS") return r.fulfill({ status: 204, headers: cors });
+      if (url.includes("/rpc/admin_site_log")) {
+        const args = req.postDataJSON(); asked.push(args);
+        if (!who.admin) return r.fulfill({ status: 200, headers: cors, json: [] });
+        return r.fulfill({ status: 200, headers: cors, json: (asked.length >= 2 ? LOG.concat(LATER) : LOG).filter(x => x.id > (args.p_after || 0)) });
+      }
+      if (url.includes("/profiles?") && url.includes("is_admin")) {
+        const row = { is_admin: who.admin };
+        return r.fulfill({ status: 200, headers: cors, json: (req.headers().accept || "").includes("vnd.pgrst.object") ? row : [row] });
+      }
+      if (req.method() !== "GET") { writes.push({ url, method: req.method() }); }
+      return r.fulfill({ status: 200, headers: cors, json: [] });
+    });
+    const p = await c.newPage(); const errs = [];
+    p.on("pageerror", e => errs.push(String(e)));
+    await p.goto(BASE + "/admin.html", { waitUntil: "networkidle" }); await p.waitForTimeout(600);
+    return { c, p, errs, asked };
+  }
+  // Someone signed in who is not an admin: no log, and the log is never asked for.
+  const outsider = await openAdmin(mk(false));
+  try {
+    assert(await outsider.p.locator("#sitelog").isHidden(), "the log box must stay hidden for a non-admin");
+    assert(outsider.asked.length === 0, "a non-admin's page must not ask for the log");
+  } finally { await outsider.c.close(); }
+
+  const a = await openAdmin(mk(true));
+  try {
+    const box = a.p.locator("#sitelog");
+    assert(await box.isVisible(), "the log should show for an admin");
+    assert(/Live · checks every 5 seconds/.test(await box.textContent()), "the panel should say it is live");
+    const rows = box.locator(".lg-list .lg-row");
+    assert(await rows.count() === 1, `one human visit expected (the bot hidden), got ${await rows.count()}`);
+    const t = await rows.first().textContent();
+    assert(/Bing · searched "miami in july"/.test(t) && /Tampa, FL, US/.test(t) && /Phone/.test(t) && /\/miami\/ → \/miami\/add\//.test(t) && /2 pages/.test(t) && /1 error/.test(t), `visit row: ${t}`);
+    const nums = await box.locator(".lg-nums").textContent();
+    assert(/1visits/.test(nums) && /1errors/.test(nums) && /1pages not found/.test(nums) && /0on the site now/.test(nums), `numbers: ${nums}`);
+    // A new visit arrives on its own.
+    await a.p.waitForFunction(() => document.querySelectorAll("#sitelog .lg-list .lg-row").length === 2, null, { timeout: 9000 });
+    const top = await rows.first().textContent();
+    assert(/Facebook/.test(top) && /On the site now/.test(top) && /\/nashville\//.test(top), `the new visit should be on top and marked live: ${top}`);
+    assert(a.asked.length >= 2 && a.asked[1].p_after === 5, `the second request should only ask for entries after the newest one held: ${JSON.stringify(a.asked.slice(0, 2))}`);
+    // Errors and missing pages.
+    await box.locator('button[data-lg="errors"]').click();
+    const errRows = await box.locator(".lg-list").textContent();
+    assert(/Save or request failed/.test(errRows) && /POST question_votes answered 403: new row violates/.test(errRows) && /Page not found/.test(errRows) && /Linked from \/cities\//.test(errRows), `errors list: ${errRows}`);
+    // Bots on request; pause stops the asking.
+    await box.locator('button[data-lg="visits"]').click();
+    await box.locator('input[data-lg="bots"]').check();
+    assert(await rows.count() === 3, "Show bots should add the bot's visit");
+    await box.locator('button[data-lg="pause"]').click();
+    const n = a.asked.length; await a.p.waitForTimeout(5600);
+    assert(a.asked.length === n && /Paused/.test(await box.textContent()), "Pause should stop the checks");
+    // The switch that keeps this browser's own visits out.
+    await box.locator('input[data-lg="nolog"]').check();
+    assert(await a.p.evaluate(() => localStorage.getItem("tv_nolog")) === "1", "the switch should be remembered in this browser");
+    // The submissions list below still draws, and narrow screens don't scroll sideways.
+    assert(/Submissions/.test(await a.p.textContent("#root")), "the submissions list should still load under the log");
+    assert(await a.p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "the log makes the admin page scroll sideways on a phone");
+    assert(a.errs.length === 0, "JS errors on the admin page: " + a.errs.join(" | "));
+  } finally { await a.c.close(); }
+});
+
 await test("No JavaScript errors on any page", async () => {
   assert(errors.length === 0, errors.slice(0, 3).join(" | "));
 });

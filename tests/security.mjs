@@ -234,18 +234,49 @@ await test("TikTok sign-in bridge: next= can't be an open redirect; mismatched s
   assert(calls.length === 0, "no token exchange on a state mismatch");
 });
 
-await test("/api/hit ignores bots and non-search referrers without notifying", async () => {
-  const mod = await import("../functions/api/hit.js");
-  const calls = [];
-  const req = (ua, ref) => new Request("https://www.tripvibz.com/api/hit", { method: "POST", headers: { "user-agent": ua, "content-type": "application/json" }, body: JSON.stringify({ path: "/miami/", ref }) });
-  for (const [ua, ref] of [["Googlebot/2.1", "https://www.google.com/"], ["Mozilla/5.0", "https://evil.example/"], ["Mozilla/5.0", "not a url"]]) {
-    const res = await withMockFetch(calls, () => mod.onRequestPost({ request: req(ua, ref), env: { NTFY_TOPIC: "t" }, waitUntil: p => p }));
-    assert(res.status === 204, "always 204");
-  }
-  assert(calls.length === 0, "no notification for bots or non-search visits");
+await test("/api/log: bots, other sites' pages, foreign scripts' errors and malformed entries are dropped; a real entry is stored with the secret key and cut to size", async () => {
+  const mod = await import("../functions/api/log.js");
+  const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile/15E148 Safari/604.1";
+  const post = async (body, { ua = UA, origin = "https://www.tripvibz.com", raw } = {}) => {
+    const calls = [], waits = [];
+    const res = await withMockFetch(calls, () => mod.onRequestPost({
+      request: new Request("https://www.tripvibz.com/api/log", { method: "POST", headers: { "user-agent": ua, "content-type": "application/json", ...(origin ? { origin } : {}) }, body: raw ?? JSON.stringify(body) }),
+      env: { NTFY_TOPIC: "t", SUPABASE_SERVICE_ROLE_KEY: "sb_secret_test" }, waitUntil: p => waits.push(p) }));
+    await withMockFetch(calls, () => Promise.all(waits));
+    assert(res.status === 204 && (await res.text()) === "", "always 204 with nothing in it");
+    const saved = calls.filter(c => c.url.includes("/rest/v1/site_log"));
+    return { row: saved[0] ? JSON.parse(saved[0].init.body) : null, headers: saved[0] ? saved[0].init.headers : null, pushed: calls.some(c => c.url.includes("ntfy.sh")), calls: calls.length };
+  };
+  const sid = "abcdefgh12345678";
+  const dropped = async (why, body, opts) => { const r = await post(body, opts); assert(r.calls === 0, `${why}: should store and push nothing, made ${r.calls} call(s)`); };
+  await dropped("a bot", { k: "page", first: true, sid, path: "/miami/" }, { ua: "Googlebot/2.1" });
+  await dropped("another site's page", { k: "page", first: true, sid, path: "/miami/" }, { origin: "https://evil.example" });
+  await dropped("not JSON", null, { raw: "<xml/>" });
+  await dropped("a made-up kind", { k: "visit", sid, path: "/miami/" });
+  await dropped("a non-path page", { k: "page", sid, path: "javascript:alert(1)" });
+  await dropped("another host as the page", { k: "page", sid, path: "//evil.example/x" });
+  await dropped("an extension's error", { k: "error", sid, path: "/miami/", msg: "x is not defined", src: "chrome-extension://abc/content.js:1", stack: "at chrome-extension://abc/content.js:1" });
+  await dropped("a failed request with a made-up target", { k: "request_failed", sid, path: "/miami/", target: "POST votes; drop table", status: 500 });
+
+  const visit = await post({ k: "page", first: true, sid, path: "/miami/", ref: "https://www.bing.com/search?q=miami+in+july", tag: "" });
+  assert(visit.row && visit.row.kind === "visit" && visit.row.session_id === sid && visit.row.device === "phone" && visit.row.source === 'Bing · searched "miami in july"' && visit.pushed, `a visit is stored and pushed: ${JSON.stringify(visit)}`);
+  assert(visit.headers.apikey === "sb_secret_test" && !visit.headers.authorization, "new secret keys go on the apikey header only");
+  assert(!("ip" in visit.row) && !JSON.stringify(visit.row).includes("Mozilla"), "no IP and no browser string in a row");
+  const page = await post({ k: "page", sid, path: "/miami/add/", ref: "https://x.example/", tag: "t" });
+  assert(page.row.kind === "page" && page.row.source === null && !page.pushed, "a later page is stored without a source and without a push");
+  const leave = await post({ k: "leave", sid, path: "/miami/", ms: 41234.6 });
+  assert(leave.row.kind === "leave" && leave.row.ms === 41235 && !leave.pushed, "a leave stores the time on the page");
+  const own = await post({ k: "error", sid, path: "/miami/", msg: "TypeError: boom " + "x".repeat(900), src: "https://www.tripvibz.com/assets/tv.js?v=abc:12", stack: "TypeError: boom\n at https://www.tripvibz.com/assets/tv.js?v=abc:12:3" });
+  assert(own.row.kind === "error" && own.row.message.length === 300 && own.row.detail.length <= 800 && own.pushed, "our own script's error is stored, cut to size, and pushed");
+  const fail = await post({ k: "request_failed", sid, path: "/miami/add/", target: "POST question_votes", status: 403, msg: "new row violates row-level security policy" });
+  assert(fail.row.kind === "request_failed" && fail.row.detail === "POST question_votes" && fail.row.status === 403 && fail.pushed, "a failed save is stored and pushed");
+  const big = await post(null, { raw: JSON.stringify({ k: "page", sid, path: "/miami/", pad: "x".repeat(5000) }) });
+  assert(big.calls === 0, "a body over 2 KB is cut, no longer parses, and is dropped");
+  const nosid = await post({ k: "page", first: true, sid: "'; drop table site_log;--", path: "/miami/" });
+  assert(nosid.row && nosid.row.session_id === null, "a malformed visit id is not stored");
 });
 
-await test("/api/event validates every field before the database; /api/health and /api/error behave (no spam from foreign scripts)", async () => {
+await test("/api/event validates every field before the database; /api/health behaves", async () => {
   const ev = await import("../functions/api/event.js");
   const id = "11111111-1111-1111-1111-111111111111";
   const good = { city_id: id, city_name: "Miami", name: "Art Basel", blurb: "Hotels fill", severity: "busy", start_month: 12, end_month: 12 };
@@ -269,14 +300,6 @@ await test("/api/event validates every field before the database; /api/health an
   const real = globalThis.fetch; globalThis.fetch = async () => { throw new Error("down"); };
   try { const down = await health.onRequestGet({}); assert(down.status === 503, "health: 503 when the database is unreachable"); } finally { globalThis.fetch = real; }
 
-  const er = await import("../functions/api/error.js");
-  const beacon = async body => { const calls = []; const res = await withMockFetch(calls, () => er.onRequestPost({ request: new Request("https://www.tripvibz.com/api/error", { method: "POST", body: JSON.stringify(body) }), env: { NTFY_TOPIC: "t" }, waitUntil: p => p })); await new Promise(r => setTimeout(r, 10)); return { status: res.status, notified: calls.some(c => c.url.includes("ntfy.sh")) }; };
-  const foreign = await beacon({ message: "x is not defined", source: "chrome-extension://abc/content.js:1", stack: "at chrome-extension://abc/content.js:1", page: "/miami/" });
-  assert(foreign.status === 204 && !foreign.notified, "an extension's error must not notify");
-  const own = await beacon({ message: "TypeError: boom", source: "https://www.tripvibz.com/assets/tv.js?v=abc:12", stack: "TypeError: boom\n at https://www.tripvibz.com/assets/tv.js?v=abc:12:3", page: "/miami/" });
-  assert(own.status === 204 && own.notified, "our own script's error notifies");
-  const nopage = await beacon({ message: "boom", stack: "https://www.tripvibz.com/assets/tv.js", page: "javascript:alert(1)" });
-  assert(!nopage.notified, "a non-path page value is dropped");
 });
 
 await test("/t/<id> returns a real 404 with security headers for a malformed id", async () => {

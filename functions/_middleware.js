@@ -19,15 +19,21 @@
  * through a Function, and this one now sees every page. withSecurityHeaders()
  * only adds headers that are missing, so where _headers did apply nothing changes.
  *
+ * It is also where the site log (functions/api/_log.js) watches the server:
+ * every request passes here, so a Function that throws, answers 5xx or takes
+ * longer than SLOW_MS, and every page that doesn't exist, is logged by
+ * watched() below. The logging runs after the response has gone (waitUntil).
+ *
  * Fails open: if the switch can't be read quickly, the real site is served.
  * The switch also carries an end time, so a stuck workflow can't leave the
  * site covered for more than about 20 minutes.
  */
 import { withSecurityHeaders } from "./_security.js";
 import { MAINTENANCE_HTML } from "./_maintenance-page.js";
+import { SUPABASE_URL, SUPABASE_KEY } from "./_config.js";
+import { device, SLOW_MS } from "./api/_log.js";
+import { record, alreadyReported } from "./api/_notify.js";
 
-const SUPABASE_URL = "https://nkxorlktzbgwqnfwmuus.supabase.co";
-const SUPABASE_KEY = "sb_publishable_5UOevsS8KmWWGrQYNWsabg_0sVOIPmB";   // public read key
 const CHECK_EVERY_MS = 15000;   // each Cloudflare isolate re-reads the switch at most every 15 s
 const READ_TIMEOUT_MS = 1500;
 const BYPASS_COOKIE = "tv_live";
@@ -70,9 +76,48 @@ export function coverable(request) {
   return (request.headers.get("accept") || "").includes("text/html");
 }
 
+// Addresses nobody was ever sent to: scanners trying other software's doors. Not worth a row.
+const SCANNER = /\.(php\d?|aspx?|jsp|cgi|env|ini|sql|bak|zip|gz|tar|ya?ml|log)($|\/)|\/(wp-|wordpress|\.git|\.aws|\.env|\.well-known\/|cgi-bin|phpmyadmin|vendor\/|xmlrpc)/i;
+const isFunction = (p) => p.startsWith("/api/") || p.startsWith("/t/");
+
+/** What, if anything, the site log should say about this answer. Pure, so tests can call it. */
+export function logEntryFor(request, res, ms) {
+  const url = new URL(request.url), p = url.pathname;
+  if (p === "/api/log") return null;   // the log doesn't log itself
+  const base = { path: p.slice(0, 200), device: device(request.headers.get("user-agent")), status: res.status, ms };
+  if (isFunction(p)) {
+    if (res.status >= 500) return alreadyReported(request) ? null : { ...base, kind: "function_error", message: `${request.method} ${p} answered ${res.status}` };
+    if (ms >= SLOW_MS) return { ...base, kind: "slow", message: `${request.method} ${p} took ${(ms / 1000).toFixed(1)} s` };
+    return null;
+  }
+  if (res.status === 404 && request.method === "GET" && (request.headers.get("accept") || "").includes("text/html") && !SCANNER.test(p)) {
+    // Where the dead link was: a path when it's on TripVibz (a link to fix), else the other site's name.
+    let source = null;
+    try { const r = new URL(request.headers.get("referer") || ""); source = r.host === url.host ? r.pathname.slice(0, 120) : r.hostname.slice(0, 120); } catch { /* typed in, or hidden */ }
+    return { ...base, kind: "not_found", source, ms: null };
+  }
+  return null;
+}
+
+/** context.next(), timed, with failures and missing pages sent to the site log. */
+async function watched(context, started = Date.now()) {
+  const { request, env } = context;
+  const later = (entry) => { try { if (entry && context.waitUntil) context.waitUntil(record(env, request, entry)); } catch { /* never in the way */ } };
+  let res;
+  try { res = await context.next(); }
+  catch (err) {
+    const p = new URL(request.url).pathname;
+    if (!alreadyReported(request)) later({ kind: "function_error", path: p.slice(0, 200), device: device(request.headers.get("user-agent")),
+      message: `${request.method} ${p} threw: ${(err && err.message) || err}`.slice(0, 300), detail: err && err.stack ? String(err.stack).slice(0, 800) : null, ms: Date.now() - started });
+    throw err;
+  }
+  try { later(logEntryFor(request, res, Date.now() - started)); } catch { /* never in the way */ }
+  return res;
+}
+
 export async function onRequest(context, { now = Date.now(), fetchImpl = fetch } = {}) {
   const { request } = context;
-  const next = async () => withSecurityHeaders(await context.next());
+  const next = async () => withSecurityHeaders(await watched(context));
   if (new URL(request.url).searchParams.get("preview") === "live") {
     const res = await next();
     const h = new Headers(res.headers);

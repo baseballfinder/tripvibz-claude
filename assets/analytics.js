@@ -1,6 +1,7 @@
 /* ==========================================================================
    TripVibz — analytics
-   Google Analytics 4 + Microsoft Clarity. Loaded from <head> on every page.
+   The site's own log (visits, errors, failed saves) + Google Analytics 4 +
+   Microsoft Clarity. Loaded from <head> on every page.
    Skipped on localhost / file:// so local work doesn't pollute reporting.
    ========================================================================== */
 (function () {
@@ -22,33 +23,60 @@
     return;
   }
 
-  /* ---- search visits → James's phone (functions/api/hit.js) ----
-     Once per visit, only when the visit started from a search engine. */
-  try {
-    var ref = document.referrer || "", refHost = ref ? new URL(ref).hostname : "";
-    if (refHost && refHost !== host && /(^|\.)(google\.[a-z.]+|bing\.com|duckduckgo\.com|yahoo\.com|ecosia\.org|search\.brave\.com|perplexity\.ai|chatgpt\.com)$/.test(refHost)
-        && !sessionStorage.getItem("tv_search_hit")) {
-      sessionStorage.setItem("tv_search_hit", "1");
-      var body = JSON.stringify({ path: location.pathname, ref: ref });
-      if (!(navigator.sendBeacon && navigator.sendBeacon("/api/hit", new Blob([body], { type: "application/json" }))))
-        fetch("/api/hit", { method: "POST", headers: { "content-type": "application/json" }, body: body, keepalive: true });
-    }
-  } catch (e) { /* never block analytics */ }
-
-  /* ---- errors → James's phone (functions/api/error.js) ----
-     Only errors from this site's own scripts are reported (the function
-     checks the stack), at most 3 per page view, each message once. */
+  /* ---- site log → the admin page's live list and James's phone (functions/api/log.js) ----
+     Four things are reported, each as one small beacon:
+       page            every page opened; the first of a tab's visit also says where it came from
+       leave           how long the page was open
+       error           an error thrown by this site's own scripts (the function checks the stack)
+       request_failed  a save, or a request to our API or database, that was refused or never answered
+     No account, name or IP goes along: the visit id is a random string kept in
+     this tab only. Capped per page view: 3 errors, 5 failed requests. */
   (function () {
+    var LOG = "/api/log", SUPA = "nkxorlktzbgwqnfwmuus.supabase.co";
+    // The admin page can switch the log off for the browser it is open in
+    // ("Leave out this browser"), so the owner's own clicks stay out of it.
+    try { if (localStorage.getItem("tv_nolog") === "1") return; } catch (e) { /* storage blocked */ }
+    var realFetch = window.fetch, opened = Date.now(), leaving = false;
+    var sid = "", first = false;
+    try { sid = sessionStorage.getItem("tv_sid") || ""; } catch (e) { /* storage blocked */ }
+    if (!/^[a-z0-9]{8,32}$/.test(sid)) {
+      first = true;
+      sid = (Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + "00000000").slice(0, 16);
+      try { sessionStorage.setItem("tv_sid", sid); } catch (e) { /* each page then counts as its own visit */ }
+    }
+    function send(o) {
+      try {
+        o.sid = sid; o.path = location.pathname;
+        var body = JSON.stringify(o);
+        if (!(navigator.sendBeacon && navigator.sendBeacon("/api/log", new Blob([body], { type: "application/json" }))) && realFetch)
+          realFetch.call(window, "/api/log", { method: "POST", headers: { "content-type": "application/json" }, body: body, keepalive: true });
+      } catch (e) { /* the log never breaks the page */ }
+    }
+
+    // The page view. utm tags (our emails and posts carry them) say which link brought the visit.
+    var page = { k: "page" };
+    if (first) {
+      page.first = true;
+      page.ref = String(document.referrer || "").slice(0, 300);
+      try {
+        var qs = new URLSearchParams(location.search || "");
+        page.tag = [qs.get("utm_source"), qs.get("utm_campaign")].filter(Boolean).join(" / ").slice(0, 60);
+      } catch (e) { /* no tags */ }
+    }
+    send(page);
+    window.addEventListener("pagehide", function () {
+      if (leaving) return;
+      leaving = true;
+      send({ k: "leave", ms: Date.now() - opened });
+    });
+
+    // Errors: each message once.
     var sent = {}, n = 0;
     function report(message, source, stack) {
-      try {
-        message = String(message || "").slice(0, 300);
-        if (!message || sent[message] || n >= 3) return;
-        sent[message] = true; n++;
-        var body = JSON.stringify({ message: message, source: String(source || "").slice(0, 200), stack: String(stack || "").slice(0, 600), page: location.pathname });
-        if (!(navigator.sendBeacon && navigator.sendBeacon("/api/error", new Blob([body], { type: "application/json" }))))
-          fetch("/api/error", { method: "POST", headers: { "content-type": "application/json" }, body: body, keepalive: true });
-      } catch (e) { /* never throw from the error reporter */ }
+      message = String(message || "").slice(0, 300);
+      if (!message || sent[message] || n >= 3) return;
+      sent[message] = true; n++;
+      send({ k: "error", msg: message, src: String(source || "").slice(0, 200), stack: String(stack || "").slice(0, 600) });
     }
     window.addEventListener("error", function (e) {
       var src = e.filename ? e.filename + ":" + e.lineno : "";
@@ -58,6 +86,54 @@
       var r = e.reason || {};
       report(r.message || String(r), "", r.stack);
     });
+
+    // Failed saves and requests. Only our own API and database are watched, and
+    // only the table or endpoint name is reported, never what was being saved.
+    function target(url) {
+      try {
+        var u = new URL(url, location.href), m;
+        if (u.hostname === SUPA) {
+          if ((m = u.pathname.match(/^\/rest\/v1\/(rpc\/)?(\w+)/))) return (m[1] || "") + m[2];
+          if ((m = u.pathname.match(/^\/auth\/v1\/(\w+)/))) return "auth/" + m[1];
+          return null;
+        }
+        if (u.hostname === host && /^\/api\/[\w/.-]+$/.test(u.pathname) && u.pathname !== LOG) return u.pathname;
+      } catch (e) { /* not an address */ }
+      return null;
+    }
+    var fails = 0;
+    function failed(what, status, msg) {
+      if (fails >= 5 || leaving) return;
+      fails++;
+      send({ k: "request_failed", target: what, status: status, msg: String(msg || "").slice(0, 200) });
+    }
+    if (realFetch) window.fetch = function (input, init) {
+      var p = realFetch.apply(this, arguments);
+      try {
+        var t = target(typeof input === "string" ? input : (input && input.url) || String(input));
+        if (t) {
+          var method = String((init && init.method) || (input && input.method) || "GET").toUpperCase();
+          var read = method === "GET" || method === "HEAD";
+          p.then(function (res) {
+            // A refused save (4xx) matters; a read that finds nothing (4xx) is normal. 5xx always matters.
+            if (res.status < (read ? 500 : 400)) return;
+            var body;
+            try { body = res.clone().text(); } catch (e) { failed(method + " " + t, res.status, ""); return; }
+            body.then(function (b) {
+              var msg = "";
+              try { var j = JSON.parse(b); msg = j.message || j.error || j.msg || j.code || ""; } catch (e) { /* not JSON */ }
+              failed(method + " " + t, res.status, msg);
+            }, function () { failed(method + " " + t, res.status, ""); });
+          }, function (err) {
+            // Leaving the page cancels what was in flight; that isn't a failure.
+            if (err && err.name === "AbortError") return;
+            if (document.visibilityState === "hidden") return;
+            failed(method + " " + t, 0, err && err.message);
+          });
+        }
+      } catch (e) { /* watching never changes the request */ }
+      return p;
+    };
   })();
 
   /* ---- Google Analytics 4 ---- */
