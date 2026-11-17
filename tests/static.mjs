@@ -855,6 +855,24 @@ await test("Info pages follow the features: Privacy names every outside service 
   if (guideSrc.includes('"https://tile.openstreetmap.org/')) assert(/OpenStreetMap/.test(privacy) && /Guide/.test(privacy), "the Guide loads OpenStreetMap tiles: the Privacy page must say so");
 });
 
+await test("Contact page: its own page, linked from every footer, in the sitemap, with a prefilled email link per reason and the addresses readable on the page", async () => {
+  const h = await readFile("dist/contact/index.html", "utf8");
+  const text = h.replace(/<[^>]+>/g, " ");
+  for (const a of ["hello@tripvibz.com", "privacy@tripvibz.com"]) {
+    assert(text.includes(a), `contact page should show ${a} as text, for people with no mail app`);
+    assert(new RegExp(`href="mailto:${a.replace(".", "\\.")}\\?subject=[^"]+"`).test(h), `contact page needs an email link to ${a} with the subject filled in`);
+  }
+  assert(h.includes('href="/cities/#request"') && (await readFile("dist/cities/index.html", "utf8")).includes('id="request"'), "city requests should point at the request box on the Cities page");
+  assert(h.includes('href="/privacy/"'), "the data section should link the privacy page");
+  assert((await readFile("dist/sitemap.xml", "utf8")).includes("/contact/"), "contact page missing from the sitemap");
+  for (const f of pages) {
+    if (/admin\.html$/.test(f)) continue;
+    const page = await readFile(f, "utf8");
+    assert(page.includes('<a href="/contact/">Contact</a>'), `${f}: footer should link the contact page`);
+    assert(!page.includes("/about/#contact"), `${f}: still links the old Contact section on About`);
+  }
+});
+
 await test("Research data and scripts are not published", async () => {
   assert(!(await exists("dist/data")) && !(await exists("dist/scripts")), "dist/ contains data/ or scripts/");
   for (const f of ["README.md", "CLAUDE.md", "package.json", "docs"]) assert(!(await exists(`dist/${f}`)), `dist/ contains ${f}`);
