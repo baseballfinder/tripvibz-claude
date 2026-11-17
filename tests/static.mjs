@@ -396,7 +396,7 @@ await test("Site log, browser side: one visit per tab, page trail, time on page,
   assert(sum.visits === 2 && sum.errors === 1 && sum.missing === 1 && sum.now === 1, `summary (bots left out; "now" = active in the last 5 minutes): ${JSON.stringify(sum)}`);
   assert(L.duration(45000) === "45 s" && L.duration(180000) === "3 min" && L.duration(4320000) === "1 h 12 min", "durations in words");
   const html = L.visitHtml({ ...a, source: '<img src=x onerror=alert(1)>', pages: ['/"><script>'] }, t0) + L.errorHtml({ id: 9, at: at(0), kind: "error", path: "/x", message: "<b>boom</b>", detail: "<script>" });
-  assert(!/<img|<script|<b>boom/.test(html), "the panel must escape everything it shows");
+  assert(!/<img|<script|<b>boom/i.test(html), "the panel must escape everything it shows");
   const admin = await readFile("admin.html", "utf8");
   assert(admin.includes('src="/assets/sitelog.js"') && admin.includes('id="sitelog"') && admin.indexOf("TVLog.mount") > admin.indexOf("amAdmin())){ gate(true)"), "the admin page mounts the log only after the admin check");
 });
