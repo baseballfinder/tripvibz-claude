@@ -619,11 +619,16 @@ function clip(text, n) {
   if (t.length <= n) return t;
   return t.slice(0, n - 1).replace(/[\s,;:.]+\S*$/, "") + "…";
 }
+// One sentence per line reads faster than a paragraph. "St." and friends don't end a sentence.
+function introPoints(intro) {
+  return String(intro).split(/(?<![A-Z]\.)(?<!\bSt\.)(?<!\bMt\.)(?<!\bFt\.)(?<=[.!?])\s+(?=[A-Z0-9])/).map(s => s.trim()).filter(Boolean);
+}
 function editorsHtml(city, intro) {
   if (!intro) return "";
-  return `<section class="editors" id="tv-editors" aria-label="From the TripVibz editors">
+  return `<section class="editors" id="tv-editors" aria-labelledby="tv-editors-h">
 <div class="editors-k">From the TripVibz editors</div>
-<p>${esc(intro)}</p>
+<h2 class="editors-h" id="tv-editors-h">Good to know about ${esc(city.name)}</h2>
+<ul>${introPoints(intro).map(s => `<li>${esc(s)}</li>`).join("")}</ul>
 <div class="editors-note">Written by TripVibz, not by locals. Know ${esc(city.name)}? <a href="/${esc(city.slug)}/add/">Add your take</a> and tell us what we missed.</div>
 </section>`;
 }

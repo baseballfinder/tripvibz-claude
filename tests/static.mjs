@@ -449,6 +449,14 @@ await test("City pages: editors' intro is labeled, never a take; index rule = in
     if (hasIntro) {
       assert(html.includes('id="tv-editors"') && html.includes("From the TripVibz editors"), `${c.slug}: intro box missing or unlabeled`);
       assert(html.includes("Written by TripVibz, not by locals"), `${c.slug}: intro must say it is not from locals`);
+      // Shown as short points under the takes, with every word of the intro still on the page.
+      const box = (html.match(/<section class="editors"[\s\S]*?<\/section>/) || [""])[0];
+      const points = [...box.matchAll(/<li>([\s\S]*?)<\/li>/g)].map(m => m[1]);
+      assert(points.length >= 2 && points.length <= 5, `${c.slug}: intro should be 2 to 5 short points, got ${points.length}`);
+      const plain = t => t.replace(/&#39;|&#x27;/g, "'").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/\s+/g, " ").trim();
+      assert(plain(points.join(" ")) === plain(intros[c.slug]), `${c.slug}: splitting the intro into points changed its words`);
+      assert(/<h2 class="editors-h"[^>]*>Good to know about /.test(box), `${c.slug}: intro box needs its heading`);
+      assert(html.indexOf('class="feed"') < html.indexOf('id="tv-editors"'), `${c.slug}: intro box goes under the takes, not above them`);
       assert(!/class="take"[^>]*>[^<]*From the TripVibz editors/.test(html), `${c.slug}: intro rendered as a take`);
     } else assert(!html.includes('id="tv-editors"'), `${c.slug}: intro shown on a city with 3+ takes`);
     const indexable = hasIntro || n >= 3;

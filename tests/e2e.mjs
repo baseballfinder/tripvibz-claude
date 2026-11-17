@@ -235,7 +235,7 @@ await test("Cities page search: 16px box, states and nicknames, typos, suggestio
   await page.unroute("**/api/near");
 });
 
-for (const slug of ["nashville", "fort-lauderdale", "miami"]) {
+for (const slug of ["nashville", "fort-lauderdale", "miami", "sarasota"]) {
   await test(`City feed (${slug}): hero photo, lead question, sections, no old add button`, async () => {
     await go(`/${slug}/`);
     assert(/^Know .+\?$/.test((await page.textContent("h1")).trim()), "headline should read \"Know <City>?\"");
@@ -244,6 +244,12 @@ for (const slug of ["nashville", "fort-lauderdale", "miami"]) {
     assert(w > 0, "hero photo did not load");
     assert((await page.textContent(".qcard .qp")).trim() === lead(slug).prompt, "lead question is not the first active question");
     assert(await page.locator(".qcard a.qopt").count() >= 2, "question options missing");
+    // The editors' note (cities with under 3 takes) sits under the takes as short points, after the page's script has run.
+    const note = await page.evaluate(() => {
+      const e = document.getElementById("tv-editors"), f = document.getElementById("feed");
+      return e && f ? { after: !!(f.compareDocumentPosition(e) & Node.DOCUMENT_POSITION_FOLLOWING), points: e.querySelectorAll("li").length, heading: (e.querySelector("h2") || {}).textContent || "" } : null;
+    });
+    if (note) assert(note.after && note.points >= 2 && /^Good to know about /.test(note.heading), `editors' note should be short points under the takes: ${JSON.stringify(note)}`);
     const hasTakes = (await page.locator(".feed .take").count()) > 0;
     if (hasTakes) {
       // Three honest tiers, never a bare "Local" for a sign-in alone: ✓ (verified presence),
