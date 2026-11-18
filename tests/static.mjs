@@ -1181,6 +1181,9 @@ await test("Build number: every page's footer names the build, /build.json says 
   }
   const sw = await readFile("dist/sw.js", "utf8");
   assert(sw.includes(info.build), "the service worker should carry the same build");
+  // The line uses the footer's own text colour at full strength: fading it fails the contrast check on every page.
+  const rule = ((await readFile("assets/site.css", "utf8")).match(/\.site-foot \.sf-build\{[^}]*\}/) || [""])[0];
+  assert(rule && !/opacity|color:/.test(rule), `the build line must not be faded or recoloured: ${rule}`);
 });
 
 await test("Share cards: the brand line reads TripVibz.com, so a card seen without its link still says where to go", async () => {
