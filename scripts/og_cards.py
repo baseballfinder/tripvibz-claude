@@ -100,8 +100,8 @@ def kicker(d, text, x=PAD, y=PAD, fill=CORAL):
 
 def brand(base, d, right=W - PAD, y=PAD):
     bf = font(26, 800)
-    bw = d.textlength("TripVibz", font=bf)
-    d.text((right, y + 25), "TripVibz", font=bf, fill=WHITE, anchor="rm")
+    bw = d.textlength("TripVibz.com", font=bf)
+    d.text((right, y + 25), "TripVibz.com", font=bf, fill=WHITE, anchor="rm")
     mark = Image.open(MARK).convert("RGBA").resize((52, 52), Image.LANCZOS)
     base.paste(mark, (int(right - bw - 64), y - 1), mark)
 
@@ -210,7 +210,7 @@ def card_home(cities, photos, leads):
         d.line([(x0 + i, 0), (x0 + i, H)], fill=tuple(int(c) for c in INK), width=1) if i == 0 else None
     mark = Image.open(MARK).convert("RGBA").resize((60, 60), Image.LANCZOS)
     base.paste(mark, (PAD, PAD - 6), mark)
-    d.text((PAD + 74, PAD + 24), "TripVibz", font=font(34, 900), fill=WHITE, anchor="lm")
+    d.text((PAD + 74, PAD + 24), "TripVibz.com", font=font(34, 900), fill=WHITE, anchor="lm")
     y = headline(d, "Where would you take a friend?", PAD + 96, max_w=600 - PAD - 30, lines=4, sizes=(64, 58, 54, 50))
     # Two real lead questions as poll chips.
     qf = font(24, 700)
