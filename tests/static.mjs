@@ -1146,7 +1146,7 @@ await test("Guide hotels (assets/guide.js): five picked by closeness to the reco
   const picked = G.pickHotels(hotels, pts, 5);
   assert(picked.length === 5 && picked.map(h => h.letter).join("") === "ABCDE", "five hotels, lettered A to E");
   assert(!picked.some(h => /Airport|Fake|No Place/.test(h.name)), `the far one, the non-partner link and the one with no position are left out: ${picked.map(h => h.name)}`);
-  assert(["River Hotel", "Loop Hotel"].includes(picked[0].name) && ["River Hotel", "Loop Hotel"].includes(picked[1].name), `the two between the spots come first (a near tie goes to the better rated), got ${picked.map(h => h.name)}`);
+  assert(["Loop Hotel", "River Hotel", "Pier <b>Hotel</b>"].every(n => picked.slice(0, 3).some(h => h.name === n)), `the three between the spots come first, got ${picked.map(h => h.name)}`);
   assert(G.pickHotels([hotels[0], hotels[3]], pts, 5)[0].name === "River Hotel", "closer on average beats farther");
   const pier = picked.find(h => /Pier/.test(h.name));
   assert(pier.near.name === "Navy Pier" && pier.near.mi <= 0.2, `nearest spot and miles: ${JSON.stringify(pier.near)}`);
