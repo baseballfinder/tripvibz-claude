@@ -755,6 +755,33 @@ await test("Share a take: button on every card opens the share menu with the tak
   await page.click('#sharesheet [data-m="copy"]');
   assert((await page.evaluate(() => window.__copied)).includes(`/t/${id}`), "copy link did not copy the take URL");
   assert(await page.locator("#sharesheet").count() === 0, "share menu did not close");
+  // The button is an icon in the take's action row, with a name for screen readers.
+  assert(await page.locator(".take .tv-actions > .tv-share svg").count() === n && (await page.getAttribute(".take .tv-share >> nth=0", "aria-label")) === "Share this take", "share should be an icon button with a label, next to True and Nope");
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "the action row scrolls sideways on a phone");
+});
+
+await test("Share a take on a phone: the button opens the phone's own share sheet with the take's link; closing it does nothing more", async () => {
+  const posts = (await api("posts?select=id,city_id&type=in.(what_not_to_do,worst_times,hidden_gem)")).filter(p => cities.some(x => x.id === p.city_id));
+  if (!posts.length) return;
+  const c = cities.find(x => x.id === posts[0].city_id);
+  const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block", hasTouch: true, isMobile: true,
+    userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1" });
+  await phone.addInitScript(() => { window.__shared = []; navigator.share = async d => { window.__shared.push(d); if (window.__shareFails) { const e = new Error("no"); e.name = window.__shareFails; throw e; } }; });
+  const p = await phone.newPage();
+  try {
+    await p.goto(BASE + `/${c.slug}/`, { waitUntil: "networkidle" }); await p.waitForSelector(".take .tv-share");
+    const id = await p.getAttribute(".take .tv-share >> nth=0", "data-share-take");
+    await p.tap(".take .tv-share >> nth=0"); await p.waitForTimeout(300);
+    const shared = await p.evaluate(() => window.__shared);
+    assert(shared.length === 1 && shared[0].url === `https://www.tripvibz.com/t/${id}` && shared[0].text.includes(c.name), `phone share sheet should get the take's link and text: ${JSON.stringify(shared)}`);
+    assert(await p.locator("#sharesheet").count() === 0, "on a phone the site's own menu should not open as well");
+    await p.evaluate(() => { window.__shareFails = "AbortError"; });
+    await p.tap(".take .tv-share >> nth=0"); await p.waitForTimeout(300);
+    assert(await p.locator("#sharesheet").count() === 0, "closing the phone's share sheet should not pop our menu");
+    await p.evaluate(() => { window.__shareFails = "NotAllowedError"; });
+    await p.tap(".take .tv-share >> nth=0"); await p.waitForTimeout(300);
+    assert(await p.isVisible("#sharesheet"), "if the phone's share sheet fails, our menu is the fallback");
+  } finally { await phone.close(); }
 });
 
 await test("Top 3 restaurants (where they'd take a friend to eat): section on city pages; anonymous sees sign-in; a signed-in person's picks are saved as one ranked list", async () => {
