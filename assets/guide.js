@@ -194,7 +194,10 @@
       '<ol class="g-hotel-list">' + picked.map(function (h) {
         var facts = [esc(String(h.rating)) + " guest rating", commas(h.reviews) + " reviews"];
         if (h.stars) facts.push(esc(String(h.stars)) + "-star");
-        return '<li class="g-hotel"><span class="g-n hotel" aria-hidden="true">' + esc(h.letter || "") + '</span><div class="g-body">' +
+        var pic = /^\/api\/hotels\?/.test(String(h.img || ""))
+          ? '<span class="g-hotel-pic"><img src="' + esc(h.img) + '" alt="" width="96" height="96" loading="lazy" decoding="async"><span class="g-n hotel" aria-hidden="true">' + esc(h.letter || "") + "</span></span>"
+          : '<span class="g-n hotel" aria-hidden="true">' + esc(h.letter || "") + "</span>";
+        return '<li class="g-hotel">' + pic + '<div class="g-body">' +
           '<b class="g-name">' + esc(h.name) + "</b>" +
           '<div class="g-count">' + facts.join(" · ") + "</div>" +
           (h.near ? '<div class="g-near">' + esc(h.near.mi < 0.1 ? "Next to " : h.near.mi.toFixed(1) + " mi from ") + esc(h.near.name) + "</div>" : "") +
@@ -233,6 +236,12 @@
       try { pts = JSON.parse((mapEl && mapEl.dataset.points) || "[]"); } catch (e) { pts = []; }
       var picked = pickHotels(d.hotels, pts, HOTELS_SHOWN);
       slot.innerHTML = hotelsHtml(city, picked, d);
+      // A photo that doesn't arrive leaves the lettered card, not a broken image.
+      Array.prototype.forEach.call(slot.querySelectorAll(".g-hotel-pic img"), function (img) {
+        function drop() { var box = img.parentNode, n = box && box.querySelector(".g-n"); if (box && box.parentNode && n) box.parentNode.replaceChild(n, box); }
+        img.addEventListener("error", drop);
+        if (img.complete && !img.naturalWidth && img.currentSrc) drop();
+      });
       if (mapEl) { mapEl._hotels = picked; addHotelPins(mapEl); }
       return picked.length;
     }).catch(function () { clearTimeout(t); return 0; });
