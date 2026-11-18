@@ -586,9 +586,12 @@ await test("Guide hotels: opening the Guide asks /api/hotels once, lists five le
     (Array.isArray(rows) ? rows : []).forEach((p, i) => { p.place_id = SPOTS[labels[i % 2]][0]; p.place_label = labels[i % 2]; }); return r.fulfill({ response: res, json: rows }); });
   await page.route("**/rest/v1/places?*", r => r.fulfill({ json: Object.entries(SPOTS).map(([name, [id, lat, lng]]) => ({ id, name, lat, lng, category: "spot" })) }));
   await page.route("https://tile.openstreetmap.org/**", r => r.fulfill({ body: PNG, contentType: "image/png" }));
-  const H = (name, lat, lng, extra = {}) => ({ id: name, name, lat, lng, url: "https://www.stay22.com/allez/roam/" + encodeURIComponent(name) + "?aid=tripvibz", rating: 8.6, reviews: 1240, price: 189, stars: 4, cancel: false, ...extra });
+  const H = (name, lat, lng, extra = {}) => ({ id: name, name, lat, lng, url: "https://www.stay22.com/allez/roam/" + encodeURIComponent(name) + "?aid=tripvibz", rating: 8.6, reviews: 1240, price: 189, stars: 4, cancel: false,
+    img: "/api/hotels?city=fort-lauderdale&photo=" + name.replace(/ /g, "-"), ...extra });
   let asked = 0, mode = "on";
   await page.route("**/api/hotels?*", r => {
+    const photo = new URL(r.request().url()).searchParams.get("photo");
+    if (photo) return photo === "River-Hotel" ? r.fulfill({ status: 404, body: "" }) : r.fulfill({ body: PNG, contentType: "image/png" });
     asked++;
     if (mode === "off") return r.fulfill({ status: 204, body: "" });
     return r.fulfill({ json: { city: "fort-lauderdale", checkin: "2026-12-11", checkout: "2026-12-12", currency: "USD", hotels: [
@@ -611,6 +614,11 @@ await test("Guide hotels: opening the Guide asks /api/hotels once, lists five le
     const links = await page.locator("#tv-guide .g-hotel a").evaluateAll(as => as.map(a => [a.href, a.rel, a.target]));
     assert(links.length === 5 && links.every(([h, rel, t]) => h.startsWith("https://www.stay22.com/") && /sponsored/.test(rel) && /noopener/.test(rel) && t === "_blank"), `booking links: ${JSON.stringify(links[0])}`);
     assert(await page.locator("#tv-guide .g-pin.hotel").count() === 5 && await page.locator("#tv-guide .g-legend .g-dot.hotel").count() === 1, "five hotel pins on the map and a legend entry");
+    // Photos come from our own path; one that fails leaves the lettered card, not a broken image.
+    await page.locator("#tv-guide .g-hotels").scrollIntoViewIfNeeded(); await page.waitForTimeout(900);
+    const pics = await page.locator("#tv-guide .g-hotel img").evaluateAll(is => is.map(i => [new URL(i.src).pathname, i.naturalWidth > 0]));
+    assert(pics.length === 4 && pics.every(([p, ok]) => p === "/api/hotels" && ok), `four photos shown from /api/hotels, the failed one dropped: ${JSON.stringify(pics)}`);
+    assert(await page.locator("#tv-guide .g-hotel .g-n").count() === 5, "every card keeps its letter, with or without a photo");
     assert(await page.locator("#tv-guide .s22").count() === 1, "the full hotel map stays under the list");
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "the hotel list scrolls sideways on a phone");
     // Off (no key yet, partner down): nothing added, nothing broken.

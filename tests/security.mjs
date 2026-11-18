@@ -193,17 +193,19 @@ async function withMockFetch(calls, fn) {
   try { return await fn(); } finally { globalThis.fetch = real; }
 }
 
-await test("/api/hotels: off without the key, only takes a city slug, keeps the key in a header, passes on only the partner's links and well-rated hotels, and fails open", async () => {
+await test("/api/hotels: off without the key, only takes a city slug, keeps the key in a header, passes on only the partner's links (under TripVibz's ID) and well-rated hotels, relays photos safely, and fails open", async () => {
   const mod = await import("../functions/api/hotels.js");
-  const listing = (over = {}) => ({ id: "1.0", name: "Pier Hotel", url: "https://www.stay22.com/allez/roam/x?aid=tripvibz",
+  const listing = (over = {}) => ({ id: "1.0", name: "Pier Hotel", url: "https://www.stay22.com/allez/roam/x?aid=someoneelse&checkin=2026-12-11", thumbnailUrl: "https://photos.booking-site.example/pier.jpg",
     suppliers: { booking: { link: "https://www.stay22.com/allez/booking/x", price: { total: 380 } }, expedia: { price: { total: 350 } }, other: { price: null } },
     location: { coordinates: { lat: 41.89, lng: -87.61 } }, rating: { value: 8.64, hotelStars: 4, count: 1240 }, policies: { freeCancellation: true }, ...over });
-  const run = async (query, env, partner) => {
+  const JPEG = () => new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]), { status: 200, headers: { "content-type": "image/jpeg" } });
+  const run = async (query, env, partner, image = JPEG) => {
     const calls = [], real = globalThis.fetch;
     globalThis.fetch = async (url, init) => {
       calls.push({ url: String(url), init });
       if (String(url).includes("/rest/v1/cities")) return new Response(JSON.stringify(query.includes("nowhere") ? [] : [{ slug: "chicago", lat: 41.88, lng: -87.63 }]), { status: 200 });
-      return partner();
+      if (String(url).startsWith("https://api.stay22.com/")) return partner();
+      return image();
     };
     try { return { res: await mod.onRequestGet({ request: new Request(`https://www.tripvibz.com/api/hotels${query}`), env }), calls }; } finally { globalThis.fetch = real; }
   };
@@ -239,7 +241,28 @@ await test("/api/hotels: off without the key, only takes a city slug, keeps the 
   const h = data.hotels[0];
   assert(h.price === 175 && h.rating === 8.6 && h.reviews === 1240 && h.stars === 4 && h.cancel === true, `lowest total divided by nights, rounded rating: ${JSON.stringify(h)}`);
   assert(data.hotels[1].price === null, "a hotel with no price is 'unknown', never $0");
-  assert(/s-maxage=3600/.test(r.res.headers.get("cache-control")) && !/s-maxage=(3[7-9]|[4-9])\d{3}/.test(r.res.headers.get("cache-control")), "the partner allows caching for 60 minutes at most");
+  const listCache = r.res.headers.get("cache-control");
+  // Every link books under TripVibz's own ID, whatever ID the key belongs to.
+  assert(data.hotels.every(x => new URL(x.url).searchParams.get("aid") === "tripvibz") && !body.includes("someoneelse"), `a link left with another affiliate ID: ${data.hotels[0].url}`);
+  assert(new URL(h.url).searchParams.get("checkin") === "2026-12-11", "the rest of the partner's link is kept");
+  // Photos: the page gets our own path, never the booking site's address.
+  assert(h.img === "/api/hotels?city=chicago&photo=1.0" && !body.includes("booking-site.example") && !("thumb" in h), `photo path: ${h.img}`);
+  r = await run("?city=chicago&photo=1.0", { STAY22_API_KEY: "k" }, ok200);
+  assert(r.res.status === 200 && r.res.headers.get("content-type") === "image/jpeg" && r.res.headers.get("x-content-type-options") === "nosniff", `photo should pass through as an image, got ${r.res.status} ${r.res.headers.get("content-type")}`);
+  assert(/max-age=3600/.test(r.res.headers.get("cache-control")), "photos are cached for 60 minutes at most");
+  const imgCall = r.calls.find(c => c.url.startsWith("https://photos.booking-site.example/"));
+  assert(imgCall && imgCall.init.signal && !JSON.stringify(imgCall.init.headers || {}).includes("k\""), "the photo fetch needs a time limit and must not carry the key");
+  assert((await run("?city=chicago&photo=9.9", { STAY22_API_KEY: "k" }, ok200)).res.status === 404, "only hotels in the city's list can be asked for");
+  for (const q of ["?city=chicago&photo=", "?city=chicago&photo=https://evil.example/x.jpg", "?city=chicago&photo=../x"]) {
+    r = await run(q, { STAY22_API_KEY: "k" }, ok200);
+    assert(r.res.status === 400 && r.calls.length === 0, `bad photo id ${q} should be refused before any outside call`);
+  }
+  for (const image of [() => new Response("<script>alert(1)</script>", { status: 200, headers: { "content-type": "text/html" } }), () => new Response("x", { status: 500 }),
+    () => new Response(new Uint8Array(1600000), { status: 200, headers: { "content-type": "image/jpeg" } }), () => { throw new Error("down"); }]) {
+    assert((await run("?city=chicago&photo=1.0", { STAY22_API_KEY: "k" }, ok200, image)).res.status === 404, "anything that isn't a reasonably sized image is a 404");
+  }
+  assert((await run("?city=chicago&photo=1.0", {}, ok200)).res.status === 204, "photos are off without the key too");
+  assert(/s-maxage=3600/.test(listCache) && !/s-maxage=(3[7-9]|[4-9])\d{3}/.test(listCache), "the partner allows caching for 60 minutes at most");
 
   // Fail open: partner down, slow, or answering nonsense -> 204, the Guide stays as it was.
   for (const partner of [() => new Response("no", { status: 502 }), () => new Response("{", { status: 200 }), () => { throw new Error("down"); }, () => new Response(JSON.stringify({ results: [] }), { status: 200 })]) {
