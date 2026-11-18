@@ -576,6 +576,54 @@ await test("Guide tab (replaces Stay): map of take spots and top restaurants loa
   }
 });
 
+await test("Guide hotels: opening the Guide asks /api/hotels once, lists five lettered hotels with rating, reviews, price and a paid-link label, pins them on the map; when the partner is off the Guide is unchanged", async () => {
+  const SPOTS = { "Las Olas Boulevard": ["aaaaaaaa-0000-4000-8000-000000000001", 26.1193, -80.1300], "Hugh Taylor Birch State Park": ["aaaaaaaa-0000-4000-8000-000000000002", 26.1420, -80.1040] };
+  const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=", "base64");
+  const labels = Object.keys(SPOTS);
+  await page.route("**/rest/v1/posts?*", async r => {
+    const headers = { ...r.request().headers() }; delete headers.authorization;
+    const res = await r.fetch({ headers }); const rows = await res.json();
+    (Array.isArray(rows) ? rows : []).forEach((p, i) => { p.place_id = SPOTS[labels[i % 2]][0]; p.place_label = labels[i % 2]; }); return r.fulfill({ response: res, json: rows }); });
+  await page.route("**/rest/v1/places?*", r => r.fulfill({ json: Object.entries(SPOTS).map(([name, [id, lat, lng]]) => ({ id, name, lat, lng, category: "spot" })) }));
+  await page.route("https://tile.openstreetmap.org/**", r => r.fulfill({ body: PNG, contentType: "image/png" }));
+  const H = (name, lat, lng, extra = {}) => ({ id: name, name, lat, lng, url: "https://www.stay22.com/allez/roam/" + encodeURIComponent(name) + "?aid=tripvibz", rating: 8.6, reviews: 1240, price: 189, stars: 4, cancel: false, ...extra });
+  let asked = 0, mode = "on";
+  await page.route("**/api/hotels?*", r => {
+    asked++;
+    if (mode === "off") return r.fulfill({ status: 204, body: "" });
+    return r.fulfill({ json: { city: "fort-lauderdale", checkin: "2026-12-11", checkout: "2026-12-12", currency: "USD", hotels: [
+      H("Far Away Inn", 26.30, -80.30), H("Las Olas Hotel", 26.1200, -80.1290, { price: 1249, reviews: 12400 }), H("Beach Hotel", 26.1300, -80.1050), H("River Hotel", 26.1180, -80.1400),
+      H("Harbor Hotel", 26.1250, -80.1200, { price: null }), H("Park Hotel", 26.1400, -80.1060), H("Mid Hotel", 26.1300, -80.1170),
+      H("Wrong Link", 26.1300, -80.1170, { url: "https://example.com/x" }) ] } });
+  });
+  try {
+    await go("/fort-lauderdale/");
+    assert(asked === 0, "hotels must not be fetched until the Guide is opened");
+    await page.click('[data-tab="guide"]'); await page.waitForSelector("#tv-guide .g-hotel", { timeout: 8000 }); await page.waitForTimeout(600);
+    assert(asked === 1, `the Guide should ask for hotels once, asked ${asked} times`);
+    const names = await page.locator("#tv-guide .g-hotel .g-name").allTextContents();
+    assert(names.length === 5 && !names.includes("Far Away Inn") && !names.includes("Wrong Link"), `five hotels near the spots, not the far one or the non-partner link: ${names}`);
+    assert((await page.locator("#tv-guide .g-hotel .g-n").allTextContents()).join("") === "ABCDE", "hotels are lettered A to E");
+    const text = await page.textContent("#tv-guide .g-hotels");
+    assert(/8\.6 guest rating · 12,400 reviews · 4-star/.test(text) && /From \$1,249 a night/.test(text) && /Check the price for your dates/.test(text), `rating, reviews, price: ${text.slice(0, 300)}`);
+    assert(/mi from (Las Olas Boulevard|Hugh Taylor Birch State Park)|Next to (Las Olas Boulevard|Hugh Taylor Birch State Park)/.test(text), "each hotel says how far it is from the nearest recommended spot");
+    assert(/one night, Fri, Dec 11/.test(text) && /Paid links: TripVibz may earn a commission/.test(text), "the night the price is for and the paid-link label must show");
+    const links = await page.locator("#tv-guide .g-hotel a").evaluateAll(as => as.map(a => [a.href, a.rel, a.target]));
+    assert(links.length === 5 && links.every(([h, rel, t]) => h.startsWith("https://www.stay22.com/") && /sponsored/.test(rel) && /noopener/.test(rel) && t === "_blank"), `booking links: ${JSON.stringify(links[0])}`);
+    assert(await page.locator("#tv-guide .g-pin.hotel").count() === 5 && await page.locator("#tv-guide .g-legend .g-dot.hotel").count() === 1, "five hotel pins on the map and a legend entry");
+    assert(await page.locator("#tv-guide .s22").count() === 1, "the full hotel map stays under the list");
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "the hotel list scrolls sideways on a phone");
+    // Off (no key yet, partner down): nothing added, nothing broken.
+    mode = "off";
+    await page.goto("about:blank"); await go("/fort-lauderdale/");
+    await page.click('[data-tab="guide"]'); await page.waitForTimeout(1500);
+    assert(await page.locator("#tv-guide .g-hotels").count() === 0 && await page.locator("#tv-guide .g-pin.hotel").count() === 0, "with the partner off there should be no hotel list");
+    assert(await page.isVisible("#tv-guide") && await page.locator("#tv-guide .s22").count() === 1, "the Guide should be exactly as before when hotels are off");
+  } finally {
+    for (const u of ["**/api/hotels?*", "https://tile.openstreetmap.org/**", "**/rest/v1/places?*", "**/rest/v1/posts?*"]) await page.unroute(u);
+  }
+});
+
 await test("Reply links: /<city>/add/?kind=&text= opens with their words filled in", async () => {
   await go("/miami/add/?kind=hidden_gem&text=" + encodeURIComponent("I take everyone to the Venetian Pool on a weekday morning."));
   assert((await page.inputValue("#take")).startsWith("I take everyone to the Venetian Pool"), "reply text not pre-filled");

@@ -150,6 +150,7 @@
       // First open: swap the pre-rendered Guide for the live one (only this panel, so a half-typed top 3 survives).
       if (!had && EATS.ready) { panel.innerHTML = guidePanel(); T2.mountStay22(panel); }
       TVGuide.mountMap(panel).then(m => { if (m) T2.track("guide_map", { city: CITY.slug }); });
+      TVGuide.loadHotels(panel, CITY).then(n => { if (n) T2.track("guide_hotels", { city: CITY.slug, shown: n }); });
     });
   }
 

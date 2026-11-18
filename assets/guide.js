@@ -140,8 +140,102 @@
       '<h3 class="g-h">Top restaurants</h3>' + eatList +
       '<h3 class="g-h">Spots in the takes</h3>' + spotList +
       (pts.length ? '<div class="eats-attrib">Map © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors. Places from <a href="https://overturemaps.org/" target="_blank" rel="noopener">Overture Maps</a>.</div>' : "") +
+      // Filled in when the Guide opens (loadHotels): five well-rated hotels near the spots above.
+      '<div data-guide-hotels data-city="' + esc(city.slug) + '"></div>' +
       (opts.stayHtml || "") +
       "</section>";
+  }
+
+  /* ---------- hotels near the spots (data from /api/hotels, see functions/api/hotels.js) ---------- */
+  var HOTELS_SHOWN = 5, HOTELS_TIMEOUT_MS = 7000;
+  function miles(aLat, aLng, bLat, bLng) {
+    var R = 3958.8, rad = Math.PI / 180, dLat = (bLat - aLat) * rad, dLng = (bLng - aLng) * rad;
+    var h = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(aLat * rad) * Math.cos(bLat * rad) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+  }
+  // Which hotels to show: the ones closest, on average, to the places people recommend (the map's points).
+  // Each keeps the nearest of those places, for "0.4 mi from Navy Pier". With no points yet: best rated first.
+  // The price a hotel pays us plays no part.
+  function pickHotels(hotels, pts, n) {
+    pts = (pts || []).filter(function (p) { return ok(p.lat) && ok(p.lng); });
+    var list = (hotels || []).filter(function (h) { return h && h.name && partnerUrl(h.url) && ok(h.lat) && ok(h.lng); }).map(function (h) {
+      var sum = 0, near = null;
+      pts.forEach(function (p) {
+        var d = miles(+h.lat, +h.lng, +p.lat, +p.lng); sum += d;
+        if (!near || d < near.mi) near = { name: p.name, mi: d };
+      });
+      return { h: h, avg: pts.length ? sum / pts.length : null, near: near };
+    });
+    list.sort(function (a, b) {
+      if (a.avg != null && b.avg != null && Math.abs(a.avg - b.avg) > 0.05) return a.avg - b.avg;
+      return (b.h.rating || 0) - (a.h.rating || 0) || (b.h.reviews || 0) - (a.h.reviews || 0) || String(a.h.name).localeCompare(String(b.h.name));
+    });
+    return list.slice(0, n || HOTELS_SHOWN).map(function (x, i) {
+      var o = {}; for (var k in x.h) o[k] = x.h[k];
+      o.letter = "ABCDEFGH".charAt(i); o.near = x.near ? { name: x.near.name, mi: Math.round(x.near.mi * 10) / 10 } : null;
+      return o;
+    });
+  }
+  function nightLabel(isoDate) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(isoDate || "")); if (!m) return "";
+    var d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+    return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getUTCDay()] + ", " + ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getUTCMonth()] + " " + d.getUTCDate();
+  }
+  function commas(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+  function partnerUrl(u) { return /^https:\/\/([a-z0-9-]+\.)*stay22\.com\//.test(String(u || "")) ? String(u) : ""; }
+  function hotelsHtml(city, picked, meta) {
+    picked = (picked || []).filter(function (h) { return partnerUrl(h.url); });
+    if (!picked.length) return "";
+    var night = nightLabel(meta && meta.checkin), hasNear = picked.some(function (h) { return h.near; });
+    return '<section class="g-hotels" aria-labelledby="g-hotels-h">' +
+      '<h3 class="g-h" id="g-hotels-h">Well-rated hotels ' + (hasNear ? "near these spots" : "in " + esc(city.name)) + "</h3>" +
+      '<p class="g-hotels-sub">Guest rating of 8 or higher from at least 200 reviews' + (hasNear ? ", closest to the places above" : "") + "." +
+        (night ? " Prices are for one night, " + esc(night) + ", for two adults, and can change." : "") + "</p>" +
+      '<ol class="g-hotel-list">' + picked.map(function (h) {
+        var facts = [esc(String(h.rating)) + " guest rating", commas(h.reviews) + " reviews"];
+        if (h.stars) facts.push(esc(String(h.stars)) + "-star");
+        return '<li class="g-hotel"><span class="g-n hotel" aria-hidden="true">' + esc(h.letter || "") + '</span><div class="g-body">' +
+          '<b class="g-name">' + esc(h.name) + "</b>" +
+          '<div class="g-count">' + facts.join(" · ") + "</div>" +
+          (h.near ? '<div class="g-near">' + esc(h.near.mi < 0.1 ? "Next to " : h.near.mi.toFixed(1) + " mi from ") + esc(h.near.name) + "</div>" : "") +
+          '<div class="g-price">' + (ok(h.price) && +h.price > 0 ? "From $" + commas(h.price) + " a night" : "Check the price for your dates") + (h.cancel ? " · free cancellation" : "") + "</div>" +
+          '<div class="eat-links"><a href="' + esc(partnerUrl(h.url)) + '" target="_blank" rel="noopener sponsored nofollow" data-hotel="' + esc(h.letter || "") + '">See rooms</a></div>' +
+          "</div></li>";
+      }).join("") + "</ol>" +
+      '<p class="g-hotels-note">Paid links: TripVibz may earn a commission when you book. Hotels are picked by guest rating and distance, never by what they pay.</p>' +
+      "</section>";
+  }
+  function addHotelPins(mapEl) {
+    var L = root.L, map = mapEl && mapEl._map, hs = mapEl && mapEl._hotels;
+    if (!L || !map || !hs || mapEl._hotelPins) return false;
+    mapEl._hotelPins = hs.map(function (h) {
+      var icon = L.divIcon({ className: "", html: '<span class="g-pin hotel">' + esc(h.letter || "") + "</span>", iconSize: [26, 26], iconAnchor: [13, 13] });
+      return L.marker([+h.lat, +h.lng], { icon: icon, title: h.name, alt: h.name, keyboard: true, zIndexOffset: 500 }).addTo(map)
+        .bindPopup("<b>" + esc(h.name) + "</b><br>" + esc(String(h.rating)) + " guest rating · " + commas(h.reviews) + " reviews" + (ok(h.price) && +h.price > 0 ? "<br>From $" + commas(h.price) + " a night" : ""));
+    });
+    var legend = mapEl.parentNode && mapEl.parentNode.querySelector(".g-legend");
+    if (legend && !legend.querySelector(".g-dot.hotel")) legend.insertAdjacentHTML("beforeend", '<span><i class="g-dot hotel"></i>Hotels</span>');
+    return true;
+  }
+  // Fetches once per Guide render. Any failure (off, slow, down) leaves the Guide exactly as it was.
+  function loadHotels(rootEl, city) {
+    var doc = rootEl || root.document, slot = doc.querySelector("[data-guide-hotels]:not([data-loaded])");
+    if (!slot || !root.fetch || !city || !city.slug) return Promise.resolve(0);
+    slot.dataset.loaded = "1";
+    var ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    var t = setTimeout(function () { if (ctl) ctl.abort(); }, HOTELS_TIMEOUT_MS);
+    return root.fetch("/api/hotels?city=" + encodeURIComponent(city.slug), ctl ? { signal: ctl.signal } : {}).then(function (r) {
+      return r.status === 200 ? r.json() : null;
+    }).then(function (d) {
+      clearTimeout(t);
+      if (!d || !Array.isArray(d.hotels) || !d.hotels.length) return 0;
+      var mapEl = doc.querySelector("[data-guide-map]"), pts = [];
+      try { pts = JSON.parse((mapEl && mapEl.dataset.points) || "[]"); } catch (e) { pts = []; }
+      var picked = pickHotels(d.hotels, pts, HOTELS_SHOWN);
+      slot.innerHTML = hotelsHtml(city, picked, d);
+      if (mapEl) { mapEl._hotels = picked; addHotelPins(mapEl); }
+      return picked.length;
+    }).catch(function () { clearTimeout(t); return 0; });
   }
 
   /* ---------- the map (browser only) ---------- */
@@ -207,6 +301,7 @@
       if (bounds.length === 1) map.setView(bounds[0], 14); else map.fitBounds(bounds, { padding: [28, 28], maxZoom: 15 });
       map.on("zoomend", declutter); declutter();
       el._map = map;
+      addHotelPins(el);   // hotels that arrived before the map did
       return true;
     }).catch(function () {
       // A nice-to-have: the lists below still say everything the map does.
@@ -216,5 +311,5 @@
     });
   }
 
-  root.TVGuide = { spots: spots, topEats: topEats, points: points, html: html, mountMap: mountMap, NOT_A_SPOT: NOT_A_SPOT, MAP_JS: MAP_JS, MAP_CSS: MAP_CSS, TILES: TILES };
+  root.TVGuide = { spots: spots, topEats: topEats, points: points, html: html, mountMap: mountMap, pickHotels: pickHotels, hotelsHtml: hotelsHtml, loadHotels: loadHotels, NOT_A_SPOT: NOT_A_SPOT, MAP_JS: MAP_JS, MAP_CSS: MAP_CSS, TILES: TILES };
 })(typeof window !== "undefined" ? window : globalThis);
