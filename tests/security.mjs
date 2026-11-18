@@ -221,6 +221,21 @@ await test("/api/hotels: off without the key, only takes a city slug, keeps the 
     r = await run(q, { STAY22_API_KEY: "k" }, ok200);
     assert(r.res.status === 400 && r.calls.length === 0, `bad input ${q} should be refused before any outside call (got ${r.res.status})`);
   }
+  // Dates: only a real stay, not in the past, within a year, 1 to 14 nights; anything else is refused before any outside call.
+  const day = n => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+  for (const q of [`?city=chicago&checkin=${day(10)}`, `?city=chicago&checkout=${day(10)}`, `?city=chicago&checkin=${day(10)}&checkout=${day(10)}`, `?city=chicago&checkin=${day(10)}&checkout=${day(9)}`,
+    `?city=chicago&checkin=${day(-5)}&checkout=${day(-4)}`, `?city=chicago&checkin=${day(10)}&checkout=${day(30)}`, `?city=chicago&checkin=${day(400)}&checkout=${day(401)}`,
+    "?city=chicago&checkin=2027-02-30&checkout=2027-03-02", "?city=chicago&checkin=tomorrow&checkout=later", `?city=chicago&checkin=${day(10)}T00:00&checkout=${day(11)}`]) {
+    r = await run(q, { STAY22_API_KEY: "k" }, ok200);
+    assert(r.res.status === 400 && r.calls.length === 0, `bad dates ${q} should be refused before any outside call (got ${r.res.status})`);
+  }
+  r = await run(`?city=chicago&checkin=${day(30)}&checkout=${day(33)}`, { STAY22_API_KEY: "k" }, ok200);
+  const dated = r.calls.find(c => c.url.startsWith("https://api.stay22.com/"));
+  assert(r.res.status === 200 && new URL(dated.url).searchParams.get("checkin") === day(30) && new URL(dated.url).searchParams.get("checkout") === day(33), "the visitor's dates should reach the partner");
+  const datedBody = await r.res.json();
+  assert(datedBody.checkin === day(30) && datedBody.checkout === day(33) && datedBody.nights === 3, `the answer says which dates it priced: ${JSON.stringify([datedBody.checkin, datedBody.checkout, datedBody.nights])}`);
+  assert(datedBody.hotels[0].img === `/api/hotels?city=chicago&photo=1.0&checkin=${day(30)}&checkout=${day(33)}`, "photo paths carry the dates, so the photo is found in that list");
+  assert((await run(`?city=chicago&photo=1.0&checkin=${day(30)}&checkout=${day(33)}`, { STAY22_API_KEY: "k" }, ok200)).res.status === 200, "a photo for chosen dates should load");
   r = await run("?city=nowhere", { STAY22_API_KEY: "k" }, ok200);
   assert(r.res.status === 404 && r.calls.length === 1, "a city we don't have is a 404 and the partner is not called");
 

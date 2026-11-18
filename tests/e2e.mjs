@@ -576,7 +576,7 @@ await test("Guide tab (replaces Stay): map of take spots and top restaurants loa
   }
 });
 
-await test("Guide hotels: opening the Guide asks /api/hotels once, lists five lettered hotels with rating, reviews, price and a paid-link label, pins them on the map; when the partner is off the Guide is unchanged", async () => {
+await test("Guide hotels: opening the Guide asks /api/hotels once, lists five lettered hotels with rating, reviews, price and a paid-link label, pins them on the map; picking dates re-prices the list, the pins and the line by the map, and is remembered; when the partner is off the Guide is unchanged", async () => {
   const SPOTS = { "Las Olas Boulevard": ["aaaaaaaa-0000-4000-8000-000000000001", 26.1193, -80.1300], "Hugh Taylor Birch State Park": ["aaaaaaaa-0000-4000-8000-000000000002", 26.1420, -80.1040] };
   const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=", "base64");
   const labels = Object.keys(SPOTS);
@@ -588,13 +588,21 @@ await test("Guide hotels: opening the Guide asks /api/hotels once, lists five le
   await page.route("https://tile.openstreetmap.org/**", r => r.fulfill({ body: PNG, contentType: "image/png" }));
   const H = (name, lat, lng, extra = {}) => ({ id: name, name, lat, lng, url: "https://www.stay22.com/allez/roam/" + encodeURIComponent(name) + "?aid=tripvibz", rating: 8.6, reviews: 1240, price: 189, stars: 4, cancel: false,
     img: "/api/hotels?city=fort-lauderdale&photo=" + name.replace(/ /g, "-"), ...extra });
-  let asked = 0, mode = "on";
+  let asked = 0, mode = "on"; const urls = [];
   await page.route("**/api/hotels?*", r => {
     const photo = new URL(r.request().url()).searchParams.get("photo");
     if (photo) return photo === "River-Hotel" ? r.fulfill({ status: 404, body: "" }) : r.fulfill({ body: PNG, contentType: "image/png" });
     asked++;
-    if (mode === "off") return r.fulfill({ status: 204, body: "" });
-    return r.fulfill({ json: { city: "fort-lauderdale", checkin: "2026-12-11", checkout: "2026-12-12", currency: "USD", hotels: [
+    const q = new URL(r.request().url()).searchParams, cin = q.get("checkin"), cout = q.get("checkout");
+    urls.push(r.request().url());
+    if (mode === "off" || (mode === "fail" && cin)) return r.fulfill({ status: 204, body: "" });
+    if (cin) {   // the visitor's own dates: same hotels, a different price
+      const nights = Math.round((Date.parse(cout) - Date.parse(cin)) / 86400000);
+      return r.fulfill({ json: { city: "fort-lauderdale", checkin: cin, checkout: cout, nights, currency: "USD", hotels: [
+        H("Las Olas Hotel", 26.1200, -80.1290, { price: 333 }), H("Beach Hotel", 26.1300, -80.1050, { price: 333 }), H("River Hotel", 26.1180, -80.1400, { price: 333 }),
+        H("Harbor Hotel", 26.1250, -80.1200, { price: 333 }), H("Park Hotel", 26.1400, -80.1060, { price: 333 }), H("Mid Hotel", 26.1300, -80.1170, { price: 333 }) ] } });
+    }
+    return r.fulfill({ json: { city: "fort-lauderdale", checkin: "2026-12-11", checkout: "2026-12-12", nights: 1, currency: "USD", hotels: [
       H("Far Away Inn", 26.30, -80.30), H("Las Olas Hotel", 26.1200, -80.1290, { price: 1249, reviews: 12400 }), H("Beach Hotel", 26.1300, -80.1050), H("River Hotel", 26.1180, -80.1400),
       H("Harbor Hotel", 26.1250, -80.1200, { price: null }), H("Park Hotel", 26.1400, -80.1060), H("Mid Hotel", 26.1300, -80.1170),
       H("Wrong Link", 26.1300, -80.1170, { url: "https://example.com/x" }) ] } });
@@ -621,6 +629,33 @@ await test("Guide hotels: opening the Guide asks /api/hotels once, lists five le
     assert(await page.locator("#tv-guide .g-hotel .g-n").count() === 5, "every card keeps its letter, with or without a photo");
     assert(await page.locator("#tv-guide .s22").count() === 1, "the full hotel map stays under the list");
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "the hotel list scrolls sideways on a phone");
+    // Dates: the pickers start on the priced night, the map says which night, and picking dates re-prices the list and the pins.
+    const day = n => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+    assert((await page.inputValue('#tv-guide [data-hotel-dates] input[name="checkin"]')) === "2026-12-11" && (await page.inputValue('#tv-guide [data-hotel-dates] input[name="checkout"]')) === "2026-12-12", "date pickers should start on the night the prices are for");
+    assert(/Hotel prices are for one night, Fri, Dec 11/.test(await page.textContent("#tv-guide .g-map-dates")), "the map should say which night the hotel prices are for");
+    const setDate = async (name, value) => { await page.fill(`#tv-guide [data-hotel-dates] input[name="${name}"]`, value); await page.waitForTimeout(700); };   // fill() fires the change itself
+    await setDate("checkin", day(40));
+    let last = new URL(urls[urls.length - 1]).searchParams;
+    assert(asked === 2 && last.get("checkin") === day(40) && last.get("checkout") === day(41), `picking a check-in should ask for that night (asked ${asked}: ${urls[urls.length - 1]})`);
+    assert((await page.locator("#tv-guide .g-hotel .g-price").allTextContents()).every(t => /From \$333 a night/.test(t)) && await page.locator("#tv-guide .g-hotel").count() === 5, "the list should show the prices for the picked dates");
+    assert((await page.inputValue('#tv-guide [data-hotel-dates] input[name="checkin"]')) === day(40) && (await page.inputValue('#tv-guide [data-hotel-dates] input[name="checkout"]')) === day(41), "the pickers should keep the picked dates");
+    assert(!/Dec 11/.test(await page.textContent("#tv-guide .g-map-dates")) && /Hotel prices are for one night/.test(await page.textContent("#tv-guide .g-map-dates")), "the line by the map should follow the picked dates");
+    assert(await page.locator("#tv-guide .g-pin.hotel").count() === 5, "pins are redrawn, not doubled, when the dates change");
+    await page.locator("#tv-guide .g-pin.hotel").first().click({ force: true }); await page.waitForTimeout(400);
+    assert(/From \$333 a night/.test(await page.textContent(".leaflet-popup-content")), "a hotel pin's card should show the price for the picked dates");
+    await setDate("checkout", day(43));
+    last = new URL(urls[urls.length - 1]).searchParams;
+    assert(last.get("checkin") === day(40) && last.get("checkout") === day(43) && /per night for a 3-night stay/.test(await page.textContent("#tv-guide .g-hotels-sub")) && /3-night stay/.test(await page.textContent("#tv-guide .g-map-dates")), "a longer stay should be priced and described as one");
+    assert((await page.getAttribute("#tv-guide .g-hotel a >> nth=0", "href")).startsWith("https://www.stay22.com/"), "booking links still go to the partner");
+    // A date change that fails keeps the list that was there and says so.
+    mode = "fail";
+    await setDate("checkin", day(60));
+    assert(await page.locator("#tv-guide .g-hotel").count() === 5 && /couldn't get hotels for those dates/.test(await page.textContent("#tv-guide .g-dates-msg")), "a failed date change should keep the list and explain");
+    // Coming back: the dates that worked are remembered for this visit.
+    mode = "on"; const before = urls.length;
+    await page.goto("about:blank"); await go("/fort-lauderdale/");
+    await page.click('[data-tab="guide"]'); await page.waitForSelector("#tv-guide .g-hotel", { timeout: 8000 });
+    assert(new URL(urls[before]).searchParams.get("checkin") === day(40) && (await page.inputValue('#tv-guide [data-hotel-dates] input[name="checkout"]')) === day(43), "picked dates should still be set when the person comes back");
     // Off (no key yet, partner down): nothing added, nothing broken.
     mode = "off";
     await page.goto("about:blank"); await go("/fort-lauderdale/");
