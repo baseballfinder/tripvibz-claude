@@ -230,6 +230,14 @@
       '<p class="g-hotels-note">Paid links: TripVibz may earn a commission when you book. Hotels are picked by guest rating and distance, never by what they pay.</p>' +
       "</section>";
   }
+  // The card a hotel's pin opens: the same photo, numbers and booking link as its card in the list.
+  function hotelPopup(h) {
+    var pic = /^\/api\/hotels\?/.test(String(h.img || "")) ? '<img class="g-pop-img" src="' + esc(h.img) + '" alt="" width="190" height="110" loading="lazy" decoding="async">' : "";
+    return '<div class="g-pop">' + pic + "<b>" + esc(h.name) + "</b><br>" +
+      esc(ok(h.rating) ? (+h.rating).toFixed(1) : String(h.rating)) + " guest rating · " + commas(h.reviews) + " reviews" +
+      (ok(h.price) && +h.price > 0 ? "<br><b>From $" + commas(h.price) + " a night</b>" : "") +
+      (partnerUrl(h.url) ? '<br><a href="' + esc(partnerUrl(h.url)) + '" target="_blank" rel="noopener sponsored nofollow">See rooms</a>' : "") + "</div>";
+  }
   function addHotelPins(mapEl) {
     var L = root.L, map = mapEl && mapEl._map, hs = mapEl && mapEl._hotels;
     if (!L || !map || !hs) return false;
@@ -238,8 +246,20 @@
     mapEl._hotelPins = hs.map(function (h) {
       var icon = L.divIcon({ className: "", html: '<span class="g-pin hotel">' + esc(h.letter || "") + "</span>", iconSize: [26, 26], iconAnchor: [13, 13] });
       return L.marker([+h.lat, +h.lng], { icon: icon, title: h.name, alt: h.name, keyboard: true, zIndexOffset: 500 }).addTo(map)
-        .bindPopup("<b>" + esc(h.name) + "</b><br>" + esc(ok(h.rating) ? (+h.rating).toFixed(1) : String(h.rating)) + " guest rating · " + commas(h.reviews) + " reviews" + (ok(h.price) && +h.price > 0 ? "<br>From $" + commas(h.price) + " a night" : ""));
+        .bindPopup(hotelPopup(h), { minWidth: 190, maxWidth: 230 });
     });
+    // A photo that doesn't arrive is dropped from the pin's card, as in the list.
+    if (!mapEl._popWired) {
+      mapEl._popWired = true;
+      map.on("popupopen", function (e) {
+        var el = e.popup && e.popup.getElement && e.popup.getElement(), img = el && el.querySelector(".g-pop-img");
+        if (!img) return;
+        function drop() { if (img.parentNode) img.parentNode.removeChild(img); }
+        img.addEventListener("error", drop);
+        img.addEventListener("load", function () { try { e.popup.update(); } catch (err) {} });
+        if (img.complete && !img.naturalWidth && img.currentSrc) drop();
+      });
+    }
     var legend = mapEl.parentNode && mapEl.parentNode.querySelector(".g-legend");
     if (legend && !legend.querySelector(".g-dot.hotel")) legend.insertAdjacentHTML("beforeend", '<span><i class="g-dot hotel"></i>Hotels</span>');
     return true;
@@ -392,5 +412,5 @@
     });
   }
 
-  root.TVGuide = { spots: spots, topEats: topEats, points: points, html: html, mountMap: mountMap, pickHotels: pickHotels, hotelsHtml: hotelsHtml, loadHotels: loadHotels, NOT_A_SPOT: NOT_A_SPOT, MAP_JS: MAP_JS, MAP_CSS: MAP_CSS, TILES: TILES };
+  root.TVGuide = { hotelPopup: hotelPopup, spots: spots, topEats: topEats, points: points, html: html, mountMap: mountMap, pickHotels: pickHotels, hotelsHtml: hotelsHtml, loadHotels: loadHotels, NOT_A_SPOT: NOT_A_SPOT, MAP_JS: MAP_JS, MAP_CSS: MAP_CSS, TILES: TILES };
 })(typeof window !== "undefined" ? window : globalThis);

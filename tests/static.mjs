@@ -1161,6 +1161,11 @@ await test("Guide hotels (assets/guide.js): five picked by closeness to the reco
   assert(links.length === 5 && links.every(m => m[1].startsWith("https://www.stay22.com/") && /sponsored/.test(m[2]) && /noopener/.test(m[2])), "five booking links, all to the partner, marked sponsored");
   assert(G.hotelsHtml({ name: "Chicago", slug: "chicago" }, [{ ...picked[0], price: null }], {}).includes("Check the price for your dates"), "no price is 'check', never $0");
   assert(G.hotelsHtml({ name: "Chicago", slug: "chicago" }, [], {}) === "", "no hotels, no section");
+  // A hotel pin's card carries the same photo, numbers and booking link.
+  const pop = G.hotelPopup({ ...picked[0], name: "Pier <b>Hotel</b>", img: "/api/hotels?city=chicago&photo=1.0", price: 189 });
+  assert(/<img class="g-pop-img" src="\/api\/hotels\?city=chicago&amp;photo=1\.0" alt="" width="190" height="110"/.test(pop) && pop.includes("Pier &lt;b&gt;Hotel&lt;/b&gt;") && /From \$189 a night/.test(pop)
+    && /<a href="https:\/\/www\.stay22\.com\/[^"]*" target="_blank" rel="noopener sponsored nofollow">See rooms<\/a>/.test(pop), `pin card: ${pop}`);
+  assert(!/<img/.test(G.hotelPopup({ ...picked[0], img: "https://elsewhere.example/a.jpg" })) && !/<a /.test(G.hotelPopup({ ...picked[0], url: "https://example.com/x" })), "a pin card shows only our own photo path and only the partner's link");
   // Date pickers sit under the heading, set to the dates the prices are for.
   assert(/<form class="g-dates" data-hotel-dates>.*<input type="date" name="checkin" value="2026-12-11"[^>]*>.*<input type="date" name="checkout" value="2026-12-12"/.test(html), "check-in and check-out pickers, set to the priced night");
   const long = G.hotelsHtml({ name: "Chicago", slug: "chicago" }, picked, { checkin: "2026-12-24", checkout: "2026-12-27", nights: 3 });
