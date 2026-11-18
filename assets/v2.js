@@ -210,8 +210,8 @@
       '<div class="tv-actions">' +
         '<button class="tvb yes" data-vote="1" data-id="' + p.id + '" aria-pressed="' + (v === 1) + '">' + ICON.check + "True · " + p.ups + "</button>" +
         '<button class="tvb no" data-vote="-1" data-id="' + p.id + '" aria-pressed="' + (v === -1) + '">' + ICON.x + "Nope · " + p.downs + "</button>" +
-        '<span class="tv-meta"><a class="replies-link" href="' + href + '">' + p.comment_count + (p.comment_count === 1 ? " reply" : " replies") + "</a>" +
-        ' · <button class="tv-share" data-share-take="' + p.id + '">Share</button></span>' +
+        '<button class="tv-share" data-share-take="' + p.id + '" aria-label="Share this take" title="Share">' + ICON.share + "</button>" +
+        '<span class="tv-meta"><a class="replies-link" href="' + href + '">' + p.comment_count + (p.comment_count === 1 ? " reply" : " replies") + "</a></span>" +
       "</div>") +
     "</article>";
   }
@@ -387,9 +387,10 @@
   // a small menu on desktop, where there is no share sheet.
   async function share(d) {
     track("share_open", { kind: d.kind, id: d.id });
-    if (navigator.share && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
-      try { await navigator.share({ text: d.text, url: d.url }); track("share_done", { kind: d.kind, method: "native" }); } catch (e) {}
-      return;
+    // iPads report a desktop browser, so a touch screen counts as a phone too.
+    if (navigator.share && (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1)) {
+      try { await navigator.share({ text: d.text, url: d.url }); track("share_done", { kind: d.kind, method: "native" }); return; }
+      catch (e) { if (e && e.name === "AbortError") return; }   // closed the sheet on purpose; anything else falls back to the menu
     }
     shareSheet(d);
   }
