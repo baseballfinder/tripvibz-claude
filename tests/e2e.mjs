@@ -643,6 +643,9 @@ await test("Guide hotels: opening the Guide asks /api/hotels once, lists five le
     assert(await page.locator("#tv-guide .g-pin.hotel").count() === 5, "pins are redrawn, not doubled, when the dates change");
     await page.locator("#tv-guide .g-pin.hotel").first().click({ force: true }); await page.waitForTimeout(400);
     assert(/From \$333 a night/.test(await page.textContent(".leaflet-popup-content")), "a hotel pin's card should show the price for the picked dates");
+    const popImg = await page.locator(".leaflet-popup-content .g-pop-img").evaluateAll(is => is.map(i => [new URL(i.src).pathname, i.complete && i.naturalWidth > 0]));
+    assert(popImg.length === 1 && popImg[0][0] === "/api/hotels" && popImg[0][1], `a hotel pin's card should show the hotel's photo: ${JSON.stringify(popImg)}`);
+    assert((await page.getAttribute(".leaflet-popup-content a", "href")).startsWith("https://www.stay22.com/") && /sponsored/.test(await page.getAttribute(".leaflet-popup-content a", "rel")), "a hotel pin's card should link to its rooms, marked as a paid link");
     await setDate("checkout", day(43));
     last = new URL(urls[urls.length - 1]).searchParams;
     assert(last.get("checkin") === day(40) && last.get("checkout") === day(43) && /per night for a 3-night stay/.test(await page.textContent("#tv-guide .g-hotels-sub")) && /3-night stay/.test(await page.textContent("#tv-guide .g-map-dates")), "a longer stay should be priced and described as one");
