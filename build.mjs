@@ -19,6 +19,7 @@
    still ships to the browser.
    ========================================================================== */
 
+import { execFileSync } from "node:child_process";
 import { readdir, readFile, writeFile, mkdir, rm, stat } from "node:fs/promises";
 import { join, extname, dirname } from "node:path";
 import { createHash } from "node:crypto";
@@ -47,6 +48,13 @@ const OUT = "dist";
 // og:url, og:image and canonicals. Force www for the apex.
 const SITE = (process.env.SITE_URL || "https://www.tripvibz.com").replace(/\/$/, "")
   .replace(/^https?:\/\/tripvibz\.com$/, "https://www.tripvibz.com");
+// Which build this is: the deploy's commit (Cloudflare Pages / GitHub Actions set it; a local build asks git).
+// Shown in every page's footer and in /build.json, so "am I looking at the new version?" has an answer.
+const BUILD = (process.env.CF_PAGES_COMMIT_SHA || process.env.GITHUB_SHA || (() => {
+  try { return execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim(); } catch { return ""; }
+})()).slice(0, 12) || `dev-${Date.now().toString(36)}`;
+const BUILT_AT = new Date();
+const BUILD_LABEL = `Build ${BUILD.slice(0, 7)} · ${new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(BUILT_AT)} ET`;
 
 const SUPABASE_URL = "https://nkxorlktzbgwqnfwmuus.supabase.co";
 const SUPABASE_KEY = "sb_publishable_5UOevsS8KmWWGrQYNWsabg_0sVOIPmB";
@@ -1059,6 +1067,7 @@ const SITE_FOOTER = `<footer class="site-foot"><div class="wrap">
 <div class="sf-brand"><b>TripVibz</b><span class="tagline">Ask someone who knows.</span></div>
 <nav class="sf-links" aria-label="Site"><a href="/cities/">Cities</a><a href="/about/">About</a><a href="/how-we-verify-locals/">Local badges</a><a href="/contact/">Contact</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a></nav>
 <div class="sf-note">© ${new Date().getFullYear()} TripVibz · A city guide written by the people who live there.</div>
+<div class="sf-build" id="tv-build" data-build="${BUILD}">${BUILD_LABEL}</div>
 </div></footer>`;
 
 async function emit(path, html) {
@@ -1396,13 +1405,13 @@ ${secLines}
 `);
 
 await emit("sitemap.xml", sitemap);
+await emit("build.json", JSON.stringify({ build: BUILD, built_at: BUILT_AT.toISOString(), branch: process.env.CF_PAGES_BRANCH || process.env.GITHUB_REF_NAME || null }) + "\n");
 
 /* ---------------- service worker (lib/sw.js) ----------------
    BUILD is the deploy's commit (Cloudflare Pages / GitHub Actions set it), so
    every deploy installs a fresh worker and drops the previous build's caches.
    SHELL is what gets saved up front: the home and cities pages, the offline
    page, the manifest, the scripts (with their content hashes) and the fonts. */
-const BUILD = (process.env.CF_PAGES_COMMIT_SHA || process.env.GITHUB_SHA || "").slice(0, 12) || `dev-${Date.now().toString(36)}`;
 const SHELL = [
   "/", "/cities/", "/offline/", "/site.webmanifest", "/assets/brand/icon-192.png", "/assets/brand/mark.svg",
   ...["tv.js", "v2.js", "city.js", "supabase.js", "analytics.js", "pwa.js"].map(f => `/assets/${f}?v=${ASSET_VERSION[f]}`),

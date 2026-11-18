@@ -195,7 +195,7 @@ async function withMockFetch(calls, fn) {
 
 await test("/api/hotels: off without the key, only takes a city slug, keeps the key in a header, passes on only the partner's links (under TripVibz's ID) and well-rated hotels, relays photos safely, and fails open", async () => {
   const mod = await import("../functions/api/hotels.js");
-  const listing = (over = {}) => ({ id: "1.0", name: "Pier Hotel", url: "https://www.stay22.com/allez/roam/x?aid=someoneelse&checkin=2026-12-11", thumbnailUrl: "https://photos.booking-site.example/pier.jpg",
+  const listing = (over = {}) => ({ id: "1.0", name: "Pier Hotel", url: "https://www.stay22.com/allez/roam/x?aid=someoneelse&checkin=2026-12-11", media: { thumbnail: "https://photos.booking-site.example/pier.jpg" },
     suppliers: { booking: { link: "https://www.stay22.com/allez/booking/x", price: { total: 380 } }, expedia: { price: { total: 350 } }, other: { price: null } },
     location: { coordinates: { lat: 41.89, lng: -87.61 } }, rating: { value: 8.64, hotelStars: 4, count: 1240 }, policies: { freeCancellation: true }, ...over });
   const JPEG = () => new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]), { status: 200, headers: { "content-type": "image/jpeg" } });

@@ -1167,6 +1167,18 @@ await test("Guide hotels (assets/guide.js): five picked by closeness to the reco
   assert(/<div data-guide-hotels data-city="chicago"><\/div>/.test(await readFile("dist/chicago/index.html", "utf8")), "Guide should carry the empty hotels slot");
 });
 
+await test("Build number: every page's footer names the build, /build.json says the same, and the service worker belongs to it", async () => {
+  const info = JSON.parse(await readFile("dist/build.json", "utf8"));
+  assert(/^([0-9a-f]{12}|dev-[a-z0-9]+)$/.test(info.build) && !Number.isNaN(Date.parse(info.built_at)), `build.json: ${JSON.stringify(info)}`);
+  for (const f of pages) {
+    if (/admin\.html$/.test(f)) continue;
+    const m = (await readFile(f, "utf8")).match(/<div class="sf-build" id="tv-build" data-build="([^"]+)">Build ([0-9a-z-]+) · [A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2}\s?[AP]M ET<\/div>/);
+    assert(m && m[1] === info.build && info.build.startsWith(m[2]), `${f}: footer should show this build (${info.build})`);
+  }
+  const sw = await readFile("dist/sw.js", "utf8");
+  assert(sw.includes(info.build), "the service worker should carry the same build");
+});
+
 await test("Research data and scripts are not published", async () => {
   assert(!(await exists("dist/data")) && !(await exists("dist/scripts")), "dist/ contains data/ or scripts/");
   for (const f of ["README.md", "CLAUDE.md", "package.json", "docs"]) assert(!(await exists(`dist/${f}`)), `dist/ contains ${f}`);

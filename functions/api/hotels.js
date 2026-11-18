@@ -92,7 +92,7 @@ export function slim(results, nights = 1) {
     const rating = num(rt.value), reviews = num(rt.count), stars = num(rt.hotelStars);
     if (rating == null || rating < MIN_RATING || reviews == null || reviews < MIN_REVIEWS) continue;
     const id = String(r.id || "").slice(0, 40);
-    const thumb = /^[A-Za-z0-9._-]+$/.test(id) ? httpsUrl(r.thumbnailUrl || (Array.isArray(r.images) && r.images[0])) : null;
+    const thumb = /^[A-Za-z0-9._-]+$/.test(id) ? httpsUrl((r.media && r.media.thumbnail) || r.thumbnailUrl || (Array.isArray(r.images) && r.images[0])) : null;
     out.push({
       id, name, lat, lng, url, thumb,
       price: totals.length ? Math.round(Math.min(...totals) / Math.max(1, nights)) : null,
@@ -109,7 +109,7 @@ async function cityHotels(context, slug) {
   const key = context.env.STAY22_API_KEY;
   const dates = stayDates();
   const cache = typeof caches !== "undefined" && caches.default;
-  const cacheKey = new Request(`https://www.tripvibz.com/api/hotels-data?city=${slug}&d=${dates.checkin}`);
+  const cacheKey = new Request(`https://www.tripvibz.com/api/hotels-data-v2?city=${slug}&d=${dates.checkin}`);
   if (cache) { const hit = await cache.match(cacheKey); if (hit) { try { return await hit.json(); } catch { /* fall through */ } } }
 
   const rows = await getJson(`${SUPABASE_URL}/rest/v1/cities?slug=eq.${slug}&select=slug,lat,lng&limit=1`, { headers: { apikey: SUPABASE_KEY } }, DB_MS);
