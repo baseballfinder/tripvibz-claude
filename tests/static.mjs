@@ -1165,6 +1165,12 @@ await test("Guide hotels (assets/guide.js): five picked by closeness to the reco
   assert(/<div data-guide-hotels data-city="chicago"><\/div>/.test(await readFile("dist/chicago/index.html", "utf8")), "Guide should carry the empty hotels slot");
 });
 
+await test("Share cards: the brand line reads TripVibz.com, so a card seen without its link still says where to go", async () => {
+  const src = await readFile("scripts/og_cards.py", "utf8");
+  const drawn = [...src.matchAll(/d\.text\([^\n]*"(TripVibz[^"]*)"/g)].map(m => m[1]);
+  assert(drawn.length >= 2 && drawn.every(t => t === "TripVibz.com"), `every brand line on a card should read TripVibz.com, found: ${drawn}`);
+});
+
 await test("Research data and scripts are not published", async () => {
   assert(!(await exists("dist/data")) && !(await exists("dist/scripts")), "dist/ contains data/ or scripts/");
   for (const f of ["README.md", "CLAUDE.md", "package.json", "docs"]) assert(!(await exists(`dist/${f}`)), `dist/ contains ${f}`);
