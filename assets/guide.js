@@ -181,6 +181,27 @@
     var d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
     return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getUTCDay()] + ", " + ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getUTCMonth()] + " " + d.getUTCDate();
   }
+  function isoDay(d) { return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2); }
+  function addDays(isoDate, n) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(isoDate || "")); if (!m) return "";
+    return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3] + n)).toISOString().slice(0, 10);
+  }
+  function nightsBetween(a, b) { var x = Date.parse(a + "T00:00:00Z"), y = Date.parse(b + "T00:00:00Z"); return isFinite(x) && isFinite(y) ? Math.round((y - x) / 86400000) : 0; }
+  // "one night, Fri, Dec 11" or "3 nights, Thu, Dec 24 to Sun, Dec 27"
+  function stayLabel(meta) {
+    var a = meta && meta.checkin, b = meta && meta.checkout, n = (meta && meta.nights) || nightsBetween(a, b) || 1;
+    return n > 1 && nightLabel(b) ? "per night for a " + n + "-night stay, " + nightLabel(a) + " to " + nightLabel(b) : "for one night, " + nightLabel(a);
+  }
+  var MAX_NIGHTS = 14, MAX_AHEAD_DAYS = 365;
+  // The date pickers under the hotel heading. Phones show their own calendar for these.
+  function datesForm(meta) {
+    if (!meta || !nightLabel(meta.checkin)) return "";
+    var today = isoDay(new Date()), out = meta.checkout || addDays(meta.checkin, 1);
+    return '<form class="g-dates" data-hotel-dates>' +
+      '<label>Check-in<input type="date" name="checkin" value="' + esc(meta.checkin) + '" min="' + today + '" max="' + addDays(today, MAX_AHEAD_DAYS) + '" required></label>' +
+      '<label>Check-out<input type="date" name="checkout" value="' + esc(out) + '" min="' + addDays(meta.checkin, 1) + '" max="' + addDays(meta.checkin, MAX_NIGHTS) + '" required></label>' +
+      '<p class="g-dates-msg" role="status" aria-live="polite"></p></form>';
+  }
   function commas(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
   function partnerUrl(u) { return /^https:\/\/([a-z0-9-]+\.)*stay22\.com\//.test(String(u || "")) ? String(u) : ""; }
   function hotelsHtml(city, picked, meta) {
@@ -190,9 +211,10 @@
     return '<section class="g-hotels" aria-labelledby="g-hotels-h">' +
       '<h3 class="g-h" id="g-hotels-h">Well-rated hotels ' + (hasNear ? "near these spots" : "in " + esc(city.name)) + "</h3>" +
       '<p class="g-hotels-sub">Guest rating of 8 or higher from at least 200 reviews' + (hasNear ? ", closest to the places above" : "") + "." +
-        (night ? " Prices are for one night, " + esc(night) + ", for two adults, and can change." : "") + "</p>" +
+        (night ? " Prices are " + esc(stayLabel(meta)) + ", for two adults, and can change." : "") + "</p>" +
+      datesForm(meta) +
       '<ol class="g-hotel-list">' + picked.map(function (h) {
-        var facts = [esc(String(h.rating)) + " guest rating", commas(h.reviews) + " reviews"];
+        var facts = [esc(ok(h.rating) ? (+h.rating).toFixed(1) : String(h.rating)) + " guest rating", commas(h.reviews) + " reviews"];
         if (h.stars) facts.push(esc(String(h.stars)) + "-star");
         var pic = /^\/api\/hotels\?/.test(String(h.img || ""))
           ? '<span class="g-hotel-pic"><img src="' + esc(h.img) + '" alt="" width="96" height="96" loading="lazy" decoding="async"><span class="g-n hotel" aria-hidden="true">' + esc(h.letter || "") + "</span></span>"
@@ -210,41 +232,91 @@
   }
   function addHotelPins(mapEl) {
     var L = root.L, map = mapEl && mapEl._map, hs = mapEl && mapEl._hotels;
-    if (!L || !map || !hs || mapEl._hotelPins) return false;
+    if (!L || !map || !hs) return false;
+    // New dates bring new prices (and sometimes different hotels): out with the old pins.
+    (mapEl._hotelPins || []).forEach(function (m) { try { map.removeLayer(m); } catch (e) {} });
     mapEl._hotelPins = hs.map(function (h) {
       var icon = L.divIcon({ className: "", html: '<span class="g-pin hotel">' + esc(h.letter || "") + "</span>", iconSize: [26, 26], iconAnchor: [13, 13] });
       return L.marker([+h.lat, +h.lng], { icon: icon, title: h.name, alt: h.name, keyboard: true, zIndexOffset: 500 }).addTo(map)
-        .bindPopup("<b>" + esc(h.name) + "</b><br>" + esc(String(h.rating)) + " guest rating · " + commas(h.reviews) + " reviews" + (ok(h.price) && +h.price > 0 ? "<br>From $" + commas(h.price) + " a night" : ""));
+        .bindPopup("<b>" + esc(h.name) + "</b><br>" + esc(ok(h.rating) ? (+h.rating).toFixed(1) : String(h.rating)) + " guest rating · " + commas(h.reviews) + " reviews" + (ok(h.price) && +h.price > 0 ? "<br>From $" + commas(h.price) + " a night" : ""));
     });
     var legend = mapEl.parentNode && mapEl.parentNode.querySelector(".g-legend");
     if (legend && !legend.querySelector(".g-dot.hotel")) legend.insertAdjacentHTML("beforeend", '<span><i class="g-dot hotel"></i>Hotels</span>');
     return true;
   }
-  // Fetches once per Guide render. Any failure (off, slow, down) leaves the Guide exactly as it was.
+  var DATES_KEY = "tv_hotel_dates";
+  function savedDates() {
+    try {
+      var d = JSON.parse(root.sessionStorage.getItem(DATES_KEY) || "null");
+      if (d && nightLabel(d.checkin) && nightLabel(d.checkout) && d.checkin >= isoDay(new Date()) && nightsBetween(d.checkin, d.checkout) >= 1) return d;
+    } catch (e) {}
+    return null;
+  }
+  function saveDates(d) { try { root.sessionStorage.setItem(DATES_KEY, JSON.stringify({ checkin: d.checkin, checkout: d.checkout })); } catch (e) {} }
+  function fetchHotels(slug, dates) {
+    var ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    var t = setTimeout(function () { if (ctl) ctl.abort(); }, HOTELS_TIMEOUT_MS);
+    var when = dates ? "&checkin=" + encodeURIComponent(dates.checkin) + "&checkout=" + encodeURIComponent(dates.checkout) : "";
+    return root.fetch("/api/hotels?city=" + encodeURIComponent(slug) + when, ctl ? { signal: ctl.signal } : {}).then(function (r) { return r.status === 200 ? r.json() : null; })
+      .then(function (d) { clearTimeout(t); return d && Array.isArray(d.hotels) && d.hotels.length ? d : null; }, function () { clearTimeout(t); return null; });
+  }
+  // Draws the list, the pins and the "prices for …" line by the map from one answer.
+  function showHotels(doc, slot, city, d) {
+    var mapEl = doc.querySelector("[data-guide-map]"), pts = [];
+    try { pts = JSON.parse((mapEl && mapEl.dataset.points) || "[]"); } catch (e) { pts = []; }
+    var picked = pickHotels(d.hotels, pts, HOTELS_SHOWN);
+    slot.innerHTML = hotelsHtml(city, picked, d);
+    // A photo that doesn't arrive leaves the lettered card, not a broken image.
+    Array.prototype.forEach.call(slot.querySelectorAll(".g-hotel-pic img"), function (img) {
+      function drop() { var box = img.parentNode, n = box && box.querySelector(".g-n"); if (box && box.parentNode && n) box.parentNode.replaceChild(n, box); }
+      img.addEventListener("error", drop);
+      if (img.complete && !img.naturalWidth && img.currentSrc) drop();
+    });
+    if (mapEl) {
+      mapEl._hotels = picked; addHotelPins(mapEl);
+      var legend = mapEl.parentNode && mapEl.parentNode.querySelector(".g-legend"), line = mapEl.parentNode && mapEl.parentNode.querySelector(".g-map-dates");
+      if (legend && !line) { legend.insertAdjacentHTML("afterend", '<p class="g-map-dates"></p>'); line = mapEl.parentNode.querySelector(".g-map-dates"); }
+      if (line) {
+        line.innerHTML = "Hotel prices are " + esc(stayLabel(d)) + '. <button type="button" class="g-map-dates-go">Change dates</button>';
+        line.querySelector("button").addEventListener("click", function () {
+          var input = slot.querySelector('[data-hotel-dates] input[name="checkin"]'); if (!input) return;
+          if (input.scrollIntoView) input.scrollIntoView({ block: "center", behavior: "smooth" });
+          try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); }
+        });
+      }
+    }
+    return picked.length;
+  }
+  // Fetches once per Guide render, then again whenever the dates change. Any failure on the first
+  // load (off, slow, down) leaves the Guide exactly as it was; a failed date change keeps the list
+  // that was there and says so.
   function loadHotels(rootEl, city) {
     var doc = rootEl || root.document, slot = doc.querySelector("[data-guide-hotels]:not([data-loaded])");
     if (!slot || !root.fetch || !city || !city.slug) return Promise.resolve(0);
     slot.dataset.loaded = "1";
-    var ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
-    var t = setTimeout(function () { if (ctl) ctl.abort(); }, HOTELS_TIMEOUT_MS);
-    return root.fetch("/api/hotels?city=" + encodeURIComponent(city.slug), ctl ? { signal: ctl.signal } : {}).then(function (r) {
-      return r.status === 200 ? r.json() : null;
-    }).then(function (d) {
-      clearTimeout(t);
-      if (!d || !Array.isArray(d.hotels) || !d.hotels.length) return 0;
-      var mapEl = doc.querySelector("[data-guide-map]"), pts = [];
-      try { pts = JSON.parse((mapEl && mapEl.dataset.points) || "[]"); } catch (e) { pts = []; }
-      var picked = pickHotels(d.hotels, pts, HOTELS_SHOWN);
-      slot.innerHTML = hotelsHtml(city, picked, d);
-      // A photo that doesn't arrive leaves the lettered card, not a broken image.
-      Array.prototype.forEach.call(slot.querySelectorAll(".g-hotel-pic img"), function (img) {
-        function drop() { var box = img.parentNode, n = box && box.querySelector(".g-n"); if (box && box.parentNode && n) box.parentNode.replaceChild(n, box); }
-        img.addEventListener("error", drop);
-        if (img.complete && !img.naturalWidth && img.currentSrc) drop();
+    var seq = 0;
+    slot.addEventListener("change", function (e) {
+      var form = e.target && e.target.closest && e.target.closest("[data-hotel-dates]"); if (!form) return;
+      var cin = form.elements.checkin.value, cout = form.elements.checkout.value, msg = form.querySelector(".g-dates-msg");
+      if (!nightLabel(cin)) return;
+      // Moving check-in past check-out moves check-out along with it.
+      var n = nightsBetween(cin, cout);
+      if (!nightLabel(cout) || n < 1 || n > MAX_NIGHTS) { cout = addDays(cin, 1); form.elements.checkout.value = cout; }
+      form.elements.checkout.min = addDays(cin, 1); form.elements.checkout.max = addDays(cin, MAX_NIGHTS);
+      var dates = { checkin: cin, checkout: cout }, mine = ++seq;
+      slot.classList.add("is-loading"); if (msg) msg.textContent = "Getting prices for your dates…";
+      fetchHotels(city.slug, dates).then(function (d) {
+        if (mine !== seq) return;                    // a newer pick is already on its way
+        slot.classList.remove("is-loading");
+        if (!d) { if (msg) msg.textContent = "We couldn't get hotels for those dates. The list below is for the dates before."; return; }
+        saveDates(dates); showHotels(doc, slot, city, d);
       });
-      if (mapEl) { mapEl._hotels = picked; addHotelPins(mapEl); }
-      return picked.length;
-    }).catch(function () { clearTimeout(t); return 0; });
+    });
+    var start = savedDates();
+    return fetchHotels(city.slug, start).then(function (d) {
+      // Dates remembered from another city might not price here: fall back to the default night.
+      return d || !start ? d : fetchHotels(city.slug, null);
+    }).then(function (d) { return d ? showHotels(doc, slot, city, d) : 0; }).catch(function () { return 0; });
   }
 
   /* ---------- the map (browser only) ---------- */

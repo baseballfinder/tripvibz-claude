@@ -66,6 +66,14 @@
 .g-hotel-pic{position:relative;flex:none;width:96px;height:96px;border-radius:10px;overflow:hidden;background:#efe9dd}
 .g-hotel-pic img{width:100%;height:100%;object-fit:cover;display:block}
 .g-hotel-pic .g-n{position:absolute;left:6px;top:6px;width:24px;height:24px;font-size:12px;line-height:24px;box-shadow:0 0 0 2px #fff}
+.g-dates{display:flex;flex-wrap:wrap;gap:8px 12px;margin:0 0 12px}
+.g-dates label{display:flex;flex-direction:column;gap:3px;flex:1 1 140px;font-size:12px;font-weight:700;color:var(--muted)}
+.g-dates input{font:600 15px "Public Sans",sans-serif;color:var(--ink);background:#fff;border:1.5px solid #d9d1c2;border-radius:10px;min-height:44px;padding:0 10px;width:100%;box-sizing:border-box}
+.g-dates-msg{flex:1 1 100%;margin:0;font-size:12.5px;color:var(--muted);min-height:0}
+.g-dates-msg:empty{display:none}
+[data-guide-hotels].is-loading .g-hotel-list{opacity:.45;transition:opacity .15s}
+.g-map-dates{font-size:12.5px;color:var(--muted);margin:2px 2px 0}
+.g-map-dates-go{border:0;background:none;padding:0;font:700 12.5px "Public Sans",sans-serif;color:var(--ink);text-decoration:underline;cursor:pointer;min-height:24px}
 .g-near{font-size:13.5px;color:var(--ink);margin-top:2px}
 .g-price{font:800 15px "Archivo",sans-serif;color:var(--ink);margin-top:4px}
 .g-h{font:800 16px "Archivo",sans-serif;margin:20px 0 8px;color:var(--ink)}

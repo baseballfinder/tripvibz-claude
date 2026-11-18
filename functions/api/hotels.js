@@ -28,7 +28,11 @@
  *   page's content rules stay as they are. Only hotels in the city's current
  *   list can be asked for, so this is not an open image relay.
  *
- * Nothing about the visitor is sent to the partner by this call.
+ * - Dates: with no dates it prices one Friday night about three weeks out.
+ *   ?checkin=YYYY-MM-DD&checkout=YYYY-MM-DD prices the visitor's own dates:
+ *   real dates only, not in the past, within a year, 1 to 14 nights.
+ *
+ * Nothing about the visitor is sent to the partner by this call (dates aside).
  */
 import { SUPABASE_URL, SUPABASE_KEY } from "../_config.js";
 
@@ -62,6 +66,19 @@ export function stayDates(now = new Date()) {
   while (d.getUTCDay() !== 5) d.setUTCDate(d.getUTCDate() + 1);
   const out = new Date(d); out.setUTCDate(out.getUTCDate() + 1);
   return { checkin: iso(d), checkout: iso(out), nights: 1 };
+}
+
+const MAX_NIGHTS = 14, MAX_AHEAD_DAYS = 365;
+/** The visitor's dates, or null if they aren't a stay we'll price. */
+export function chosenDates(checkin, checkout, now = new Date()) {
+  const day = s => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || "")); if (!m) return null; const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])); return iso(d) === s ? d : null; };
+  const a = day(checkin), b = day(checkout);
+  if (!a || !b) return null;
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const nights = Math.round((b - a) / 86400000);
+  // A day's grace on "today": the visitor's evening can already be tomorrow in UTC, or the reverse.
+  if (a.getTime() < today - 86400000 || a.getTime() > today + MAX_AHEAD_DAYS * 86400000 || nights < 1 || nights > MAX_NIGHTS) return null;
+  return { checkin: iso(a), checkout: iso(b), nights };
 }
 
 const num = v => (typeof v === "number" && Number.isFinite(v) ? v : (typeof v === "string" && v.trim() !== "" && Number.isFinite(+v) ? +v : null));
@@ -105,11 +122,10 @@ export function slim(results, nights = 1) {
 }
 
 /** The city's current list (with photo addresses, which never leave the server). null = nothing to show. */
-async function cityHotels(context, slug) {
+async function cityHotels(context, slug, dates) {
   const key = context.env.STAY22_API_KEY;
-  const dates = stayDates();
   const cache = typeof caches !== "undefined" && caches.default;
-  const cacheKey = new Request(`https://www.tripvibz.com/api/hotels-data-v2?city=${slug}&d=${dates.checkin}`);
+  const cacheKey = new Request(`https://www.tripvibz.com/api/hotels-data-v2?city=${slug}&d=${dates.checkin}&o=${dates.checkout}`);
   if (cache) { const hit = await cache.match(cacheKey); if (hit) { try { return await hit.json(); } catch { /* fall through */ } } }
 
   const rows = await getJson(`${SUPABASE_URL}/rest/v1/cities?slug=eq.${slug}&select=slug,lat,lng&limit=1`, { headers: { apikey: SUPABASE_KEY } }, DB_MS);
@@ -128,7 +144,7 @@ async function cityHotels(context, slug) {
   const nights = (data.meta && num(data.meta.nights)) || dates.nights;
   const hotels = slim(data.results, nights);
   if (!hotels.length) return null;
-  const out = { city: slug, checkin: dates.checkin, checkout: dates.checkout, currency: "USD", hotels };
+  const out = { city: slug, checkin: dates.checkin, checkout: dates.checkout, nights: dates.nights, currency: "USD", hotels };
   if (cache) {
     const put = cache.put(cacheKey, new Response(JSON.stringify(out), { headers: { "content-type": "application/json", "cache-control": `public, max-age=${CACHE_S}` } }));
     context.waitUntil ? context.waitUntil(put) : await put;
@@ -141,7 +157,7 @@ async function photo(context, slug, id, list) {
   const h = list && Array.isArray(list.hotels) && list.hotels.find(x => x.id === id);
   if (!h || !h.thumb) return none();
   const cache = typeof caches !== "undefined" && caches.default;
-  const cacheKey = new Request(`https://www.tripvibz.com/api/hotels-photo?city=${slug}&id=${encodeURIComponent(id)}`);
+  const cacheKey = new Request(`https://www.tripvibz.com/api/hotels-photo?city=${slug}&id=${encodeURIComponent(id)}`);   // a hotel's photo is the same whatever the dates
   if (cache) { const hit = await cache.match(cacheKey); if (hit) return hit; }
   const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), IMG_MS);
   try {
@@ -164,16 +180,19 @@ export async function onRequestGet(context) {
   const slug = params.get("city") || "", photoId = params.get("photo");
   if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug) || slug.length > 40) return bad(400, "city");
   if (photoId != null && !/^[A-Za-z0-9._-]{1,40}$/.test(photoId)) return bad(400, "photo");
+  const asked = params.has("checkin") || params.has("checkout");
+  const dates = asked ? chosenDates(params.get("checkin"), params.get("checkout")) : stayDates();
+  if (!dates) return bad(400, "dates");
   if (!(env && env.STAY22_API_KEY)) return OFF();
 
-  const list = await cityHotels(context, slug);
+  const list = await cityHotels(context, slug, dates);
   if (photoId != null) return photo(context, slug, photoId, list);
   if (!list) return OFF();
   if (list.missing) return bad(404, "city");
 
   // What the page gets: no photo addresses, just our own path for each hotel that has one.
-  const hotels = list.hotels.map(({ thumb, ...h }) => (thumb ? { ...h, img: `/api/hotels?city=${slug}&photo=${encodeURIComponent(h.id)}` } : h));
-  return new Response(JSON.stringify({ city: list.city, checkin: list.checkin, checkout: list.checkout, currency: list.currency, hotels }), {
+  const hotels = list.hotels.map(({ thumb, ...h }) => (thumb ? { ...h, img: `/api/hotels?city=${slug}&photo=${encodeURIComponent(h.id)}${asked ? `&checkin=${list.checkin}&checkout=${list.checkout}` : ""}` } : h));
+  return new Response(JSON.stringify({ city: list.city, checkin: list.checkin, checkout: list.checkout, nights: list.nights || 1, currency: list.currency, hotels }), {
     status: 200,
     headers: { "content-type": "application/json", "cache-control": `public, max-age=900, s-maxage=${CACHE_S}` }
   });

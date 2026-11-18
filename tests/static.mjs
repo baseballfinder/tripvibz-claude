@@ -1161,6 +1161,10 @@ await test("Guide hotels (assets/guide.js): five picked by closeness to the reco
   assert(links.length === 5 && links.every(m => m[1].startsWith("https://www.stay22.com/") && /sponsored/.test(m[2]) && /noopener/.test(m[2])), "five booking links, all to the partner, marked sponsored");
   assert(G.hotelsHtml({ name: "Chicago", slug: "chicago" }, [{ ...picked[0], price: null }], {}).includes("Check the price for your dates"), "no price is 'check', never $0");
   assert(G.hotelsHtml({ name: "Chicago", slug: "chicago" }, [], {}) === "", "no hotels, no section");
+  // Date pickers sit under the heading, set to the dates the prices are for.
+  assert(/<form class="g-dates" data-hotel-dates>.*<input type="date" name="checkin" value="2026-12-11"[^>]*>.*<input type="date" name="checkout" value="2026-12-12"/.test(html), "check-in and check-out pickers, set to the priced night");
+  const long = G.hotelsHtml({ name: "Chicago", slug: "chicago" }, picked, { checkin: "2026-12-24", checkout: "2026-12-27", nights: 3 });
+  assert(/Prices are per night for a 3-night stay, Thu, Dec 24 to Sun, Dec 27, for two adults/.test(long) && /name="checkout" value="2026-12-27" min="2026-12-25" max="2027-01-07"/.test(long), "a longer stay says so, and check-out is limited to 1 to 14 nights after check-in");
   const withPic = G.hotelsHtml({ name: "Chicago", slug: "chicago" }, [{ ...picked[0], img: "/api/hotels?city=chicago&photo=1.0" }, { ...picked[1], img: "https://elsewhere.example/a.jpg" }], {});
   assert((withPic.match(/<img /g) || []).length === 1 && /<img src="\/api\/hotels\?city=chicago&amp;photo=1\.0" alt="" width="96" height="96" loading="lazy"/.test(withPic), "a photo shows only from our own /api/hotels path, sized and lazy");
   // The slot is in the pre-rendered Guide and empty until the page fills it.
