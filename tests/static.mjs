@@ -1134,6 +1134,37 @@ print("\\n".join(k for k, _ in rows))
   assert(/for k, slug in candidate_rows\(\):[\s\S]{0,200}"candidate"/.test(src), "research.py seeds must add the candidate places to the Bing pull");
 });
 
+await test("Guide hotels (assets/guide.js): five picked by closeness to the recommended spots, each with its nearest spot, rating, reviews and price; labeled as paid links; only the partner's links; nothing shown when there are none", async () => {
+  const vm = await import("node:vm");
+  const ctx = {}; vm.runInNewContext(await readFile("assets/guide.js", "utf8"), ctx);
+  const G = ctx.TVGuide;
+  const pts = [{ name: "Navy Pier", lat: 41.8917, lng: -87.6086 }, { name: "The Bean", lat: 41.8827, lng: -87.6233 }];
+  const H = (name, lat, lng, extra = {}) => ({ name, lat, lng, url: "https://www.stay22.com/allez/roam/" + encodeURIComponent(name), rating: 8.5, reviews: 500, price: 200, ...extra });
+  const hotels = [H("Airport Inn", 41.97, -87.9), H("Pier <b>Hotel</b>", 41.8905, -87.6100, { stars: 4, cancel: true, reviews: 12400, price: 1899 }), H("Loop Hotel", 41.8830, -87.6240, { rating: 9.1 }),
+    H("River Hotel", 41.8880, -87.6200), H("North Hotel", 41.9000, -87.6250), H("South Hotel", 41.8700, -87.6250), H("West Hotel", 41.8850, -87.6500),
+    H("Fake Partner", 41.8880, -87.6190, { url: "https://stay22.com.evil.example/x" }), H("No Place", null, null), null];
+  const picked = G.pickHotels(hotels, pts, 5);
+  assert(picked.length === 5 && picked.map(h => h.letter).join("") === "ABCDE", "five hotels, lettered A to E");
+  assert(!picked.some(h => /Airport|Fake|No Place/.test(h.name)), `the far one, the non-partner link and the one with no position are left out: ${picked.map(h => h.name)}`);
+  assert(["River Hotel", "Loop Hotel"].includes(picked[0].name) && ["River Hotel", "Loop Hotel"].includes(picked[1].name), `the two between the spots come first (a near tie goes to the better rated), got ${picked.map(h => h.name)}`);
+  assert(G.pickHotels([hotels[0], hotels[3]], pts, 5)[0].name === "River Hotel", "closer on average beats farther");
+  const pier = picked.find(h => /Pier/.test(h.name));
+  assert(pier.near.name === "Navy Pier" && pier.near.mi <= 0.2, `nearest spot and miles: ${JSON.stringify(pier.near)}`);
+  assert(G.pickHotels(hotels.slice(0, 7), [], 5)[0].name === "Loop Hotel", "with no spots yet, best rated first");
+  const html = G.hotelsHtml({ name: "Chicago", slug: "chicago" }, picked, { checkin: "2026-12-11" });
+  assert(html.includes("Pier &lt;b&gt;Hotel&lt;/b&gt;") && !html.includes("<b>Hotel"), "hotel names must be escaped");
+  assert(/8\.5 guest rating · 12,400 reviews · 4-star/.test(html) && /From \$1,899 a night · free cancellation/.test(html), "rating, review count, stars and nightly price shown");
+  assert(/one night, Fri, Dec 11, for two adults/.test(html), "the card says which night the price is for");
+  assert(/mi from (Navy Pier|The Bean)|Next to (Navy Pier|The Bean)/.test(html), "distance to the nearest recommended spot shown");
+  assert(/Paid links: TripVibz may earn a commission/.test(html), "hotel links must be labeled as paid");
+  const links = [...html.matchAll(/<a href="([^"]+)"[^>]*rel="([^"]+)"/g)];
+  assert(links.length === 5 && links.every(m => m[1].startsWith("https://www.stay22.com/") && /sponsored/.test(m[2]) && /noopener/.test(m[2])), "five booking links, all to the partner, marked sponsored");
+  assert(G.hotelsHtml({ name: "Chicago", slug: "chicago" }, [{ ...picked[0], price: null }], {}).includes("Check the price for your dates"), "no price is 'check', never $0");
+  assert(G.hotelsHtml({ name: "Chicago", slug: "chicago" }, [], {}) === "", "no hotels, no section");
+  // The slot is in the pre-rendered Guide and empty until the page fills it.
+  assert(/<div data-guide-hotels data-city="chicago"><\/div>/.test(await readFile("dist/chicago/index.html", "utf8")), "Guide should carry the empty hotels slot");
+});
+
 await test("Research data and scripts are not published", async () => {
   assert(!(await exists("dist/data")) && !(await exists("dist/scripts")), "dist/ contains data/ or scripts/");
   for (const f of ["README.md", "CLAUDE.md", "package.json", "docs"]) assert(!(await exists(`dist/${f}`)), `dist/ contains ${f}`);

@@ -193,6 +193,65 @@ async function withMockFetch(calls, fn) {
   try { return await fn(); } finally { globalThis.fetch = real; }
 }
 
+await test("/api/hotels: off without the key, only takes a city slug, keeps the key in a header, passes on only the partner's links and well-rated hotels, and fails open", async () => {
+  const mod = await import("../functions/api/hotels.js");
+  const listing = (over = {}) => ({ id: "1.0", name: "Pier Hotel", url: "https://www.stay22.com/allez/roam/x?aid=tripvibz",
+    suppliers: { booking: { link: "https://www.stay22.com/allez/booking/x", price: { total: 380 } }, expedia: { price: { total: 350 } }, other: { price: null } },
+    location: { coordinates: { lat: 41.89, lng: -87.61 } }, rating: { value: 8.64, hotelStars: 4, count: 1240 }, policies: { freeCancellation: true }, ...over });
+  const run = async (query, env, partner) => {
+    const calls = [], real = globalThis.fetch;
+    globalThis.fetch = async (url, init) => {
+      calls.push({ url: String(url), init });
+      if (String(url).includes("/rest/v1/cities")) return new Response(JSON.stringify(query.includes("nowhere") ? [] : [{ slug: "chicago", lat: 41.88, lng: -87.63 }]), { status: 200 });
+      return partner();
+    };
+    try { return { res: await mod.onRequestGet({ request: new Request(`https://www.tripvibz.com/api/hotels${query}`), env }), calls }; } finally { globalThis.fetch = real; }
+  };
+  const ok200 = () => new Response(JSON.stringify({ meta: { nights: 2 }, results: [
+    listing(), listing({ name: "Elsewhere link", url: "https://evil.example/x" }), listing({ name: "Low rated", rating: { value: 7.9, count: 5000 } }),
+    listing({ name: "Few reviews", rating: { value: 9.5, count: 12 } }), listing({ name: "No place", location: {} }), listing({ name: "No price", suppliers: {} }), null ] }), { status: 200 });
+
+  // Off: no key -> 204, nobody called.
+  let r = await run("?city=chicago", {}, ok200);
+  assert(r.res.status === 204 && r.calls.length === 0, "without STAY22_API_KEY the function must answer 204 and call nobody");
+  // Input: a slug and nothing else. Coordinates or addresses from the visitor are never used.
+  for (const q of ["", "?city=", "?city=Chicago", "?city=../x", "?city=chicago%20or%201", "?lat=1&lng=2", `?city=${"a".repeat(41)}`]) {
+    r = await run(q, { STAY22_API_KEY: "k" }, ok200);
+    assert(r.res.status === 400 && r.calls.length === 0, `bad input ${q} should be refused before any outside call (got ${r.res.status})`);
+  }
+  r = await run("?city=nowhere", { STAY22_API_KEY: "k" }, ok200);
+  assert(r.res.status === 404 && r.calls.length === 1, "a city we don't have is a 404 and the partner is not called");
+
+  // On: the partner is asked about our city's position, with the key in a header only.
+  r = await run("?city=chicago&lat=0&lng=0", { STAY22_API_KEY: "sekret-key" }, ok200);
+  assert(r.res.status === 200, `expected 200 with a key, got ${r.res.status}`);
+  const call = r.calls.find(c => c.url.startsWith("https://api.stay22.com/"));
+  assert(call && call.init.headers["X-API-KEY"] === "sekret-key" && !call.url.includes("sekret-key"), "the key goes in the X-API-KEY header, never in the address");
+  const u = new URL(call.url);
+  assert(u.searchParams.get("lat") === "41.88" && u.searchParams.get("lng") === "-87.63", "position must come from our cities table, not the visitor");
+  assert(u.searchParams.get("type") === "hotel" && u.searchParams.get("minguestrating") === "8" && u.searchParams.get("minratingcount") === "200", "quality floor missing from the partner request");
+  assert(/^\d{4}-\d{2}-\d{2}$/.test(u.searchParams.get("checkin")) && new Date(u.searchParams.get("checkin")).getUTCDay() === 5, "prices are asked for a Friday night");
+  assert(u.searchParams.get("campaign") === "tripvibz_guidehotels_chicago", "campaign tag missing");
+  assert(call.init.signal, "the partner call needs a time limit");
+  const body = await r.res.clone().text(), data = JSON.parse(body);
+  assert(!body.includes("sekret-key"), "the key leaked into the response");
+  assert(data.hotels.map(h => h.name).join("|") === "Pier Hotel|No price", `only usable, well-rated hotels with partner links pass: ${data.hotels.map(h => h.name)}`);
+  const h = data.hotels[0];
+  assert(h.price === 175 && h.rating === 8.6 && h.reviews === 1240 && h.stars === 4 && h.cancel === true, `lowest total divided by nights, rounded rating: ${JSON.stringify(h)}`);
+  assert(data.hotels[1].price === null, "a hotel with no price is 'unknown', never $0");
+  assert(/s-maxage=3600/.test(r.res.headers.get("cache-control")) && !/s-maxage=(3[7-9]|[4-9])\d{3}/.test(r.res.headers.get("cache-control")), "the partner allows caching for 60 minutes at most");
+
+  // Fail open: partner down, slow, or answering nonsense -> 204, the Guide stays as it was.
+  for (const partner of [() => new Response("no", { status: 502 }), () => new Response("{", { status: 200 }), () => { throw new Error("down"); }, () => new Response(JSON.stringify({ results: [] }), { status: 200 })]) {
+    r = await run("?city=chicago", { STAY22_API_KEY: "k" }, partner);
+    assert(r.res.status === 204, `a partner failure should answer 204, got ${r.res.status}`);
+  }
+  const src = await readFile("functions/api/hotels.js", "utf8");
+  assert(!/\.(insert|upsert)\(|method:\s*"(POST|PATCH|PUT)"/.test(src), "hotel listings must not be stored (partner terms)");
+  const d = mod.stayDates(new Date("2026-11-18T08:00:00Z"));
+  assert(d.checkin === "2026-12-11" && d.checkout === "2026-12-12" && d.nights === 1, `stayDates: first Friday at least 3 weeks out, one night: ${JSON.stringify(d)}`);
+});
+
 await test("/api/take rejects missing auth, oversize or malformed input before touching the database", async () => {
   const mod = await import("../functions/api/take.js");
   const id = "11111111-1111-1111-1111-111111111111";

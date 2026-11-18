@@ -45,6 +45,7 @@ export const NOTHING_TO_SHOW = {
   "/api/log": "the site log's beacon (visits and errors for the admin page); not something the person did",
   "/api/locate": "location check for the Local badge; the badge is earned over weeks, not shown on return",
   "/api/near": "a read (cities near you)",
+  "/api/hotels": "a read (hotels near the Guide's spots)",
   "/api/event": "calendar suggestion; goes to review and is not shown until approved"
 };
 
