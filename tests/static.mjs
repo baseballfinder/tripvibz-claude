@@ -1161,6 +1161,8 @@ await test("Guide hotels (assets/guide.js): five picked by closeness to the reco
   assert(links.length === 5 && links.every(m => m[1].startsWith("https://www.stay22.com/") && /sponsored/.test(m[2]) && /noopener/.test(m[2])), "five booking links, all to the partner, marked sponsored");
   assert(G.hotelsHtml({ name: "Chicago", slug: "chicago" }, [{ ...picked[0], price: null }], {}).includes("Check the price for your dates"), "no price is 'check', never $0");
   assert(G.hotelsHtml({ name: "Chicago", slug: "chicago" }, [], {}) === "", "no hotels, no section");
+  const withPic = G.hotelsHtml({ name: "Chicago", slug: "chicago" }, [{ ...picked[0], img: "/api/hotels?city=chicago&photo=1.0" }, { ...picked[1], img: "https://elsewhere.example/a.jpg" }], {});
+  assert((withPic.match(/<img /g) || []).length === 1 && /<img src="\/api\/hotels\?city=chicago&amp;photo=1\.0" alt="" width="96" height="96" loading="lazy"/.test(withPic), "a photo shows only from our own /api/hotels path, sized and lazy");
   // The slot is in the pre-rendered Guide and empty until the page fills it.
   assert(/<div data-guide-hotels data-city="chicago"><\/div>/.test(await readFile("dist/chicago/index.html", "utf8")), "Guide should carry the empty hotels slot");
 });
