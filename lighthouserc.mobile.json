@@ -4,6 +4,7 @@
       "staticDistDir": "./dist",
       "url": [
         "http://localhost/fort-lauderdale/",
+        "http://localhost/cities/",
         "http://localhost/",
         "http://localhost/miami/worst-times-to-visit/",
         "http://localhost/contact/"

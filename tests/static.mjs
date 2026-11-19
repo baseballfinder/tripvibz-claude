@@ -958,6 +958,25 @@ await test("City search (assets/search.js): states by name, nicknames, Saint/For
   assert(/\.search input\{[^}]*font-size:16px/.test(pg) && pg.includes('src="/assets/search.js"'), "Cities page: 16px search box and the shared search script");
 });
 
+// The state chips used to appear only once the script had the city list, pushing
+// the grid down 40 px (PageSpeed CLS 0.026, Nov 2026).
+await test("Cities page: the state quick picks are in the HTML, exactly as the script draws them", async () => {
+  const vm = await import("node:vm");
+  const ctx = { window: {} }; vm.runInNewContext(await readFile("assets/search.js", "utf8"), ctx);
+  const rows = (await api("cities?select=slug,state")).filter(c => cities.some(x => x.slug === c.slug));
+  const want = ctx.window.TVSearch.stateCounts(rows).filter(s => s.count > 1);
+  assert(want.length, "expected at least one state with two or more cities");
+  const h = await readFile("dist/cities/index.html", "utf8");
+  const quick = (h.match(/<div class="quick" id="quick"[^>]*>([\s\S]*?)<\/div>/) || [])[1];
+  assert(quick !== undefined, "#quick missing from the Cities page");
+  const got = [...quick.matchAll(/<button type="button" class="qchip" data-state="([^"]+)" aria-pressed="false">([^<]+) <span class="n">(\d+)<\/span><\/button>/g)].map(m => [m[1], m[2], +m[3]]);
+  assert(JSON.stringify(got) === JSON.stringify(want.map(s => [s.name, s.name, s.count])), `built chips ${JSON.stringify(got)} should be ${JSON.stringify(want.map(s => [s.name, s.count]))}`);
+  // The script's chip markup must match what the build wrote, or replacing them repaints the row.
+  const pg = await readFile("places.html", "utf8");
+  assert(pg.includes('<button type="button" class="qchip" data-state="${escapeHtml(s.name)}" aria-pressed="false">${escapeHtml(s.name)} <span class="n">${s.count}</span></button>'),
+    "places.html renderChips changed its state chip markup; update build.mjs stateChips and this test together");
+});
+
 await test("Guide tab (assets/guide.js): take spots grouped and ranked, top 3 restaurants with how many people picked each and their reviews, escaped markup; map library pinned and loaded on demand; spot loader keeps one copy per name", async () => {
   const vm = await import("node:vm");
   const ctx = {}; vm.runInNewContext(await readFile("assets/guide.js", "utf8"), ctx);

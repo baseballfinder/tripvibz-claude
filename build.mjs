@@ -593,7 +593,7 @@ function cityCard(c, i, n) {
   const live = n > 0, h = hueFor(c.name);
   return `<a class="city-card${live ? "" : " is-thin"}" href="/${esc(c.slug)}/" data-slug="${esc(c.slug)}">
       <div class="city-top" style="background:linear-gradient(135deg, hsl(${h} 55% 52%), hsl(${(h + 38) % 360} 60% 42%))">
-        ${gridImg(c, i, "(max-width: 640px) calc(100vw - 42px), 256px", { cls: "city-img", width: 232, height: 104 })}
+        ${gridImg(c, i, "(max-width: 640px) calc(100vw - 42px), 256px", { cls: "city-img", width: 232, height: 104, tile: true, eager: CITIES_EAGER_TILES })}
         <span class="pin">📍</span>
         <span class="city-state">${esc(c.state || "US")}</span>
       </div>
@@ -602,6 +602,15 @@ function cityCard(c, i, n) {
         <p>${esc(c.blurb || "")}</p>
         <div class="city-foot${live ? "" : " soon"}">${live ? `${n} take${n === 1 ? "" : "s"}` : "No takes yet — be the first"}</div>
       </div></a>`;
+}
+// /cities/ quick picks: the state chips the page script draws (places.html
+// renderChips), in the HTML so the grid doesn't drop when the script adds
+// them after the city list loads (that shift was the page's whole CLS, Nov 2026).
+// "Near you" and recently viewed depend on the visitor, so only the script adds those.
+await import("./assets/search.js");
+function stateChips(cities) {
+  return globalThis.TVSearch.stateCounts(cities).filter(s => s.count > 1)
+    .map(s => `<button type="button" class="qchip" data-state="${esc(s.name)}" aria-pressed="false">${esc(s.name)} <span class="n">${s.count}</span></button>`).join("");
 }
 function cityLists(cities, countsBySlug) {
   // Most takes first, like the home grid and the page script (places.html render).
@@ -867,6 +876,16 @@ const BAND_SIZES = [360, 480, 640, 720, 800];
 const HERO_SIZES = "(max-width: 640px) calc(100vw - 32px), 608px";
 const SHORT_HERO_SIZES = "(max-width: 640px) calc(100vw - 32px), 680px";
 const PHOTO_QUALITY = 72;
+// Cities page cards show a wide strip of the photo: 104 px tall, the full
+// column wide (370x104 on a phone, about 3.5:1). The 16:10 copies made phones
+// download ~2.5x the pixels they show (PageSpeed "Improve image delivery",
+// 435 KiB, Nov 2026), so the cards get their own 3:1 crop. The file name
+// carries a hash of the photo and the crop settings, so _headers can let
+// browsers keep these a year (/assets/city/t/*): a new photo is a new name.
+const TILE_SIZES = [256, 360, 480, 640, 720];
+const TILE_QUALITY = 62;
+const TILE_DIR = "/assets/city/t";
+const TILE_PHOTO = {};    // slug -> "<base>-<hash>", once cropped
 const LOCAL_PHOTO = {};   // slug -> base name, once resized
 let sharpMod = null;
 try { sharpMod = (await import("sharp")).default; } catch { console.warn("  (sharp not installed — city photos stay on Supabase storage)"); }
@@ -892,6 +911,12 @@ async function resizeCityPhotos(cities) {
         const out = await sharpMod(buf).resize({ width: w, height: w / 2, fit: "cover", position: "attention", withoutEnlargement: true }).webp({ quality: PHOTO_QUALITY }).toBuffer();
         await emit(`assets/city/${base}-band-${w}.webp`, out);
       }
+      const tileName = `${base}-${createHash("sha256").update(buf).update(`tile:${TILE_SIZES}:${TILE_QUALITY}:3x1:e6`).digest("hex").slice(0, 8)}`;
+      for (const w of TILE_SIZES) {
+        const out = await sharpMod(buf).resize({ width: w, height: Math.round(w / 3), fit: "cover", position: "attention", withoutEnlargement: true }).webp({ quality: TILE_QUALITY, effort: 6 }).toBuffer();
+        await emit(`${TILE_DIR.slice(1)}/${tileName}-${w}.webp`, out);
+      }
+      TILE_PHOTO[city.slug] = tileName;
       LOCAL_PHOTO[city.slug] = base;
       ok++;
     } catch (e) { console.warn(`  photo ${name}: ${e.message} — using the Supabase URL`); }
@@ -912,14 +937,22 @@ const EAGER_TILES = 8;
 // On a phone the grid is two columns, so the first two tiles are the ones that
 // can be the Largest Contentful Paint: ask for them first.
 const PRIORITY_TILES = 2;
-function gridImg(city, i, sizes, { cls = "", width, height } = {}) {
+// The Cities page cards are taller (photo + blurb), so a phone shows two or
+// three and a laptop one row of four: only that first row is eager there, so
+// the photos below don't share the phone's bandwidth with the LCP tile.
+const CITIES_EAGER_TILES = 4;
+function gridImg(city, i, sizes, { cls = "", width, height, tile = false, eager = EAGER_TILES } = {}) {
   const base = LOCAL_PHOTO[city.slug];
   const remote = photo(city.slug);
-  const srcAttrs = base
+  const t = tile && TILE_PHOTO[city.slug];
+  const srcAttrs = t
+    ? `src="${TILE_DIR}/${esc(t)}-480.webp" srcset="${TILE_SIZES.map(w => `${TILE_DIR}/${esc(t)}-${w}.webp ${w}w`).join(", ")}" sizes="${esc(sizes)}" data-fallback="${esc(remote)}"`
+      + ` data-err="remove"`
+    : base
     ? `src="/assets/city/${esc(base)}-800.webp" srcset="${PHOTO_SIZES.map(w => `/assets/city/${esc(base)}-${w}.webp ${w}w`).join(", ")}" sizes="${esc(sizes)}" data-fallback="${esc(remote)}"`
       + ` data-err="remove"`
     : `src="${esc(remote)}" data-err="remove"`;
-  return `<img${cls ? ` class="${cls}"` : ""} ${srcAttrs} alt="${esc(city.name)}" width="${width}" height="${height}" loading="${i < EAGER_TILES ? "eager" : "lazy"}"${i < PRIORITY_TILES ? ` fetchpriority="high"` : ""} decoding="async">`;
+  return `<img${cls ? ` class="${cls}"` : ""} ${srcAttrs} alt="${esc(city.name)}" width="${width}" height="${height}" loading="${i < eager ? "eager" : "lazy"}"${i < PRIORITY_TILES ? ` fetchpriority="high"` : ""} decoding="async">`;
 }
 
 // The hero <img>: in the HTML (discoverable at once, fetchpriority=high) and
@@ -1216,7 +1249,7 @@ await emit("cities/index.html", await minifyHtml(render(placesTpl, {
   image: `${SITE}/assets/og/cities.jpg`,
   og: ogCard("cities.jpg", "Pick your city: where would you take a friend?",
     `${cities.length} cities. Say where you'd take a friend. Don't see yours? One tap to ask for it.`),
-  mounts: { "live-grid": lists.live, "soon-grid": lists.soon },
+  mounts: { "live-grid": lists.live, "soon-grid": lists.soon, quick: stateChips(cities) },
   jsonLd: citiesLd(cities, countsBySlug, newest(posts))
 })
   // Section labels: shown for the grids that have cities, worded as the script words them.
@@ -1402,6 +1435,12 @@ ${secLines}
 /*.svg
   ! Cache-Control
   Cache-Control: public, max-age=604800
+
+# Cities page tiles carry a hash of the photo in their name (build.mjs TILE_PHOTO),
+# so a changed photo is a new URL. Last, so it replaces the /*.webp week above.
+${TILE_DIR}/*
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
 `);
 
 await emit("sitemap.xml", sitemap);

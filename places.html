@@ -153,6 +153,13 @@
     return `No takes yet — be the first`;
   }
 
+  // The photo attributes the build gave each card (its 3:1 tiles, build.mjs
+  // gridImg). A search redraws the cards; reusing these keeps the files the
+  // browser already has instead of switching to the larger full-size copies.
+  // A city added since the build has none and gets TV.cityPhotoAttrs.
+  const BUILT_PHOTO = new Map([...document.querySelectorAll("a.city-card[data-slug] img.city-img[srcset]")].map(img =>
+    [img.closest("a").dataset.slug, ["src", "srcset", "sizes", "data-fallback", "data-err"].filter(k => img.hasAttribute(k)).map(k => `${k}="${escapeHtml(img.getAttribute(k))}"`).join(" ")]));
+
   function card(c, i){
     // Every city is reachable. The articles exist for all of them, and an
     // empty one is an invitation to contribute rather than a dead end —
@@ -160,7 +167,7 @@
     const live = c.take_count > 0;
     const inner = `
       <div class="city-top" style="background:${band(c.name)}">
-        <img class="city-img" ${TV.cityPhotoAttrs(c, "(max-width: 640px) calc(100vw - 42px), 256px")} alt="${escapeHtml(c.name)}" width="232" height="104" loading="${i < 8 ? "eager" : "lazy"}" decoding="async">
+        <img class="city-img" ${BUILT_PHOTO.get(c.slug) || TV.cityPhotoAttrs(c, "(max-width: 640px) calc(100vw - 42px), 256px")} alt="${escapeHtml(c.name)}" width="232" height="104" loading="${i < 4 ? "eager" : "lazy"}" decoding="async">
         <span class="pin">📍</span>
         <span class="city-state">${escapeHtml(c.state||"US")}</span>
       </div>
