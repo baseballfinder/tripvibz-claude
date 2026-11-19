@@ -25,6 +25,17 @@ def best_time(city, searches=None, tags=None, options=SEASONS):
 
 
 CITIES = {
+"atlanta": [
+    q("The BeltLine on a weekend: worth it, or skip it?", ["Worth it", "Skip it", "Go on a weekday"], "Atlanta BeltLine",
+      ["atlanta beltline", "beltline atlanta"], ["atlantabeltline", "beltline"]),
+    q("Georgia Aquarium: worth the ticket?", ["Worth it", "Skip it", "Weekday mornings only"], "Georgia Aquarium",
+      ["georgia aquarium", "georgia aquarium tickets"], ["georgiaaquarium"]),
+    q("Visiting Atlanta without a car: doable, or a mistake?", ["Doable", "A mistake", "Only if you stay near MARTA"], "Whole city",
+      ["atlanta without a car", "marta atlanta"], ["marta", "itsmarta"]),
+    q("First trip to Atlanta: stay Downtown, Midtown, or Buckhead?", ["Downtown", "Midtown", "Buckhead"], "Whole city",
+      ["where to stay in atlanta"], ["midtownatlanta", "buckhead"]),
+    best_time("Atlanta", tags=["atlanta", "discoveratl"]),
+],
 "austin": [
     q("SXSW 2027: come for it, or stay away?", ["Come for it", "Stay away", "Only the free shows"], "Whole city",
       ["sxsw 2027", "sxsw"], ["sxsw", "sxsw2027"]),
