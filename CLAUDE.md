@@ -39,6 +39,19 @@ node build.mjs && node tests/static.mjs && node tests/security.mjs && node tests
 git diff --name-only origin/main...HEAD | node scripts/tests-included.mjs
 ```
 
+A change to anything a person sees (text, colours, layout, images) also runs the
+accessibility and speed checks, which the pull request runs anyway:
+`npx lhci autorun` and `npx lhci autorun --config=lighthouserc.mobile.json`.
+A faded footer line failed the contrast check on every page (Nov 2026) and was
+only caught on GitHub.
+
+**After a merge, the real site is checked** (`tests/live.mjs`, run by
+`.github/workflows/live-check.yml` once www.tripvibz.com reports the merged
+commit in `/build.json`). It is read-only. A feature that calls an outside
+service, needs a secret, or serves something only the real site can serve
+(a Function's real answer, a header, a redirect) adds a check there: the
+pull-request suites fake those, so they can pass while the real thing is broken.
+
 `node tests/database.mjs` runs the visitor flows against a throwaway copy of
 the real database (CI always runs it; locally it needs Postgres with PostGIS
 and PostgREST, see `tests/README.md`). Run it before opening a PR that adds a
