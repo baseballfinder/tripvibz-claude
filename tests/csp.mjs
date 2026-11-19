@@ -36,7 +36,7 @@ const BASE = process.env.BASE || "http://localhost:8091";
 const slug = JSON.parse(await readFile("data/editorial/intros.json", "utf8")) && "miami";
 const PAGES = ["/", "/cities/", "/how-we-verify-locals/", `/${slug}/`, `/${slug}/worst-times-to-visit/`, `/${slug}/what-not-to-do/`, `/${slug}/what-locals-do/`,
   "/fort-lauderdale/#guide",   // the Guide tab: its script, the map library and OpenStreetMap tiles load on open
-  `/${slug}/add/`, `/${slug}/vote/`, "/t/00000000-0000-0000-0000-000000000000", "/admin.html", "/about/", "/contact/", "/privacy/", "/terms/", "/does-not-exist"];
+  `/${slug}/add/`, `/${slug}/vote/`, "/t/00000000-0000-0000-0000-000000000000", "/admin.html", "/about/", "/contact/", "/privacy/", "/terms/", "/offline/", "/does-not-exist"];
 
 const browser = await chromium.launch();
 // Service workers are blocked here: a worker-served page would skip the route below and silently

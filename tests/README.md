@@ -11,7 +11,7 @@ Run locally: `node build.mjs && node tests/static.mjs && node tests/security.mjs
 (first time: `npm ci && npx playwright install chromium`). To test a Cloudflare
 preview instead of the local build: `BASE=https://<branch>.tripvibz.pages.dev node tests/e2e.mjs`
 (same for `tests/csp.mjs`, which on a preview also exercises GA4, Clarity and the Stay22 map).
-Lighthouse: `npx lhci autorun` (desktop) and `npx lhci autorun --config=lighthouserc.mobile.json` (mobile); needs Chrome; reports land in `.lighthouseci/`.
+Lighthouse (run it locally for any change people can see): `npx lhci autorun` (desktop) and `npx lhci autorun --config=lighthouserc.mobile.json` (mobile); needs Chrome; reports land in `.lighthouseci/`.
 The database lint needs the database URL: `psql "$SUPABASE_DB_URL" -f tests/db-security.sql`.
 
 ## Suites
@@ -30,6 +30,7 @@ The database lint needs the database URL: `psql "$SUPABASE_DB_URL" -f tests/db-s
 | `lighthouserc.mobile.json` | Lighthouse, mobile (PageSpeed's phone emulation): performance ≥ 85, LCP ≤ 3.5 s, FCP ≤ 2 s, TBT ≤ 300 ms, CLS ≤ 0.1, responsive images, LCP image preloaded and not lazy, on the Fort Lauderdale, home and a topic page | build + Chrome |
 | `db-security.sql` | Read-only database lint: RLS everywhere, no open write policies, SECURITY DEFINER allow-list and search_path, tamper guards from migration 20261029174500 | `SUPABASE_DB_URL` |
 | `npm audit` (workflow step) | Dependencies with high/critical advisories | — |
+| `live.mjs` | After a merge: the real site (www.tripvibz.com), read-only. It serves the merged build on every main page; security headers on real responses; health check, sitemap, a share card; the hotel list from the real booking partner (links under the TripVibz ID, quality floor, photos through our server, prices, picked dates, bad input refused). Warns, without failing, that the address without "www" doesn't work yet. Run by `.github/workflows/live-check.yml`; by hand: `node tests/live.mjs` | network |
 
 ## Features and what covers them
 
@@ -65,6 +66,7 @@ The database lint needs the database URL: `psql "$SUPABASE_DB_URL" -f tests/db-s
 | New code comes with tests | The "Tests included" check fails a PR that changes site code without a test; the rule (`scripts/tests-included.mjs`) is checked against real past PRs; only the `no-tests-needed` label skips it; `CLAUDE.md` states it and isn't published | static + workflow |
 | Info pages follow the features | Privacy says what every outside service does (from the CSP and `functions/`) without naming the systems the site runs on and every table that stores what people enter, and is dated after the newest such table; no retired wording on any page, script or share image; About lists the main features | static |
 | Contact page | `/contact/` exists, every footer links it (and nothing links the old About section), it is in the sitemap, each reason has an email link with the subject filled in, both addresses are readable as text, city requests point at the Cities page request box | static |
+| The real site after a merge | The live site reports the merged commit as its build, main pages and their footers agree, real security headers, real hotel answers from the partner with TripVibz's ID, photos, prices and dates | live |
 | Build number | Every page's footer shows the build (first 7 characters of the commit, and when it was built, Eastern time); `/build.json` gives the full value; the service worker carries the same build | static |
 | Guide hotels | `/api/hotels` is off without `STAY22_API_KEY`, takes only a city slug, keeps the key in a header, never stores listings, caches 60 minutes at most, passes on only the partner's links (always under the TripVibz affiliate ID) and hotels rated 8+ from 200+ reviews, relays hotel photos through `?photo=<id>` (images only, size-capped, only hotels in the list), and answers 204 on any failure. Cards show the photo, or the letter alone when it doesn't arrive. A hotel's map pin opens a card with the same photo, numbers and booking link. Dates: the endpoint prices only a real stay (not past, within a year, 1 to 14 nights); the Guide has check-in and check-out pickers, says by the map which dates the prices are for, re-prices the list and pins when the dates change, keeps the old list if that fails, and remembers the dates for the visit. The Guide picks five closest to the recommended spots, shows rating, reviews, nightly price, the night it is for, distance to the nearest spot and a paid-links label, pins them on the map, and is unchanged when the partner is off | security, static, e2e |
 | Share a take | Every take has a share icon button next to True and Nope. On a phone or tablet it opens the device's own share sheet with the take's link; closing the sheet does nothing more; if the sheet fails, or on a computer, the site's share menu opens. Share cards carry TripVibz.com as the brand line | e2e, static |

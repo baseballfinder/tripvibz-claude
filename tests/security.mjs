@@ -173,6 +173,15 @@ await test("No secret committed to the repo (keys, tokens, database passwords, p
 
 /* ---------------- workflows ---------------- */
 
+await test("The after-deploy check of the real site is read-only and runs after every merge", async () => {
+  const src = await readFile("tests/live.mjs", "utf8");
+  assert(!/method\s*:/.test(src) && !/\b(POST|PUT|PATCH|DELETE)\b/.test(src), "tests/live.mjs must only make GET requests: it runs against the real site");
+  assert(!/supabase\.co|apikey|authorization/i.test(src), "tests/live.mjs talks to the site, never to the database, and carries no keys");
+  const wf = await readFile(".github/workflows/live-check.yml", "utf8");
+  assert(/push:\s*\n\s*branches: \[main\]/.test(wf) && /node tests\/live\.mjs/.test(wf) && /build\.json/.test(wf), "live-check.yml should wait for the merged build and then run tests/live.mjs on every merge to main");
+  assert(/permissions:\s*\n\s*contents: read/.test(wf) && !/secrets\./.test(wf), "the live check needs no secrets and read-only repository access");
+});
+
 await test("GitHub workflows: least privilege, no pull_request_target, no untrusted text in run: scripts", async () => {
   for (const f of tracked.filter(f => f.startsWith(".github/workflows/") && f.endsWith(".yml"))) {
     const y = await readFile(f, "utf8");

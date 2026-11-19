@@ -1,0 +1,52 @@
+# Checks the real site after every merge to main.
+#
+# The pull-request tests run against a test build with outside services faked.
+# This waits until www.tripvibz.com reports the merged commit as its build, then
+# asks the live site itself: pages, security headers, the hotel list from the
+# real booking partner (links under the TripVibz ID, photos, prices, dates).
+# Read-only: every request is a GET (tests/live.mjs).
+#
+# A red X here means the merge is live but something on the real site is wrong.
+# Manual use (Actions tab > this workflow > Run workflow) checks whatever is live now.
+
+name: Check the live site after a deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+# A newer merge replaces the build an older run is waiting for.
+concurrency:
+  group: live-check
+  cancel-in-progress: true
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Wait until the live site serves this commit
+        if: github.event_name == 'push'
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          want="${SHA:0:12}"
+          for i in $(seq 1 80); do
+            got="$(curl -fsS -m 15 "https://www.tripvibz.com/build.json?t=$(date +%s)" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s).build||"")}catch{console.log("")}})' || true)"
+            if [ "$got" = "$want" ]; then echo "Live site is on build $got"; exit 0; fi
+            echo "live build: ${got:-none yet}, waiting for $want"; sleep 15
+          done
+          echo "::error::The live site never reported build $want (deploy failed, still covered for a database update, or a newer merge went out first)"
+          exit 1
+      - name: Check the live site
+        env:
+          EXPECT_BUILD: ${{ github.event_name == 'push' && github.sha || '' }}
+        run: node tests/live.mjs

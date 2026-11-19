@@ -5,7 +5,8 @@
       "url": [
         "http://localhost/fort-lauderdale/",
         "http://localhost/",
-        "http://localhost/miami/worst-times-to-visit/"
+        "http://localhost/miami/worst-times-to-visit/",
+        "http://localhost/contact/"
       ],
       "numberOfRuns": 3,
       "settings": {
