@@ -39,9 +39,13 @@ jobs:
           SHA: ${{ github.sha }}
         run: |
           want="${SHA:0:12}"
+          seen=0
           for i in $(seq 1 80); do
             got="$(curl -fsS -m 15 "https://www.tripvibz.com/build.json?t=$(date +%s)" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s).build||"")}catch{console.log("")}})' || true)"
-            if [ "$got" = "$want" ]; then echo "Live site is on build $got"; exit 0; fi
+            # A deploy reaches the servers a few at a time: for a minute some answers are the new build and
+            # some the old one. One matching answer is not "live"; four in a row is (failed the check on 19 Nov 2026).
+            if [ "$got" = "$want" ]; then seen=$((seen + 1)); else seen=0; fi
+            if [ "$seen" -ge 4 ]; then echo "Live site is on build $got"; exit 0; fi
             echo "live build: ${got:-none yet}, waiting for $want"; sleep 15
           done
           echo "::error::The live site never reported build $want (deploy failed, still covered for a database update, or a newer merge went out first)"

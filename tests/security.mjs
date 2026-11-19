@@ -180,6 +180,7 @@ await test("The after-deploy check of the real site is read-only and runs after 
   const wf = await readFile(".github/workflows/live-check.yml", "utf8");
   assert(/push:\s*\n\s*branches: \[main\]/.test(wf) && /node tests\/live\.mjs/.test(wf) && /build\.json/.test(wf), "live-check.yml should wait for the merged build and then run tests/live.mjs on every merge to main");
   assert(/permissions:\s*\n\s*contents: read/.test(wf) && !/secrets\./.test(wf), "the live check needs no secrets and read-only repository access");
+  assert(/seen=\$\(\(seen \+ 1\)\); else seen=0/.test(wf) && /"\$seen" -ge [3-9]/.test(wf), "live-check.yml must see the merged build several times in a row before testing: a deploy rolls out a few servers at a time, and one early match is followed by answers from the old build");
 });
 
 await test("GitHub workflows: least privilege, no pull_request_target, no untrusted text in run: scripts", async () => {
