@@ -142,13 +142,103 @@ def photo_base(pb):
     return shade(cover(Image.open(io.BytesIO(pb))))
 
 
+
+# ------------------------------------------------- centre-safe layout
+# Facebook shows a link's picture two ways: the whole 1200x630 card in a post, and a small
+# square cut from the MIDDLE of it beside a link in a comment (TripVibz reels put their link
+# in the first comment). Left-aligned cards came out as "...would / ...ke a / ?" in that
+# square (19 Nov 2026). Cards a person is likely to paste in a comment keep everything that
+# matters inside the middle square, centred, so both crops read.
+SAFE = 630                      # the middle square Facebook keeps
+SAFE_W = SAFE - 2 * 28          # widest line of type inside it
+CX = W // 2
+
+
+def shade_centre(base, mid=190, edge=95):
+    """Darken most in the middle column, where the type sits."""
+    m = Image.new("L", base.size)
+    d = ImageDraw.Draw(m)
+    half = SAFE / 2
+    for x in range(base.width):
+        t = min(1.0, max(0.0, (abs(x - CX) - half * 0.75) / (CX - half * 0.75)))
+        d.line([(x, 0), (x, base.height)], fill=int(mid - (mid - edge) * t))
+    return Image.composite(Image.new("RGB", base.size, INK), base, m)
+
+
+def c_kicker(d, text, y, fill=CORAL):
+    size = 26
+    while d.textlength(text, font=font(size, 800)) + 40 > SAFE_W and size > 16:
+        size -= 1
+    kf = font(size, 800); kw = d.textlength(text, font=kf)
+    d.rounded_rectangle([CX - kw / 2 - 20, y, CX + kw / 2 + 20, y + 50], radius=25, fill=fill)
+    d.text((CX, y + 25), text, font=kf, fill=WHITE, anchor="mm")
+
+
+def c_brand(base, d, y, size=26):
+    bf = font(size, 800); bw = d.textlength("TripVibz.com", font=bf); mw = size * 2
+    x = int(CX - (mw + 12 + bw) / 2)
+    mark = Image.open(MARK).convert("RGBA").resize((mw, mw), Image.LANCZOS)
+    base.paste(mark, (x, y), mark)
+    d.text((x + mw + 12, y + mw // 2), "TripVibz.com", font=bf, fill=WHITE, anchor="lm")
+
+
+def c_headline(d, text, y, lines=5, sizes=(64, 60, 56, 52, 48, 44, 40), color=WHITE):
+    f, ls, size = fit(d, text, SAFE_W, lines, sizes)
+    lh = int(size * 1.12)
+    for l in ls:
+        d.text((CX, y), l, font=f, fill=color, anchor="ma")
+        y += lh
+    return y
+
+
+def chip_rows(d, labels, of, max_w=SAFE_W, gap=12):
+    """Lay pills out in centred rows no wider than the safe square."""
+    rows, row, w = [], [], 0
+    for t in labels:
+        tw = d.textlength(t, font=of) + 40
+        if row and w + gap + tw > max_w:
+            rows.append((row, w)); row, w = [], 0
+        row.append((t, tw)); w += tw + (gap if len(row) > 1 else 0)
+    if row:
+        rows.append((row, w))
+    return rows
+
+
+def c_chips(d, labels, y, size=26, solid=None, gap=12, h=50):
+    of = font(size, 700)
+    for row, w in chip_rows(d, labels, of, gap=gap):
+        x = CX - w / 2
+        for t, tw in row:
+            if solid and t in solid:
+                d.rounded_rectangle([x, y, x + tw, y + h], radius=h // 2, fill=solid[t])
+                d.text((x + tw / 2, y + h / 2), t, font=of, fill=INK if solid[t] == WHITE else WHITE, anchor="mm")
+            else:
+                d.rounded_rectangle([x, y, x + tw, y + h], radius=h // 2, outline=WHITE, width=3)
+                d.text((x + tw / 2, y + h / 2), t, font=of, fill=WHITE, anchor="mm")
+            x += tw + gap
+        y += h + 10
+    return y
+
+
 # ---------------------------------------------------------------- card types
 
 def card_question(city, q, pb):
-    base = photo_base(pb); d = ImageDraw.Draw(base)
-    kicker(d, f"SETTLE THIS FOR {city['name'].upper()}"); brand(base, d)
-    headline(d, q["prompt"], PAD + 90)
-    chips(d, [o["label"] for o in q["options"][:3]])
+    """Centre-safe: this is the card behind a city link, and reels put that link in a comment."""
+    base = shade_centre(cover(Image.open(io.BytesIO(pb)))); d = ImageDraw.Draw(base)
+    c_kicker(d, f"SETTLE THIS FOR {city['name'].upper()}", 40)
+    labels = [o["label"] for o in q["options"][:3]]
+    rows = len(chip_rows(d, labels, font(26, 700)))
+    bottom = H - 96 - rows * 60                      # pills sit above the brand line
+    # The largest type whose lines fit both the safe width and the room between the label and the pills.
+    sizes = (64, 60, 56, 52, 48, 44, 40, 36)
+    for i in range(len(sizes)):
+        f, ls, size = fit(d, q["prompt"], SAFE_W, 6, sizes[i:])
+        if len(ls) * int(size * 1.12) <= bottom - 112 - 8:
+            break
+    y = 112 + max(0, (bottom - 112 - len(ls) * int(size * 1.12)) // 2)
+    c_headline(d, q["prompt"], y, lines=6, sizes=(size,))
+    c_chips(d, labels, bottom + 6)
+    c_brand(base, d, H - 78)
     return base
 
 
@@ -191,37 +281,34 @@ def card_take(city, pb):
 
 
 def card_home(cities, photos, leads):
+    """Centre-safe: the words sit in the middle square, two city photos stacked on each side."""
     base = Image.new("RGB", (W, H), INK)
-    # Right half: 2x2 photo mosaic with city labels.
-    tw, th, x0 = 300, 315, W - 600
-    lf = font(24, 800)
+    tw, th = (W - SAFE) // 2, H // 2
+    lf = font(22, 800)
     for i, slug in enumerate(HOME_CITIES):
         if slug not in photos:
             continue
         tile = cover(Image.open(io.BytesIO(photos[slug])), tw, th)
         tile = Image.composite(Image.new("RGB", tile.size, INK), tile, Image.new("L", tile.size, 70))
-        x, y = x0 + (i % 2) * tw, (i // 2) * th
+        x, y = (0 if i % 2 == 0 else W - tw), (i // 2) * th
         base.paste(tile, (x, y))
         name = next(c["name"] for c in cities if c["slug"] == slug)
-        ImageDraw.Draw(base).text((x + 18, y + th - 22), name, font=lf, fill=WHITE, anchor="ls")
+        ImageDraw.Draw(base).text((x + 16, y + th - 20), name, font=lf, fill=WHITE, anchor="ls")
     d = ImageDraw.Draw(base)
-    # Fade the mosaic's left edge into the text panel.
-    for i in range(80):
-        d.line([(x0 + i, 0), (x0 + i, H)], fill=tuple(int(c) for c in INK), width=1) if i == 0 else None
-    mark = Image.open(MARK).convert("RGBA").resize((60, 60), Image.LANCZOS)
-    base.paste(mark, (PAD, PAD - 6), mark)
-    d.text((PAD + 74, PAD + 24), "TripVibz.com", font=font(34, 900), fill=WHITE, anchor="lm")
-    y = headline(d, "Where would you take a friend?", PAD + 96, max_w=600 - PAD - 30, lines=4, sizes=(64, 58, 54, 50))
+    c_brand(base, d, 52, size=30)
+    y = c_headline(d, "Where would you take a friend?", 150, lines=3, sizes=(72, 66, 60, 54))
     # Two real lead questions as poll chips.
-    qf = font(24, 700)
-    y = max(y + 18, 420)
+    qf = font(23, 700)
+    y = max(y + 22, 392)
     for q in leads[:2]:
-        t = q if len(q) <= 34 else q[:33].rstrip() + "…"
+        t = q
+        while d.textlength(t, font=qf) + 36 > SAFE_W:
+            t = t[:-2].rstrip() + "…"
         w = d.textlength(t, font=qf)
-        d.rounded_rectangle([PAD, y, PAD + w + 36, y + 48], radius=24, outline=WHITE, width=2)
-        d.text((PAD + 18, y + 24), t, font=qf, fill=WHITE, anchor="lm")
-        y += 60
-    d.text((PAD, H - 34), "Ask someone who knows.", font=font(22, 700), fill=CORAL, anchor="ls")
+        d.rounded_rectangle([CX - w / 2 - 18, y, CX + w / 2 + 18, y + 48], radius=24, outline=WHITE, width=2)
+        d.text((CX, y + 24), t, font=qf, fill=WHITE, anchor="mm")
+        y += 58
+    d.text((CX, H - 34), "Ask someone who knows.", font=font(24, 700), fill=CORAL, anchor="ms")
     return base
 
 
@@ -232,11 +319,14 @@ def card_cities(cities, photos):
     for i, slug in enumerate(picks):
         tile = cover(Image.open(io.BytesIO(photos[slug])), tw, th)
         base.paste(tile, ((i % 4) * tw, (i // 4) * th))
-    base = shade(base, left=225, right=140)
+    base = shade_centre(base, mid=225, edge=130)
     d = ImageDraw.Draw(base)
-    kicker(d, f"{len(cities)} CITIES AND COUNTING"); brand(base, d)
-    y = headline(d, "Pick your city. Where would you take a friend?", PAD + 90, lines=3, sizes=(76, 70, 64))
-    subline(d, "Don't see yours? One tap to ask for it.", y + 14)
+    c_kicker(d, f"{len(cities)} CITIES AND COUNTING", 40)
+    y = c_headline(d, "Pick your city. Where would you take a friend?", 150, lines=4, sizes=(66, 60, 56, 52))
+    f, ls, sz = fit(d, "Don't see yours? One tap to ask for it.", SAFE_W, 2, (28, 26, 24), weight=600)
+    for l in ls:
+        d.text((CX, y + 18), l, font=f, fill=SOFT, anchor="ma"); y += int(sz * 1.3)
+    c_brand(base, d, H - 78)
     return base
 
 

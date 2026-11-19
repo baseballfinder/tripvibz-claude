@@ -122,6 +122,40 @@ await test("Card photos match the place: every city's lead question is recorded 
   for (const slug of Object.keys(idx)) assert(known.has(slug), `data/card-photos/index.json lists "${slug}", which is not a city with questions`);
 });
 
+await test("Share cards read in Facebook's comment preview: on the home, cities and city cards every word sits inside the middle square", async () => {
+  // A link in a Facebook comment shows a square cut from the middle of the card. Left-aligned cards read "...would / ...ke a / ?" there (19 Nov 2026).
+  const out = execFileSync("python3", ["-c", `
+import sys, json, io
+sys.path.insert(0, "scripts")
+import og_cards as og
+from PIL import Image, ImageDraw
+d = ImageDraw.Draw(Image.new("RGB", (og.W, og.H)))
+longest = "Party wagons and pedal taverns: part of the fun, or the worst part of downtown?"
+widest = 0
+for size in (64, 52, 40):
+    f, ls, s = og.fit(d, longest, og.SAFE_W, 6, (size,))
+    widest = max(widest, max(d.textlength(l, font=f) for l in ls))
+rows = og.chip_rows(d, ["Skip both, see the real Orlando", "Disney World", "Universal"], og.font(26, 700))
+buf = io.BytesIO(); Image.new("RGB", (1600, 900), (90, 120, 150)).save(buf, "JPEG")
+card = og.card_question({"name": "Fort Lauderdale"}, {"prompt": longest, "options": [{"label": "Part of the fun"}, {"label": "The worst part"}, {"label": "Just avoid those streets"}]}, buf.getvalue())
+# Anything pure white (type, pill outlines) outside the middle square means words would be cut off.
+px = card.load(); x0 = (og.W - og.SAFE) // 2
+stray = sum(1 for x in list(range(0, x0)) + list(range(x0 + og.SAFE, og.W)) for y in range(og.H) if px[x, y] == (255, 255, 255))
+print(json.dumps(dict(safe=og.SAFE, safe_w=og.SAFE_W, widest=widest, row_w=max(w for _, w in rows), rows=len(rows), stray=stray, size=card.size)))
+`]).toString();
+  const r = JSON.parse(out);
+  assert(r.safe === 630 && r.safe_w <= 600, `the safe square should be the card's height (630) with a margin, got ${r.safe}/${r.safe_w}`);
+  assert(r.widest <= r.safe_w, `a headline line is ${Math.round(r.widest)}px wide, wider than the safe ${r.safe_w}px`);
+  assert(r.row_w <= r.safe_w && r.rows >= 2, `answer pills should wrap into rows inside the safe width (widest row ${Math.round(r.row_w)}px)`);
+  assert(r.stray === 0, `${r.stray} white pixels of type sit outside the middle square of a city card`);
+  assert(r.size[0] === 1200 && r.size[1] === 630, "cards stay 1200x630");
+  const src = await readFile("scripts/og_cards.py", "utf8");
+  for (const fn of ["card_question", "card_home", "card_cities"]) {
+    const body = src.slice(src.indexOf(`def ${fn}(`), src.indexOf("\ndef ", src.indexOf(`def ${fn}(`) + 5));
+    assert(/c_headline\(/.test(body) && !/[^_]headline\(d, /.test(body) && !/\bkicker\(d, /.test(body.replace(/c_kicker/g, "")), `${fn} should use the centred helpers, not the left-aligned ones`);
+  }
+});
+
 await test("Share cards for every page type exist and are wired up", async () => {
   const want = [["index.html", "home.jpg"], ["cities/index.html", "cities.jpg"]];
   for (const c of cities) {
