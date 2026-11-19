@@ -20,11 +20,13 @@ Maps' open data:
            upserted by Overture id; rows for a city that vanished from the
            release are deleted (closed/removed places disappear from the picker
            but restaurant rows already picked are untouched).
-  Run by   .github/workflows/places-catalog.yml (monthly + on demand) with the
+  Run by   .github/workflows/places-catalog.yml (monthly, on demand, and for a newly
+           added city: daily and after each merge that opens one) with the
            bot role (BOT_DB_URL) — never from a laptop against production.
 
     python3 scripts/places_catalog.py            # all cities
     python3 scripts/places_catalog.py miami      # one city (slug)
+    python3 scripts/places_catalog.py --missing  # only cities with no places yet (a city just added)
     PLACES_RELEASE=2026-10-21.0 python3 ...      # pin a release (default: latest)
 """
 import os, re, sys, math, json, time, urllib.request, urllib.parse
@@ -255,27 +257,40 @@ def haversine(lat1, lng1, lat2, lng2):
     return 2 * R * math.asin(math.sqrt(a))
 
 
+def cities_to_load(cities_all, arg, have):
+    """Which cities this run loads. arg: None = every city, "--missing" = only cities with
+    nothing in the catalogue yet (a city that was just added), anything else = that one slug.
+    have = ids of cities that already have catalogue rows."""
+    if arg == "--missing":
+        return [c for c in cities_all if c["id"] not in have]
+    return [c for c in cities_all if not arg or c["slug"] == arg]
+
+
 def main():
     import duckdb, psycopg
     dsn = os.environ.get("BOT_DB_URL") or os.environ.get("SUPABASE_DB_URL")
     if not dsn:
         sys.exit("BOT_DB_URL (or SUPABASE_DB_URL) is not set")
-    only = sys.argv[1] if len(sys.argv) > 1 else None
+    only = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] else None
     limits = load_limits()
-    release = latest_release()
-    files = place_files(release)
-    div_files = place_files(release, "divisions", "division")
-    print(f"Overture release {release}: {len(files)} place files, {len(div_files)} division files")
-
-    con = duckdb.connect()
-    con.execute("INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial;")
 
     with psycopg.connect(dsn) as pg:
         rows = pg.execute("select id, slug, name, lat, lng from public.cities where lat is not null and lng is not null order by sort").fetchall()
         cities_all = [dict(id=str(c[0]), slug=c[1], name=c[2], lat=float(c[3]), lng=float(c[4])) for c in rows]
-        cities = [c for c in cities_all if not only or c["slug"] == only]
+        have = {str(r[0]) for r in pg.execute("select distinct city_id from public.places_catalog").fetchall()}
+        cities = cities_to_load(cities_all, only, have)
         if not cities:
+            if only == "--missing":
+                print("every city already has places: nothing to load"); return
             sys.exit("no cities to load")
+
+        # Only now reach for Overture: the daily "anything missing?" run usually stops above.
+        release = latest_release()
+        files = place_files(release)
+        div_files = place_files(release, "divisions", "division")
+        print(f"Overture release {release}: {len(files)} place files, {len(div_files)} division files")
+        con = duckdb.connect()
+        con.execute("INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial;")
         total = 0
         for city in cities:
             t = time.time()

@@ -508,6 +508,29 @@ await test("Locals' top 3 restaurants: section pre-rendered on every city page; 
   for (const f of ["assets/city.js", "build.mjs"]) assert(/<a href="https:\/\/overturemaps\.org\/"[^>]*>Overture Maps<\/a>/.test(await readFile(f, "utf8")), `${f}: Overture attribution missing from the top-3 list`);
 });
 
+await test("A new city gets its places without being asked: the loader can load only cities that have none, and the workflow runs that daily and after a merge that opens a city", async () => {
+  // Atlanta opened on 19 Nov 2026 with nothing to pick in "top 3 restaurants" and an empty Guide: the catalogue only loaded monthly.
+  const out = execFileSync("python3", ["-c", `
+import sys, types, json, importlib.util
+for m in ("duckdb", "psycopg"): sys.modules[m] = types.ModuleType(m)
+spec = importlib.util.spec_from_file_location("pc", "scripts/places_catalog.py"); pc = importlib.util.module_from_spec(spec); spec.loader.exec_module(pc)
+C = [dict(id="1", slug="miami"), dict(id="2", slug="atlanta"), dict(id="3", slug="tulsa")]
+s = lambda cs: [c["slug"] for c in cs]
+print(json.dumps(dict(missing=s(pc.cities_to_load(C, "--missing", {"1"})), none_missing=s(pc.cities_to_load(C, "--missing", {"1", "2", "3"})),
+  everything=s(pc.cities_to_load(C, None, {"1"})), one=s(pc.cities_to_load(C, "atlanta", {"1", "2"})), unknown=s(pc.cities_to_load(C, "nowhere", set())))))
+`]).toString();
+  const r = JSON.parse(out);
+  assert(JSON.stringify(r.missing) === '["atlanta","tulsa"]', `--missing should pick the cities with no places, got ${r.missing}`);
+  assert(r.none_missing.length === 0, "--missing with every city loaded should pick nothing");
+  assert(r.everything.length === 3 && JSON.stringify(r.one) === '["atlanta"]' && r.unknown.length === 0, "no argument loads every city; a slug loads that city only");
+  const loader = await readFile("scripts/places_catalog.py", "utf8");
+  assert(loader.indexOf("cities_to_load(cities_all, only, have)") < loader.indexOf("release = latest_release()"), "the loader should decide which cities to load before it reaches for Overture, so the daily run is cheap when nothing is missing");
+  const wf = await readFile(".github/workflows/places-catalog.yml", "utf8");
+  assert((wf.match(/- cron:/g) || []).length === 2 && /cron: "\d+ \d+ \* \* \*"/.test(wf), "places-catalog.yml needs a daily run besides the monthly one");
+  assert(/push:\s*\n\s*branches: \[main\]\s*\n\s*paths:[\s\S]*assets\/og\/cards\.json/.test(wf), "places-catalog.yml should run when a merge opens a city (its share cards change)");
+  assert(/'--missing'/.test(wf) && /github\.event_name == 'push'/.test(wf) && /python3 scripts\/places_catalog\.py "\$ONLY"/.test(wf), "merges and the daily run must load only cities with no places");
+});
+
 await test("Catalogue city limits: islands keep only their own localities (Miami Beach, Key West + Stock Island), Miami claims its barrier-island towns, metro cities take the nearest, nothing outside the US", async () => {
   const limits = JSON.parse(await readFile("data/city-localities.json", "utf8"));
   const slugs = new Set(cities.map(c => c.slug));

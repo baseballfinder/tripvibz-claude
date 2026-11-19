@@ -195,7 +195,9 @@ migration lands.
 
 Migration `20261030140000_top3_restaurants.sql`: `places_catalog` (eat-and-drink places within ~25 km of
 each city from Overture Maps' open places data, CDLA-Permissive 2.0; loaded monthly by
-`.github/workflows/places-catalog.yml` → `scripts/places_catalog.py` with DuckDB, bot role; searched by
+`.github/workflows/places-catalog.yml` → `scripts/places_catalog.py` with DuckDB, bot role, and for a city
+that has none yet (`--missing`) daily and after any merge that opens a city, so a new city never
+waits for the monthly run; searched by
 `search_places()` with pg_trgm fuzzy matching), `restaurants` (one row per place per city; a catalogue
 pick is created server-side by `ensure_restaurant_from_place()` with address/phone/website/coordinates
 copied from the catalogue, hand-typed names get `source = 'local'` and fold spelling via `name_key`;

@@ -3,13 +3,25 @@
 # offers real names with address, phone, website and coordinates. Monthly,
 # after Overture's release (third week), and on demand. Logic: scripts/places_catalog.py
 #
+# A new city gets its places without anyone remembering to ask: every merge that
+# opens a city (its share cards change) and a daily run load any city that has
+# none yet ("--missing"). Atlanta opened on 19 Nov 2026 with an empty restaurant
+# picker and Guide because this only ran monthly.
+#
 # First run after the migration lands: Actions → "Places catalogue" → Run workflow.
 
 name: Places catalogue
 
 on:
   schedule:
-    - cron: "17 10 25 * *"   # 25th of the month, 6:17 am Eastern (daylight time)
+    - cron: "17 10 25 * *"   # 25th of the month, 6:17 am Eastern (daylight time): every city
+    - cron: "41 9 * * *"     # daily: only cities that have no places yet
+  push:
+    branches: [main]
+    paths:
+      - "assets/og/cards.json"          # changes whenever a city is opened
+      - ".github/workflows/places-catalog.yml"
+      - "scripts/places_catalog.py"
   workflow_dispatch:
     inputs:
       city:
@@ -43,4 +55,6 @@ jobs:
           # The limited bot role (supabase/migrations/20261030010000_bot_role.sql); full URL until BOT_DB_URL is set.
           SUPABASE_DB_URL: ${{ secrets.BOT_DB_URL || secrets.SUPABASE_DB_URL }}
           PLACES_RELEASE: ${{ inputs.release }}
-        run: python3 scripts/places_catalog.py ${{ inputs.city }}
+          # Monthly run and a manual run with no city: everything. Daily run and merges: only cities with none.
+          ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.city || ((github.event_name == 'push' || github.event.schedule == '41 9 * * *') && '--missing' || '') }}
+        run: python3 scripts/places_catalog.py "$ONLY"
