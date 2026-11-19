@@ -2,6 +2,7 @@
  "_source": "NOAA NCEI U.S. Climate Normals 1991-2020, monthly (dataset normals-monthly-1991-2020). Fetched 2026-11-09 from https://www.ncei.noaa.gov/access/services/data/v1. Columns: avg high F, avg low F, precipitation in, days with >=0.10 in.",
  "_columns": ["high_f", "low_f", "precip_in", "rain_days"],
  "cities": {
+  "atlanta": {"station": "USW00013874", "station_label": "Hartsfield-Jackson Atlanta International Airport", "months": [[54, 36, 4.6, 7], [58, 39, 4.5, 7], [66, 45, 4.7, 7], [74, 52, 3.8, 6], [81, 61, 3.6, 6], [87, 69, 4.5, 8], [90, 72, 4.8, 8], [89, 71, 4.3, 6], [84, 66, 3.8, 5], [74, 55, 3.3, 4], [64, 44, 4.0, 6], [56, 38, 4.6, 7]]},
   "austin": {"station": "USW00013958", "station_label": "Camp Mabry, Austin",
    "months": [[62,42,2.6,4],[66,46,1.9,4],[73,52,2.9,5],[80,59,2.4,4],[87,67,5.0,6],[93,73,3.7,5],[97,75,2.0,3],[98,75,2.7,3],[91,70,3.5,4],[82,61,3.9,4],[72,50,2.9,4],[64,43,2.7,4]]},
   "charleston": {"station": "USW00013880", "station_label": "Charleston International Airport",
