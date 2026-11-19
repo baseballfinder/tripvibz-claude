@@ -143,7 +143,9 @@ await test("Stylesheets are inlined (no render-blocking <link rel=stylesheet>)",
 });
 
 await test("City grid photos: pre-rendered with local srcset and dimensions; first rows eager, the rest lazy (script template matches)", async () => {
-  for (const [f, container] of [["dist/index.html", "needs"], ["dist/cities/index.html", "live-grid"]]) {
+  // Home tiles are short (two columns of photo-only tiles: 8 is the first screen); the Cities page
+  // cards are tall, so only their first row (4 on a laptop, 2-3 on a phone) is eager.
+  for (const [f, container, eager] of [["dist/index.html", "needs", 8], ["dist/cities/index.html", "live-grid", 4]]) {
     const h = await readFile(f, "utf8");
     // Pre-rendered tiles (build.mjs gridImg): what the browser sees before any script runs.
     assert(h.includes(`id="${container}"`), `${f}: #${container} missing`);
@@ -152,13 +154,48 @@ await test("City grid photos: pre-rendered with local srcset and dimensions; fir
     imgs.forEach((img, i) => {
       assert(/srcset="[^"]*\/assets\/city\//.test(img) && /sizes="/.test(img), `${f}: tile ${i} needs srcset + sizes`);
       assert(/width="\d+"/.test(img) && /height="\d+"/.test(img), `${f}: tile ${i} needs width and height`);
-      assert(new RegExp(`loading="${i < 8 ? "eager" : "lazy"}"`).test(img), `${f}: tile ${i} should be ${i < 8 ? "eager" : "lazy"}`);
+      assert(new RegExp(`loading="${i < eager ? "eager" : "lazy"}"`).test(img), `${f}: tile ${i} should be ${i < eager ? "eager" : "lazy"}`);
       assert(/fetchpriority="high"/.test(img) === (i < 2), `${f}: tile ${i} ${i < 2 ? "should" : "should not"} be fetchpriority=high (the first two are the LCP candidates on a phone)`);
     });
     // The script's own template must do the same, or hydration swaps in lazy tiles.
     const tpl = (h.match(/<img[^>]*cityPhotoAttrs\([^>]*>/g) || [])[0];
-    assert(tpl && /loading="\$\{[^}]*<\s*8[^}]*\}"/.test(tpl) && /width=/.test(tpl) && /height=/.test(tpl), `${f}: script tile template must use the eager/lazy split and dimensions: ${(tpl || "").slice(0, 80)}`);
+    assert(tpl && new RegExp(`loading="\\$\\{[^}]*<\\s*${eager}[^}]*\\}"`).test(tpl) && /width=/.test(tpl) && /height=/.test(tpl), `${f}: script tile template must use the same eager/lazy split (${eager}) and dimensions: ${(tpl || "").slice(0, 80)}`);
   }
+});
+
+// PageSpeed on /cities/ (Nov 2026): phones downloaded the 720x450 photo for a 370x104 card
+// (435 KiB of "Improve image delivery") and kept it only a week.
+await test("Cities page cards: hashed 3:1 tiles in /assets/city/t/, within budget, kept a year", async () => {
+  const h = await readFile("dist/cities/index.html", "utf8");
+  const imgs = (h.match(/<img class="city-img"[^>]*>/g) || []).filter(i => /\ssrc="\//.test(i));   // the built cards, not the script's template
+  assert(imgs.length >= 10, `expected the pre-rendered city cards, found ${imgs.length}`);
+  for (const img of imgs) {
+    const name = (img.match(/srcset="\/assets\/city\/t\/([a-z0-9-]+-[0-9a-f]{8})-256\.webp 256w/) || [])[1];
+    assert(name, `card photo should use the hashed tiles: ${img.slice(0, 120)}`);
+    assert(new RegExp(`src="/assets/city/t/${name}-480\\.webp"`).test(img), `${name}: src should be the 480 tile`);
+    for (const [w, limit] of [[256, 12 * KB], [360, 20 * KB], [480, 32 * KB], [640, 48 * KB], [720, 56 * KB]]) {
+      assert(img.includes(`/assets/city/t/${name}-${w}.webp ${w}w`), `${name}: srcset lacks ${w}w`);
+      const f = `dist/assets/city/t/${name}-${w}.webp`;
+      const s = await size(f).catch(() => null);
+      assert(s !== null, `${f} missing (build.mjs TILE_SIZES)`);
+      assert(s <= limit, `${f} is ${kb(s)} (limit ${kb(limit)})`);
+      // WebP header: width-1 and height-1 as 24-bit little-endian at bytes 24-29 (VP8X) — check the 3:1 shape.
+      const b = await readFile(f);
+      if (b.toString("ascii", 12, 16) === "VP8X") {
+        const W = 1 + b.readUIntLE(24, 3), H = 1 + b.readUIntLE(27, 3);
+        assert(W === w && Math.abs(W / H - 3) < 0.02, `${f} is ${W}x${H}, expected ${w}x${Math.round(w / 3)}`);
+      } else if (b.toString("ascii", 12, 16) === "VP8 ") {
+        const W = b.readUInt16LE(26) & 0x3fff, H = b.readUInt16LE(28) & 0x3fff;
+        assert(W === w && Math.abs(W / H - 3) < 0.02, `${f} is ${W}x${H}, expected ${w}x${Math.round(w / 3)}`);
+      }
+    }
+  }
+  // The name carries a hash, so the files can be kept a year; this rule must come after /*.webp
+  // (a week), because Cloudflare applies every matching rule in order.
+  const hdr = await readFile("dist/_headers", "utf8");
+  const tile = hdr.search(/^\/assets\/city\/t\/\*\n\s+! Cache-Control\n\s+Cache-Control: public, max-age=31536000, immutable$/m);
+  assert(tile > -1, "_headers must keep /assets/city/t/* for a year (immutable)");
+  assert(tile > hdr.indexOf("/*.webp"), "the /assets/city/t/* rule must come after /*.webp or the week wins");
 });
 
 await test("Add page: the headline is in the HTML of every city's add page, in the same words the script draws", async () => {

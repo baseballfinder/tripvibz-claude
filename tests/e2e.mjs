@@ -235,6 +235,44 @@ await test("Cities page search: 16px box, states and nicknames, typos, suggestio
   await page.unroute("**/api/near");
 });
 
+// PageSpeed on /cities/ (Nov 2026): the grid dropped 40 px when the script drew the
+// state chips (CLS 0.026), and phones downloaded 720x450 photos for 370x104 cards.
+await test("Cities page on a phone: nothing moves while it loads, cards use the 3:1 tiles, a search redraw keeps them", async () => {
+  const phone = await browser.newContext({ viewport: { width: 412, height: 823 }, deviceScaleFactor: 1.75, isMobile: true, hasTouch: true, serviceWorkers: "block" });
+  await intercept(phone);
+  await phone.route("**/api/near", r => r.fulfill({ status: 404, body: "" }));   // no "Near you" chip: that one depends on the visitor
+  await phone.addInitScript(() => { window.__shift = []; new PerformanceObserver(l => { for (const e of l.getEntries()) if (!e.hadRecentInput) window.__shift.push({ v: e.value, el: e.sources.map(s => s.node && (s.node.id || s.node.className)).join(",") }); }).observe({ type: "layout-shift", buffered: true }); });
+  const p = await phone.newPage();
+  const photos = [];
+  p.on("request", r => { const u = new URL(r.url()); if (u.pathname.startsWith("/assets/city/")) photos.push(u.pathname); });
+  try {
+    await p.goto(BASE + "/cities/", { waitUntil: "networkidle" }); await p.waitForTimeout(1200);
+    assert((await p.getAttribute("#live-grid", "data-hydrated")) === "inplace", "the script should keep the built cards");
+    const shifts = await p.evaluate(() => window.__shift);
+    const cls = shifts.reduce((s, x) => s + x.v, 0);
+    assert(cls < 0.005, `the page moved while loading (CLS ${cls.toFixed(3)}): ${JSON.stringify(shifts)}`);
+    assert(/Florida \d+/.test(await p.textContent("#quick")), "state chips missing");
+    const notTile = photos.filter(x => !/^\/assets\/city\/t\/[a-z0-9-]+-[0-9a-f]{8}-\d+\.webp$/.test(x));
+    assert(photos.length && !notTile.length, `cards should load only the 3:1 tiles, also loaded: ${notTile.slice(0, 4).join(", ")}`);
+    // naturalWidth is divided by the srcset density, so the file the browser picked is read from its name.
+    const first = await p.$eval("#live-grid .city-img, #soon-grid .city-img", i => ({ src: i.currentSrc, w: i.naturalWidth, h: i.naturalHeight, box: i.getBoundingClientRect().width }));
+    const fileW = +((first.src.match(/-(\d+)\.webp$/) || [])[1] || 0);
+    assert(Math.abs(first.w / first.h - 3) < 0.05, `first card photo should be 3:1, is ${first.w}x${first.h}`);
+    assert(fileW >= first.box * 1.5 && fileW <= 720, `first card should get a sharp but not oversized tile on a 1.75x phone: ${fileW}px file for a ${first.box}px card`);
+    const lazy = await p.$$eval("#live-grid .city-img, #soon-grid .city-img", els => els.map(e => e.loading));
+    assert(lazy.slice(0, 4).every(l => l === "eager") && lazy.slice(4).every(l => l === "lazy"), `only the first row should be eager: ${lazy.join(",")}`);
+    // Searching redraws the cards; they must keep the tile files, not switch to the full-size photos.
+    photos.length = 0;
+    await p.fill("#search", "florida"); await p.waitForTimeout(400);
+    await p.fill("#search", ""); await p.waitForTimeout(400);
+    await p.evaluate(() => window.scrollTo(0, document.body.scrollHeight)); await p.waitForTimeout(800);
+    const srcs = await p.$$eval("#live-grid .city-img, #soon-grid .city-img", els => els.map(e => e.getAttribute("src")));
+    assert(srcs.length >= cities.length && srcs.every(s => s.startsWith("/assets/city/t/")), `redrawn cards lost their tiles: ${srcs.filter(s => !s.startsWith("/assets/city/t/")).slice(0, 3).join(", ")}`);
+    const full = photos.filter(x => !x.startsWith("/assets/city/t/"));
+    assert(!full.length, `a search redraw downloaded full-size photos: ${full.slice(0, 3).join(", ")}`);
+  } finally { await phone.close(); }
+});
+
 for (const slug of ["nashville", "fort-lauderdale", "miami", "sarasota"]) {
   await test(`City feed (${slug}): hero photo, lead question, sections, no old add button`, async () => {
     await go(`/${slug}/`);
