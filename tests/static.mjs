@@ -689,6 +689,16 @@ await test("Every public page has the site footer with About, Privacy and Terms"
   }
 });
 
+await test("Home page search description: plain wording, not the old three-part line, and a length search results show whole", async () => {
+  const h = await readFile("dist/index.html", "utf8");
+  const desc = (h.match(/<meta name="description" content="([^"]*)"/) || [])[1];
+  assert(desc, "home page has no meta description");
+  assert(!/what to skip and when to come/i.test(desc), "home description still uses the old three-part line (rewritten Nov 2026)");
+  assert(desc.length >= 50 && desc.length <= 160, `home description should be 50 to 160 characters (is ${desc.length})`);
+  const org = (h.match(/"@type":"Organization"[^}]*"description":"([^"]*)"/) || [])[1];
+  assert(!org || !/what to skip and when to come/i.test(org), "Organization description still uses the old three-part line");
+});
+
 await test("Migrations are named the way the Supabase GitHub integration expects", async () => {
   const files = (await readdir("supabase/migrations")).filter(f => f.endsWith(".sql"));
   const seen = new Set();

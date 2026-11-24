@@ -285,7 +285,7 @@ const ORG = {
   name: "TripVibz",
   url: `${SITE}/`,
   logo: `${SITE}/assets/brand/icon-512.png`,
-  description: "Where people who know a city would take a friend, what to skip and when to come."
+  description: "A US city guide where people who live in a city say where they'd take a friend."
 };
 const WEBSITE = {
   "@type": "WebSite",
@@ -1236,7 +1236,7 @@ const newest = rows => rows.length
 pages.push({ path: "/", lastmod: newest(posts), priority: "1.0" });
 await emit("index.html", await minifyHtml(render(indexTpl, {
   title: "TripVibz — where would you take a friend?",
-  desc: "People who know a city say where they'd take a friend, what to skip and when to come. One sentence at a time.",
+  desc: "Ask the people who live in a city where they'd take a friend, and what they'd tell them to skip.",
   canonical: `${SITE}/`,
   image: `${SITE}/assets/og/home.jpg`,
   og: ogCard("home.jpg", "Where would you take a friend?",
