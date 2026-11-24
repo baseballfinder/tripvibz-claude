@@ -935,7 +935,8 @@ await test("Launch: no empty counters — home stats hidden under 5 contributors
   const MIN = 5;
   const authors = new Set((await api("posts?select=author_id")).map(p => p.author_id).filter(Boolean)).size;
   const h = await readFile("dist/index.html", "utf8");
-  const stats = [...h.matchAll(/<div class="stat"( hidden)?><b>/g)];
+  // Built counters only (a number in <b>); the page script's own template also contains '<div class="stat"><b>${v}'.
+  const stats = [...h.matchAll(/<div class="stat"( hidden)?><b>\d+<\/b>/g)];
   assert(stats.length === 3, `home page should carry 3 counters, found ${stats.length}`);
   const hidden = stats.filter(m => m[1]).length;
   if (authors < MIN) assert(hidden === 3, `${authors} contributor(s): the home counters must be written hidden`);
