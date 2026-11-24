@@ -931,6 +931,27 @@ await test("Vibes: the list in assets/v2.js matches the migration; recommendatio
   console.log(`      (${pagesSeen} vibe pages checked)`);
 });
 
+await test("Launch: no empty counters — home stats hidden under 5 contributors, no '0 true · 0 nope' on built cards or /t/ pages", async () => {
+  const MIN = 5;
+  const authors = new Set((await api("posts?select=author_id")).map(p => p.author_id).filter(Boolean)).size;
+  const h = await readFile("dist/index.html", "utf8");
+  // Built counters only (a number in <b>); the page script's own template also contains '<div class="stat"><b>${v}'.
+  const stats = [...h.matchAll(/<div class="stat"( hidden)?><b>\d+<\/b>/g)];
+  assert(stats.length === 3, `home page should carry 3 counters, found ${stats.length}`);
+  const hidden = stats.filter(m => m[1]).length;
+  if (authors < MIN) assert(hidden === 3, `${authors} contributor(s): the home counters must be written hidden`);
+  else assert(hidden === 0, `${authors} contributors: the home counters should show`);
+  assert(/\.stats:has\(>\s*\.stat\[hidden\]\)\s*\{\s*display:\s*none/.test(h), "home page CSS must hide the row when the counters are hidden");
+  const bad = [];
+  for (const f of pages) if (/>0 true · 0 nope</.test(await readFile(f, "utf8"))) bad.push(f);
+  assert(!bad.length, `"0 true · 0 nope" is pre-rendered on: ${bad.slice(0, 5).join(", ")}`);
+  const fn = await readFile("functions/t/[id].js", "utf8");
+  assert(/post\.ups \+ post\.downs \? ` · \$\{post\.ups\} true/.test(fn), "/t/<id> must show the true/nope tally only once a take has a vote");
+  const v2 = await readFile("assets/v2.js", "utf8");
+  assert(v2.includes('"True" + (p.ups ? " · " + p.ups : "")') && v2.includes('"Nope" + (p.downs ? " · " + p.downs : "")'), "vote buttons must drop the count at zero");
+  assert(v2.includes(': "Reply")'), "a take with no replies links \"Reply\", not \"0 replies\"");
+});
+
 await test("Home page: cities with takes come first in the grid; counters say '1 contributor', not '1 contributors'", async () => {
   const h = await readFile("dist/index.html", "utf8");
   const grid = h.slice(h.indexOf('id="needs"'));

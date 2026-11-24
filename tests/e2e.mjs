@@ -771,9 +771,13 @@ await test("Feed voting: True/Nope toggles", async () => {
   if (!posts.length) return;   // nothing to vote on yet
   const c = cities.find(x => x.id === posts[0].city_id);
   await go(`/${c.slug}/`);
+  // A button shows its count only once there is one ("True", then "True · 1"); never "True · 0".
+  for (const t of await page.locator(".take .tvb").allTextContents()) assert(!/·\s*0\b/.test(t), `vote button shows a zero count: "${t.trim()}"`);
+  for (const t of await page.locator(".take .replies-link").allTextContents()) assert(!/^\s*0 replies/.test(t), `reply link shows "0 replies"`);
   await page.click(".take .tvb.yes >> nth=0");
   await page.waitForTimeout(500);
   assert((await page.getAttribute(".take .tvb.yes >> nth=0", "aria-pressed")) === "true", "True did not toggle on");
+  assert(/True · [1-9]/.test(await page.textContent(".take .tvb.yes >> nth=0")), "after a True vote the button should show the count");
   assert(writes.some(w => w.table === "votes"), "vote was not sent");
 });
 
