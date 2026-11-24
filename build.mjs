@@ -579,11 +579,17 @@ function cityGrid(cities, countsBySlug) {
 }
 
 // Home: the three counters above the grid (index.html renderStats).
+// "10 takes · 1 contributor" reads as a one-person site, so below
+// STATS_MIN_CONTRIBUTORS the counters are written hidden (index.html hides the
+// row with them). The page script only updates numbers in place, so the row
+// stays hidden until a build with enough contributors.
+const STATS_MIN_CONTRIBUTORS = 5;
 function homeStats(cities, posts) {
   const locals = new Set(posts.map(p => p.author_id).filter(Boolean)).size;
-  return `<div class="stat"><b>${posts.length}</b><span>${posts.length === 1 ? "take" : "takes"}</span></div>
-      <div class="stat"><b>${locals}</b><span>${locals === 1 ? "contributor" : "contributors"}</span></div>
-      <div class="stat"><b>${cities.length}</b><span>${cities.length === 1 ? "city open" : "cities open"}</span></div>`;
+  const hid = locals < STATS_MIN_CONTRIBUTORS ? " hidden" : "";
+  return `<div class="stat"${hid}><b>${posts.length}</b><span>${posts.length === 1 ? "take" : "takes"}</span></div>
+      <div class="stat"${hid}><b>${locals}</b><span>${locals === 1 ? "contributor" : "contributors"}</span></div>
+      <div class="stat"${hid}><b>${cities.length}</b><span>${cities.length === 1 ? "city open" : "cities open"}</span></div>`;
 }
 
 // /cities/: the same card places.html draws (its card()), split into the
@@ -818,6 +824,10 @@ function guidePanelHtml(city, takes, { eats, picks, localChecks, pickers }, city
     addHref: `/${city.slug}/add/`
   });
 }
+// "0 true · 0 nope" on every card reads as an empty site: the tally shows once a take has a vote.
+function voteLine(p) {
+  return (p.ups || 0) + (p.downs || 0) ? `<div class="who">${p.ups} true · ${p.downs} nope</div>` : "";
+}
 function cityBody(city, counts, takes, intro = "", nearby = [], eatsData = null, events = [], vibeEntries = {}, cityPlaces = []) {
   const ranked = takes.slice().sort((a, b) => (b.ups - b.downs) - (a.ups - a.downs));
   const n = takes.length;
@@ -828,7 +838,7 @@ function cityBody(city, counts, takes, intro = "", nearby = [], eatsData = null,
 <div class="tabs" role="tablist" aria-label="Sections">${CITY_TABS.map(([id, l]) =>
     `<button role="tab" id="tab-${id}" data-tab="${id}" aria-selected="${id === "takes"}" aria-controls="panel-${id}" tabindex="${id === "takes" ? 0 : -1}">${l}</button>`).join("")}</div>
 ${panel("takes", `<div class="feed">${ranked.length ? ranked.map(p => `<article class="take"><a class="tt" href="/t/${esc(p.id)}">${esc(p.title)}</a>${
-    p.body ? `<div class="more">${esc(p.body)}</div>` : ""}<div class="who">${p.ups} true · ${p.downs} nope</div></article>`).join("")
+    p.body ? `<div class="more">${esc(p.body)}</div>` : ""}${voteLine(p)}</article>`).join("")
   : `<div class="empty2"><b>No takes here yet</b>Know ${esc(city.name)}? <a href="/${esc(city.slug)}/add/">Tell a friend where you'd take them.</a></div>`}</div>
 ${editorsHtml(city, intro)}
 ${n ? `<div class="more-topics">By topic: ${Object.keys(THEMES).filter(k => counts[k]).map(k =>

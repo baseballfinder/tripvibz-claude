@@ -208,10 +208,10 @@
       vibeRowHtml(p, ctx) +
       (opts.noBar ? "" : (total >= 5 ? '<div class="bar" aria-hidden="true"><i style="width:' + pct + '%"></i></div>' : "") +
       '<div class="tv-actions">' +
-        '<button class="tvb yes" data-vote="1" data-id="' + p.id + '" aria-pressed="' + (v === 1) + '">' + ICON.check + "True · " + p.ups + "</button>" +
-        '<button class="tvb no" data-vote="-1" data-id="' + p.id + '" aria-pressed="' + (v === -1) + '">' + ICON.x + "Nope · " + p.downs + "</button>" +
+        '<button class="tvb yes" data-vote="1" data-id="' + p.id + '" aria-pressed="' + (v === 1) + '">' + ICON.check + "True" + (p.ups ? " · " + p.ups : "") + "</button>" +
+        '<button class="tvb no" data-vote="-1" data-id="' + p.id + '" aria-pressed="' + (v === -1) + '">' + ICON.x + "Nope" + (p.downs ? " · " + p.downs : "") + "</button>" +
         '<button class="tv-share" data-share-take="' + p.id + '" aria-label="Share this take" title="Share">' + ICON.share + "</button>" +
-        '<span class="tv-meta"><a class="replies-link" href="' + href + '">' + p.comment_count + (p.comment_count === 1 ? " reply" : " replies") + "</a></span>" +
+        '<span class="tv-meta"><a class="replies-link" href="' + href + '">' + (p.comment_count ? p.comment_count + (p.comment_count === 1 ? " reply" : " replies") : "Reply") + "</a></span>" +
       "</div>") +
     "</article>";
   }

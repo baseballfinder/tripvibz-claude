@@ -54,6 +54,7 @@
   .done .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 
   .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:26px 0 4px}
+  .stats:has(> .stat[hidden]){display:none}
   .stat{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:15px 16px;text-align:center}
   .stat b{font-family:"Archivo";font-weight:900;font-size:24px;display:block;line-height:1.1}
   .stat span{font-size:12px;color:var(--muted);font-weight:600}

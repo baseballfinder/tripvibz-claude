@@ -144,7 +144,7 @@ async function takePage({ params, request, env }) {
   // What a crawler reads before the page script takes over the same spot.
   const body = `<article class="take"><a class="back" href="/${esc(city.slug)}/">← ${esc(city.name)}</a>
 ${onQ ? `<div class="kicker">${esc(onQ)}</div>` : ""}<h1>${esc(post.title)}</h1>${extra ? `<p>${esc(extra)}</p>` : ""}
-<div class="who">${local(post.author_verified, post.author_id)} · ${post.ups} true · ${post.downs} nope</div>
+<div class="who">${local(post.author_verified, post.author_id)}${post.ups + post.downs ? ` · ${post.ups} true · ${post.downs} nope` : ""}</div>
 ${comments.map(c => plain(c.body) ? `<p class="reply"><b>${local(c.author_verified, c.author_id)}:</b> ${esc(c.body)}</p>` : "").join("")}
 </article>`;
   const head = tags + ld(posting) + (thin ? `\n<meta name="robots" content="noindex,follow">` : "");
