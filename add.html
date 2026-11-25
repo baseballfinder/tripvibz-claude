@@ -189,6 +189,9 @@
       <p class="add-sub">One tap each. Add a sentence if you want to say why. People planning a trip see what locals picked.</p>
       <div id="add-body"></div>`;
     root.querySelector("#add-progress").textContent = QS.length ? `${answered} of ${QS.length} answered` : "";
+    // The email sign-up box under the questions is kept across redraws (moved out and back in),
+    // so a half-typed address or its thank-you survives the next tap.
+    const keptSignup = root.querySelector("#add-signup"); if (keptSignup) keptSignup.remove();
     root.querySelector("#add-body").innerHTML = `
       ${all ? `<section class="card done"><span class="live">${T2.ICON.check}You've answered every ${esc(CITY.name)} question</span>
         <div class="hint">Thank you. Ask a friend who'd argue with you, or suggest a question we should be asking below.</div>
@@ -204,6 +207,17 @@
       ${suggestBox()}
       ${!signedIn() ? `<section class="card nudge"><div><b style="font-family:Archivo;font-size:14.5px">Post with your name</b><div class="hint" style="margin:2px 0 0">Your answers get your Local badge and rank higher. Answered on another phone or browser? Sign in and they follow you.</div></div>
         <button type="button" class="btn-primary" id="nudge-signin">Sign in</button></section>` : ""}`;
+    // After the first answer, offer the city's email list right under the questions. People who come
+    // from an email's answer button never reach the city page's box otherwise.
+    const ql = root.querySelector("#qlist");
+    if (answered && ql) {
+      if (keptSignup) ql.after(keptSignup);
+      else {
+        const box = document.createElement("div"); box.id = "add-signup";
+        box.innerHTML = T2.emailSignupHtml(CITY, "add_vote");
+        ql.after(box); T2.mountEmailSignup(box, CITY);
+      }
+    }
     wireQuestions();
   }
 
