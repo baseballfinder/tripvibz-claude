@@ -605,8 +605,18 @@
 
   /* ---------- email signup (newsletter) ----------
      The box only calls the email_signup() database function. An hourly job adds
-     the address to Kit with a city tag. Pressing the button is the opt-in. */
+     the address to Kit with a city tag. Pressing the button is the opt-in.
+     The source says where the box was and, when the visit came from one of our
+     emails or posts, its utm_campaign ("add_vote__abc-a-miami"), so Kit's
+     "Source:" tag tells an email's sign-ups apart. Only [a-z0-9_-], at most 40
+     characters, which is what email_signup() accepts. */
   var SIGNED_UP = {};
+  function signupSource(placement, search) {
+    var p = String(placement || "site").toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 20) || "site", c = "";
+    try { c = new URLSearchParams(search == null ? location.search : search).get("utm_campaign") || ""; } catch (e) {}
+    c = String(c).toLowerCase().replace(/[^a-z0-9_-]/g, "");
+    return c ? (p + "__" + c).slice(0, 40) : p;
+  }
   function emailSignupHtml(city, source) {
     var key = (city && city.id) || "all";
     var name = city ? city.name : "your next trip";
@@ -644,10 +654,11 @@
       btn.disabled = true; msg.textContent = "Signing you up…";
       try {
         if (!(await TV.auth.session())) throw new Error("no session");
-        var out = await TV.sb.rpc("email_signup", { p_email: email, p_city: city ? city.id : null, p_source: box.getAttribute("data-signup") || "site" });
+        var source = signupSource(box.getAttribute("data-signup"));
+        var out = await TV.sb.rpc("email_signup", { p_email: email, p_city: city ? city.id : null, p_source: source });
         if (out.error) throw out.error;
         SIGNED_UP[(city && city.id) || "all"] = true;
-        track("email_signup", { city: city ? city.slug : "", source: box.getAttribute("data-signup") || "site" });
+        track("email_signup", { city: city ? city.slug : "", source: source });
         box.outerHTML = emailSignupHtml(city, box.getAttribute("data-signup") || "site");
       } catch (e) {
         console.error(e);
@@ -810,7 +821,7 @@
   }
 
   window.TV2 = {
-    emailSignupHtml: emailSignupHtml, mountEmailSignup: mountEmailSignup,
+    emailSignupHtml: emailSignupHtml, mountEmailSignup: mountEmailSignup, signupSource: signupSource,
     KIND: KIND, TENURE: TENURE, MON: MON, ICON: ICON, POST_COLS: POST_COLS,
     tenureBadge: tenureBadge, localBadge: localBadge, monthsLabel: monthsLabel, shortName: shortName,
     loadCity: loadCity, hydrate: hydrate, sortPosts: sortPosts, isSplit: isSplit, placeOf: placeOf,

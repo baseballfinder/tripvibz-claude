@@ -425,7 +425,7 @@ await test("Answer links (email buttons): /<city>/add/?q=&a= records that answer
   assert(qsLive.length >= 2, "Nashville needs two active questions to test with");
   const q = qsLive[qsLive.length - 1], opt = q.options[q.options.length - 1];   // the last one, so "first on the page" proves the reordering
   let before = writes.length;
-  await go(`/nashville/add/?q=${q.id}&a=${encodeURIComponent(opt.id)}&utm_source=miamitake`); await page.waitForTimeout(600);
+  await go(`/nashville/add/?q=${q.id}&a=${encodeURIComponent(opt.id)}&utm_source=miamitake&utm_campaign=abc-a-miami`); await page.waitForTimeout(600);
   const votes = writes.slice(before).filter(w => w.table === "question_votes");
   assert(votes.length === 1 && votes[0].body.question_id === q.id && votes[0].body.option_id === opt.id, `the link should record exactly that answer once: ${JSON.stringify(votes.map(v => v.body))}`);
   const first = page.locator("#qlist .qa").first();
@@ -434,6 +434,19 @@ await test("Answer links (email buttons): /<city>/add/?q=&a= records that answer
   assert(await first.locator(".why-box").count() === 1 && /1 of \d+ answered/.test(await page.textContent(".progress")), "the why box should be open and the answer counted");
   const url = new URL(page.url());
   assert(!url.searchParams.has("q") && !url.searchParams.has("a") && url.searchParams.get("utm_source") === "miamitake", `q and a should leave the address (a refresh must not answer again) and the rest should stay: ${url.search}`);
+  // After that first answer the city's email box sits under the questions, and a sign-up from it
+  // carries where it was and the email's campaign, so Kit can tell an email's sign-ups apart.
+  assert(await page.locator("#add-signup [data-signup]").count() === 1, "the email sign-up box should show under the questions after the first answer");
+  await page.locator(`#qlist .qa:nth-child(2) .qopt`).first().click(); await page.waitForTimeout(400);
+  assert(await page.locator("#add-signup [data-signup]").count() === 1, "the sign-up box should stay (once) when another question is answered");
+  before = writes.length;
+  await page.fill("#add-signup input[type=email]", "test@example.com");
+  await page.click("#add-signup button");
+  await page.waitForTimeout(1200);
+  const su = writes.slice(before).find(x => x.table === "email_signup(rpc)");
+  assert(su && su.body.p_email === "test@example.com" && su.body.p_city === nash.id && su.body.p_source === "add_vote__abc-a-miami", `the vote page's sign-up should send the city, the box and the campaign: ${JSON.stringify(su && su.body)}`);
+  assert(/on the list/.test(await page.textContent("#add-signup")), "the vote page's sign-up should thank them");
+  await page.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => {});
   // An answer that isn't one of the question's options saves nothing; the question still leads.
   before = writes.length;
   await go(`/nashville/add/?q=${qsLive[1].id}&a=not-an-option`); await page.waitForTimeout(600);
@@ -733,14 +746,15 @@ await test("Email signup: city page box checks the address, sends it with the ci
   await go("/miami/");
   const box = page.locator("[data-signup]");
   assert(await box.count() === 1, "email signup box missing on city page");
+  const before = writes.length;   // the vote page's sign-up test sends one earlier; count only this page's
   await page.fill("[data-signup] input[type=email]", "not-an-email");
   await page.click("[data-signup] button");
   assert(/doesn't look right/.test(await page.textContent("[data-signup] .signup-msg")), "bad email should be caught before sending");
-  assert(!writes.some(x => x.table === "email_signup(rpc)"), "bad email was sent");
+  assert(!writes.slice(before).some(x => x.table === "email_signup(rpc)"), "bad email was sent");
   await page.fill("[data-signup] input[type=email]", "test@example.com");
   await page.click("[data-signup] button");
   await page.waitForTimeout(1200);
-  const w = writes.find(x => x.table === "email_signup(rpc)");
+  const w = writes.slice(before).find(x => x.table === "email_signup(rpc)");
   assert(w && w.body.p_email === "test@example.com" && w.body.p_city && w.body.p_source === "city_page", "signup was not sent with city and source");
   assert(/on the list/.test(await page.textContent("[data-signup]")), "thank-you state missing");
   // Let in-flight fetches settle before the next test navigates. Bounded: the signup starts the lazy
