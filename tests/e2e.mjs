@@ -746,14 +746,15 @@ await test("Email signup: city page box checks the address, sends it with the ci
   await go("/miami/");
   const box = page.locator("[data-signup]");
   assert(await box.count() === 1, "email signup box missing on city page");
+  const before = writes.length;   // the vote page's sign-up test sends one earlier; count only this page's
   await page.fill("[data-signup] input[type=email]", "not-an-email");
   await page.click("[data-signup] button");
   assert(/doesn't look right/.test(await page.textContent("[data-signup] .signup-msg")), "bad email should be caught before sending");
-  assert(!writes.some(x => x.table === "email_signup(rpc)"), "bad email was sent");
+  assert(!writes.slice(before).some(x => x.table === "email_signup(rpc)"), "bad email was sent");
   await page.fill("[data-signup] input[type=email]", "test@example.com");
   await page.click("[data-signup] button");
   await page.waitForTimeout(1200);
-  const w = writes.find(x => x.table === "email_signup(rpc)");
+  const w = writes.slice(before).find(x => x.table === "email_signup(rpc)");
   assert(w && w.body.p_email === "test@example.com" && w.body.p_city && w.body.p_source === "city_page", "signup was not sent with city and source");
   assert(/on the list/.test(await page.textContent("[data-signup]")), "thank-you state missing");
   // Let in-flight fetches settle before the next test navigates. Bounded: the signup starts the lazy
